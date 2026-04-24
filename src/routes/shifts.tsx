@@ -302,6 +302,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         </Button>
                       </>
                     )}
+                    {!guideView && guide && onOpenAssignDialog && (
+                      <Button size="sm" variant="outline" onClick={() => onOpenAssignDialog(s)}>
+                        <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
+                      </Button>
+                    )}
                     {!guideView && (
                       <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
