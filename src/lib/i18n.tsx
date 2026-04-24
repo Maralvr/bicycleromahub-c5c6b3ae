@@ -38,7 +38,7 @@ const dict = {
       newShift: "New shift", fromBokun: "From Bokun", manual: "Manual",
       assignGuide: "Assign guide", suggested: "AI suggested",
       adults: "Adults", teens: "Teens", infants: "Infants", trailers: "Trailers",
-      myShifts: "My shifts (guide view)",
+      myShifts: "Mine",
     },
     tasks: {
       title: "Tasks", subtitle: "Daily checks and operational to-dos.",
@@ -85,7 +85,7 @@ const dict = {
       newShift: "Nuovo turno", fromBokun: "Da Bokun", manual: "Manuale",
       assignGuide: "Assegna guida", suggested: "Suggerito dall'AI",
       adults: "Adulti", teens: "Ragazzi", infants: "Bambini", trailers: "Carrelli",
-      myShifts: "I miei turni (vista guida)",
+      myShifts: "I miei",
     },
     tasks: {
       title: "Attività", subtitle: "Controlli giornalieri e to-do operativi.",
