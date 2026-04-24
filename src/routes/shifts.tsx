@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
+import { useCurrentUser } from "@/lib/current-user";
 import { shifts as initialShifts, staff, Shift } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
@@ -26,6 +27,8 @@ export const Route = createFileRoute("/shifts")({
 
 function ShiftsPage() {
   const { t } = useI18n();
+  const { role, staffId } = useCurrentUser();
+  const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
 
   const updateStatus = (id: string, status: Shift["status"]) => {
@@ -63,35 +66,43 @@ function ShiftsPage() {
         title={t.shifts.title}
         subtitle={t.shifts.subtitle}
         actions={
-          <>
-            <Button variant="outline" onClick={simulateBokunBooking}>
-              <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
-            </Button>
-            <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
-              <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
-            </Button>
-          </>
+          isAdmin ? (
+            <>
+              <Button variant="outline" onClick={simulateBokunBooking}>
+                <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
+              </Button>
+              <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
+                <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
+              </Button>
+            </>
+          ) : null
         }
       />
 
-      <Tabs defaultValue="all" className="mb-6">
+      <Tabs defaultValue={isAdmin ? "all" : "mine"} key={role + staffId} className="mb-6">
         <TabsList className="bg-muted">
-          <TabsTrigger value="all">{t.common.all}</TabsTrigger>
-          <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
-          <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
+          {isAdmin && <TabsTrigger value="all">{t.common.all}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>}
           <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
         </TabsList>
-        <TabsContent value="all" className="mt-5">
-          <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
-        </TabsContent>
-        <TabsContent value="bokun" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
-        </TabsContent>
-        <TabsContent value="manual" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="all" className="mt-5">
+            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="bokun" className="mt-5">
+            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="manual" className="mt-5">
+            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          </TabsContent>
+        )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === "s1")} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
       </Tabs>
     </AppShell>
