@@ -13,8 +13,9 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { shifts as allShifts, Staff } from "@/lib/mock-data";
-import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
 export const Route = createFileRoute("/staff")({
   head: () => ({
@@ -38,6 +39,7 @@ function MyAvailabilityView() {
   const { staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
+  const [editOpen, setEditOpen] = useState(false);
 
   // Stats for "my month"
   const yearMonth = new Date().toISOString().slice(0, 7);
@@ -88,13 +90,23 @@ function MyAvailabilityView() {
         {/* Profile + skills */}
         <div className="space-y-4">
           <Card className="p-5 border-border/60">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar name={me.name} initials={me.avatar} size="lg" />
-              <div className="min-w-0">
-                <h3 className="font-semibold text-foreground truncate">{me.name}</h3>
-                <div className="text-xs text-muted-foreground capitalize">{me.role}</div>
-                <div className="mt-1.5"><StatusPill status={me.status} /></div>
+            <div className="flex items-start justify-between gap-2 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar name={me.name} initials={me.avatar} size="lg" />
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-foreground truncate">{me.name}</h3>
+                  <div className="text-xs text-muted-foreground capitalize">{me.role}</div>
+                  <div className="mt-1.5"><StatusPill status={me.status} /></div>
+                </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs px-2.5 flex-shrink-0"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> Edit
+              </Button>
             </div>
 
             <div className="space-y-3 text-xs">
@@ -102,20 +114,32 @@ function MyAvailabilityView() {
                 <a href={`tel:${me.phone}`} className="font-medium hover:text-primary">{me.phone}</a>
               </ProfileRow>
               <ProfileRow icon={LangIcon} label={t.common.languages}>
-                <span className="font-medium">{me.languages.join(" · ")}</span>
+                <span className="font-medium">{me.languages.join(" · ") || "—"}</span>
               </ProfileRow>
               <ProfileRow icon={Award} label={t.common.licenses}>
-                <span className="font-medium">{me.licenses.join(", ")}</span>
+                <span className="font-medium">{me.licenses.join(", ") || "—"}</span>
               </ProfileRow>
             </div>
 
             <div className="mt-4 pt-4 border-t border-border/60">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">{t.common.tags}</div>
-              <div className="flex flex-wrap gap-1">
-                {me.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="font-normal text-[10px] bg-primary/10 text-foreground border-0">{tag}</Badge>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{t.common.tags}</div>
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="text-[10px] font-semibold text-primary hover:underline"
+                >
+                  Manage →
+                </button>
               </div>
+              {me.tags.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">No tags yet — add some so dispatch can match you to the right tours.</div>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {me.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="font-normal text-[10px] bg-primary/10 text-foreground border-0">{tag}</Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -144,6 +168,8 @@ function MyAvailabilityView() {
           </Card>
         </div>
       </div>
+
+      <EditProfileDialog staffMember={me} open={editOpen} onClose={() => setEditOpen(false)} />
     </AppShell>
   );
 }
