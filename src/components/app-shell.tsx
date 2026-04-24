@@ -1,12 +1,15 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, ListChecks, Bell, Languages } from "lucide-react";
+import { LayoutDashboard, Users, CalendarRange, ListChecks, Bell, Languages, UserCog } from "lucide-react";
 import logo from "@/assets/logo.jpg";
 import { useI18n } from "@/lib/i18n";
+import { useCurrentUser } from "@/lib/current-user";
+import { staff } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
+  const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const location = useLocation();
 
   const nav = [
@@ -79,13 +82,46 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
+              <UserCog className="h-3 w-3" /> View as
+            </div>
+            <div className="flex gap-1 p-1 bg-muted rounded-lg">
+              {(["admin", "staff"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRole(r)}
+                  className={cn(
+                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all capitalize",
+                    role === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            {role === "staff" && (
+              <select
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                className="mt-2 w-full h-8 text-xs rounded-md bg-card border border-border px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} — {s.role}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/15">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
-              AD
+              {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold truncate">Admin</div>
-              <div className="text-[10px] text-muted-foreground truncate">Operations</div>
+              <div className="text-xs font-semibold truncate">{displayName}</div>
+              <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
             </div>
           </div>
         </div>
