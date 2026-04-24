@@ -168,6 +168,8 @@ function MyAvailabilityView() {
           </Card>
         </div>
       </div>
+
+      <EditProfileDialog staffMember={me} open={editOpen} onClose={() => setEditOpen(false)} />
     </AppShell>
   );
 }
