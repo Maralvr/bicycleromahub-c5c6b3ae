@@ -12,7 +12,8 @@ import { useStaffStore } from "@/lib/staff-store";
 import { shifts as initialShifts, Shift } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle } from "lucide-react";
+import { SmartAssignDialog } from "@/components/smart-assign-dialog";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -32,17 +33,44 @@ function ShiftsPage() {
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
+  const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
 
   const updateStatus = (id: string, status: Shift["status"]) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
     toast.success(`Shift ${status}`);
   };
 
-  const assignStaff = (shiftId: string, staffId: string, staffName: string) => {
+  const assignStaff = (shiftId: string, assignedStaffId: string, staffName: string) => {
     setShifts((prev) =>
-      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId: staffId, status: "pending" } : s)),
+      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId, status: "pending" } : s)),
     );
-    toast.success(`Assigned to ${staffName}`, { description: "Awaiting their accept/reject." });
+    toast.success(`Assigned to ${staffName}`, { description: "Push notification sent — awaiting accept/reject." });
+  };
+
+  const autoAssignAll = () => {
+    const unassigned = shifts.filter((s) => !s.assignedStaffId);
+    if (unassigned.length === 0) {
+      toast.info("Nothing to assign", { description: "All shifts already have a guide." });
+      return;
+    }
+    // Sort by date+time so earliest shifts get first pick of staff
+    const queue = [...unassigned].sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+    let working = [...shifts];
+    let assignedCount = 0;
+    const skipped: string[] = [];
+    for (const sh of queue) {
+      const top = suggestStaffForShift(sh, staff, working, 1)[0];
+      if (top) {
+        working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
+        assignedCount++;
+      } else {
+        skipped.push(sh.tourName);
+      }
+    }
+    setShifts(working);
+    toast.success(`Auto-assigned ${assignedCount} shift${assignedCount === 1 ? "" : "s"}`, {
+      description: skipped.length > 0 ? `${skipped.length} couldn't be matched: ${skipped.slice(0, 2).join(", ")}${skipped.length > 2 ? "…" : ""}` : "All caught up — guides notified.",
+    });
   };
 
   const duplicate = (s: Shift) => {
