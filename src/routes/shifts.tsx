@@ -82,12 +82,14 @@ function ShiftsPage() {
       />
 
       <Tabs defaultValue={isAdmin ? "all" : "mine"} key={role + staffId} className="mb-6">
-        <TabsList className="bg-muted">
-          {isAdmin && <TabsTrigger value="all">{t.common.all}</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>}
-          <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
-        </TabsList>
+        {isAdmin && (
+          <TabsList className="bg-muted">
+            <TabsTrigger value="all">{t.common.all}</TabsTrigger>
+            <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
+            <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
+            <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
+          </TabsList>
+        )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
             <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
