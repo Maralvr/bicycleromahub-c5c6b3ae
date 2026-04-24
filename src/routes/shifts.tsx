@@ -65,8 +65,8 @@ function ShiftsPage() {
   return (
     <AppShell>
       <PageHeader
-        title={t.shifts.title}
-        subtitle={t.shifts.subtitle}
+        title={isAdmin ? t.shifts.title : "My shifts"}
+        subtitle={isAdmin ? t.shifts.subtitle : "Accept or reject the shifts dispatch sent your way."}
         actions={
           isAdmin ? (
             <>
