@@ -129,7 +129,7 @@ function MyAvailabilityView() {
                 {myShifts.slice(0, 4).map((s) => (
                   <div key={s.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40 border border-border/40">
                     <div className="h-9 w-9 rounded-md bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex flex-col items-center justify-center flex-shrink-0">
-                      <div className="text-[8px] uppercase opacity-80 leading-none">{new Date(s.date + "T00:00:00").toLocaleDateString(undefined, { month: "short" })}</div>
+                      <div className="text-[8px] uppercase opacity-80 leading-none">{new Date(s.date + "T00:00:00").toLocaleDateString("en-US", { month: "short" })}</div>
                       <div className="text-xs font-bold leading-tight tabular-nums">{new Date(s.date + "T00:00:00").getDate()}</div>
                     </div>
                     <div className="flex-1 min-w-0">
