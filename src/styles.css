@@ -94,8 +94,11 @@
   --ring: oklch(0.72 0.22 142);
   --gradient-primary: linear-gradient(135deg, oklch(0.72 0.22 142), oklch(0.82 0.20 142));
   --gradient-dark: linear-gradient(135deg, oklch(0.18 0.01 150), oklch(0.10 0.01 150));
-  --shadow-elegant: 0 10px 30px -10px oklch(0.72 0.22 142 / 0.25);
-  --shadow-card: 0 2px 8px -2px oklch(0.18 0.02 150 / 0.08);
+  --gradient-mesh: radial-gradient(at 20% 0%, oklch(0.72 0.22 142 / 0.10) 0px, transparent 50%), radial-gradient(at 80% 100%, oklch(0.82 0.20 142 / 0.08) 0px, transparent 50%);
+  --shadow-elegant: 0 12px 40px -16px oklch(0.45 0.18 142 / 0.30);
+  --shadow-card: 0 1px 2px oklch(0.18 0.02 150 / 0.04), 0 4px 16px -8px oklch(0.18 0.02 150 / 0.08);
+  --shadow-glow: 0 0 0 1px oklch(0.72 0.22 142 / 0.20), 0 8px 24px -8px oklch(0.72 0.22 142 / 0.30);
+  --ring-offset: oklch(0.99 0.005 145);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
