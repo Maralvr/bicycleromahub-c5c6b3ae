@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
-import { shifts as initialShifts, staff, Shift } from "@/lib/mock-data";
+import { useStaffStore } from "@/lib/staff-store";
+import { shifts as initialShifts, Shift } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle } from "lucide-react";
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/shifts")({
 function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
+  const { staff } = useStaffStore();
   const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
 
