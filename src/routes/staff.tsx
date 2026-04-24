@@ -39,6 +39,7 @@ function MyAvailabilityView() {
   const { staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
+  const [editOpen, setEditOpen] = useState(false);
 
   // Stats for "my month"
   const yearMonth = new Date().toISOString().slice(0, 7);
