@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { shifts as initialShifts, staff, Shift } from "@/lib/mock-data";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro } from "lucide-react";
+import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
