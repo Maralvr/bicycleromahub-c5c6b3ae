@@ -9,7 +9,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { shifts as initialShifts, staff, Shift } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook } from "lucide-react";
+import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -32,6 +33,13 @@ function ShiftsPage() {
     toast.success(`Shift ${status}`);
   };
 
+  const assignStaff = (shiftId: string, staffId: string, staffName: string) => {
+    setShifts((prev) =>
+      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId: staffId, status: "pending" } : s)),
+    );
+    toast.success(`Assigned to ${staffName}`, { description: "Awaiting their accept/reject." });
+  };
+
   const duplicate = (s: Shift) => {
     setShifts((prev) => [...prev, { ...s, id: `${s.id}-copy-${Date.now()}`, status: "unassigned", assignedStaffId: null }]);
     toast.success("Shift duplicated");
@@ -40,9 +48,12 @@ function ShiftsPage() {
   const simulateBokunBooking = () => {
     const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
     const newShift = mapBokunBookingToShift(payload);
+    const suggestions = suggestStaffForShift(newShift, staff, shifts, 1);
     setShifts((prev) => [newShift, ...prev]);
     toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
-      description: `${payload.productTitle} — auto-mapped to a new unassigned shift.`,
+      description: suggestions[0]
+        ? `${payload.productTitle} — AI suggests ${suggestions[0].staff.name}.`
+        : `${payload.productTitle} — no matching guide found.`,
     });
   };
 
@@ -71,30 +82,30 @@ function ShiftsPage() {
           <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-5">
-          <ShiftList shifts={shifts} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="bokun" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="manual" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "manual")} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === "s1")} guideView onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === "s1")} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
       </Tabs>
     </AppShell>
   );
 }
 
-function ShiftList({ shifts, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
+function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
   const { t } = useI18n();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">No shifts yet.</div>;
   return (
     <div className="grid gap-4">
       {shifts.map((s) => {
         const guide = staff.find((p) => p.id === s.assignedStaffId);
-        const suggested = !guide ? staff.find((p) => s.requiredTags.every((tag) => p.tags.includes(tag)) && p.status === "available") : null;
+        const suggestions: StaffSuggestion[] = !guide ? suggestStaffForShift(s, staff, allShifts, 3) : [];
         const isUrgent = s.status === "unassigned" || s.status === "pending";
 
         return (
@@ -157,6 +168,47 @@ function ShiftList({ shifts, onAccept, onReject, onDuplicate, guideView }: { shi
 
                 {s.notes && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{s.notes}</div>}
 
+                {/* AI suggestions panel for unassigned shifts */}
+                {!guide && !guideView && (
+                  <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20">
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-primary">AI suggestions</span>
+                      <span className="text-[10px] text-muted-foreground">— ranked by tags, languages, licenses & availability</span>
+                    </div>
+                    {suggestions.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                        No matching staff available — all guides have conflicts or missing required skills.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {suggestions.map((sg, i) => (
+                          <div key={sg.staff.id} className={`flex items-center gap-2.5 p-2 rounded-md border ${i === 0 ? "bg-primary/5 border-primary/30" : "bg-card border-border/40"}`}>
+                            <Avatar name={sg.staff.name} initials={sg.staff.avatar} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-xs text-foreground">{sg.staff.name}</span>
+                                {i === 0 && <Badge className="text-[8px] uppercase tracking-wider h-4 px-1.5 bg-primary text-primary-foreground">Best fit</Badge>}
+                                <span className="text-[10px] text-muted-foreground tabular-nums">score {sg.score}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                {sg.reasons.join(" · ")}
+                                {sg.warnings.length > 0 && (
+                                  <span className="text-warning-foreground"> · ⚠ {sg.warnings.join(", ")}</span>
+                                )}
+                              </div>
+                            </div>
+                            <Button size="sm" variant={i === 0 ? "default" : "outline"} className="h-7 text-xs px-2.5" onClick={() => onAssign(s.id, sg.staff.id, sg.staff.name)}>
+                              Assign
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-border/60 flex-wrap">
                   <div className="flex items-center gap-2 text-sm">
                     {guide ? (
@@ -164,13 +216,6 @@ function ShiftList({ shifts, onAccept, onReject, onDuplicate, guideView }: { shi
                         <Avatar name={guide.name} initials={guide.avatar} size="sm" />
                         <span className="font-medium">{guide.name}</span>
                       </>
-                    ) : suggested ? (
-                      <div className="flex items-center gap-2 text-foreground/80 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs">{t.shifts.suggested}:</span>
-                        <Avatar name={suggested.name} initials={suggested.avatar} size="sm" />
-                        <span className="font-medium text-xs">{suggested.name}</span>
-                      </div>
                     ) : (
                       <span className="text-muted-foreground text-xs italic">{t.common.unassigned}</span>
                     )}
@@ -188,16 +233,9 @@ function ShiftList({ shifts, onAccept, onReject, onDuplicate, guideView }: { shi
                       </>
                     )}
                     {!guideView && (
-                      <>
-                        {!guide && (
-                          <Button size="sm" onClick={() => toast.success("Guide picker would open")} className="shadow-[var(--shadow-elegant)]">
-                            {t.shifts.assignGuide}
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
-                          <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
-                        </Button>
-                      </>
+                      <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
+                        <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
+                      </Button>
                     )}
                   </div>
                 </div>
