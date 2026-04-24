@@ -1,6 +1,8 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { Staff, staff as initialStaff } from "./mock-data";
 
+type ProfilePatch = Partial<Pick<Staff, "tags" | "languages" | "licenses" | "phone">>;
+
 type StaffStoreContextValue = {
   staff: Staff[];
   setUnavailability: (staffId: string, unavailability: Staff["unavailability"]) => void;
@@ -8,25 +10,30 @@ type StaffStoreContextValue = {
   setTimeWindow: (staffId: string, date: string, from: string, to: string, reason?: string) => void;
   clearDate: (staffId: string, date: string) => void;
   clearMonth: (staffId: string, yearMonth: string) => void;
+  updateProfile: (staffId: string, patch: ProfilePatch) => void;
 };
 
 const StaffStoreContext = createContext<StaffStoreContextValue | null>(null);
 
 const STORAGE_KEY = "ebr.staffUnavailability";
+const PROFILE_KEY = "ebr.staffProfileOverrides";
 
 /**
- * Lightweight client-side store that overlays user-edited unavailability
- * on top of the seeded mock staff data. Persisted to localStorage so the
- * staff view, admin view, and matcher all stay in sync.
+ * Lightweight client-side store that overlays user-edited unavailability and
+ * profile fields on top of the seeded mock staff data. Persisted to
+ * localStorage so the staff view, admin view, and matcher all stay in sync.
  */
 export function StaffStoreProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Record<string, Staff["unavailability"]>>({});
+  const [profileOverrides, setProfileOverrides] = useState<Record<string, ProfilePatch>>({});
 
   // Hydrate from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setOverrides(JSON.parse(raw));
+      const rawProfile = localStorage.getItem(PROFILE_KEY);
+      if (rawProfile) setProfileOverrides(JSON.parse(rawProfile));
     } catch {
       // ignore
     }
@@ -41,12 +48,23 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const persistProfile = (next: Record<string, ProfilePatch>) => {
+    setProfileOverrides(next);
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
   const staff = useMemo<Staff[]>(
     () =>
-      initialStaff.map((s) =>
-        overrides[s.id] !== undefined ? { ...s, unavailability: overrides[s.id] } : s,
-      ),
-    [overrides],
+      initialStaff.map((s) => {
+        const merged: Staff = { ...s, ...(profileOverrides[s.id] ?? {}) };
+        if (overrides[s.id] !== undefined) merged.unavailability = overrides[s.id];
+        return merged;
+      }),
+    [overrides, profileOverrides],
   );
 
   const setUnavailability: StaffStoreContextValue["setUnavailability"] = (id, list) => {
@@ -61,10 +79,8 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     const existing = list.find((u) => u.date === date);
     let next: Staff["unavailability"];
     if (existing && existing.allDay) {
-      // Already all-day → clear it
       next = list.filter((u) => u.date !== date);
     } else {
-      // Replace any partial entry with an all-day entry
       next = [...list.filter((u) => u.date !== date), { date, allDay: true, reason }];
     }
     persist({ ...overrides, [id]: next });
@@ -89,9 +105,13 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     persist({ ...overrides, [id]: list.filter((u) => !u.date.startsWith(yearMonth)) });
   };
 
+  const updateProfile: StaffStoreContextValue["updateProfile"] = (id, patch) => {
+    persistProfile({ ...profileOverrides, [id]: { ...(profileOverrides[id] ?? {}), ...patch } });
+  };
+
   return (
     <StaffStoreContext.Provider
-      value={{ staff, setUnavailability, toggleAllDay, setTimeWindow, clearDate, clearMonth }}
+      value={{ staff, setUnavailability, toggleAllDay, setTimeWindow, clearDate, clearMonth, updateProfile }}
     >
       {children}
     </StaffStoreContext.Provider>
