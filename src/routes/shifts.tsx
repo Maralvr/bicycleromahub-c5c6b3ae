@@ -33,6 +33,13 @@ function ShiftsPage() {
     toast.success(`Shift ${status}`);
   };
 
+  const assignStaff = (shiftId: string, staffId: string, staffName: string) => {
+    setShifts((prev) =>
+      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId: staffId, status: "pending" } : s)),
+    );
+    toast.success(`Assigned to ${staffName}`, { description: "Awaiting their accept/reject." });
+  };
+
   const duplicate = (s: Shift) => {
     setShifts((prev) => [...prev, { ...s, id: `${s.id}-copy-${Date.now()}`, status: "unassigned", assignedStaffId: null }]);
     toast.success("Shift duplicated");
@@ -41,9 +48,12 @@ function ShiftsPage() {
   const simulateBokunBooking = () => {
     const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
     const newShift = mapBokunBookingToShift(payload);
+    const suggestions = suggestStaffForShift(newShift, staff, shifts, 1);
     setShifts((prev) => [newShift, ...prev]);
     toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
-      description: `${payload.productTitle} — auto-mapped to a new unassigned shift.`,
+      description: suggestions[0]
+        ? `${payload.productTitle} — AI suggests ${suggestions[0].staff.name}.`
+        : `${payload.productTitle} — no matching guide found.`,
     });
   };
 
