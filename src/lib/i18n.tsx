@@ -6,7 +6,7 @@ const dict = {
   en: {
     appName: "eBicycle Roma",
     tagline: "Operations Hub",
-    nav: { dashboard: "Dashboard", staff: "Staff", shifts: "Shifts", tasks: "Tasks", notifications: "Notifications" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts" },
     common: {
       today: "Today", upcoming: "Upcoming", pending: "Pending", accepted: "Accepted",
       rejected: "Rejected", assigned: "Assigned", unassigned: "Unassigned",
@@ -38,7 +38,7 @@ const dict = {
       newShift: "New shift", fromBokun: "From Bokun", manual: "Manual",
       assignGuide: "Assign guide", suggested: "AI suggested",
       adults: "Adults", teens: "Teens", infants: "Infants", trailers: "Trailers",
-      myShifts: "My shifts (guide view)",
+      myShifts: "Mine",
     },
     tasks: {
       title: "Tasks", subtitle: "Daily checks and operational to-dos.",
@@ -53,7 +53,7 @@ const dict = {
   it: {
     appName: "eBicycle Roma",
     tagline: "Centro Operativo",
-    nav: { dashboard: "Dashboard", staff: "Staff", shifts: "Turni", tasks: "Attività", notifications: "Notifiche" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni" },
     common: {
       today: "Oggi", upcoming: "Prossimi", pending: "In attesa", accepted: "Accettato",
       rejected: "Rifiutato", assigned: "Assegnato", unassigned: "Non assegnato",
@@ -85,7 +85,7 @@ const dict = {
       newShift: "Nuovo turno", fromBokun: "Da Bokun", manual: "Manuale",
       assignGuide: "Assegna guida", suggested: "Suggerito dall'AI",
       adults: "Adulti", teens: "Ragazzi", infants: "Bambini", trailers: "Carrelli",
-      myShifts: "I miei turni (vista guida)",
+      myShifts: "I miei",
     },
     tasks: {
       title: "Attività", subtitle: "Controlli giornalieri e to-do operativi.",

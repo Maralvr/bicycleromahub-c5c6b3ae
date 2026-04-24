@@ -65,8 +65,8 @@ function ShiftsPage() {
   return (
     <AppShell>
       <PageHeader
-        title={t.shifts.title}
-        subtitle={t.shifts.subtitle}
+        title={isAdmin ? t.shifts.title : "My shifts"}
+        subtitle={isAdmin ? t.shifts.subtitle : "Accept or reject the shifts dispatch sent your way."}
         actions={
           isAdmin ? (
             <>
@@ -82,12 +82,14 @@ function ShiftsPage() {
       />
 
       <Tabs defaultValue={isAdmin ? "all" : "mine"} key={role + staffId} className="mb-6">
-        <TabsList className="bg-muted">
-          {isAdmin && <TabsTrigger value="all">{t.common.all}</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>}
-          <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
-        </TabsList>
+        {isAdmin && (
+          <TabsList className="bg-muted">
+            <TabsTrigger value="all">{t.common.all}</TabsTrigger>
+            <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
+            <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
+            <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
+          </TabsList>
+        )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
             <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
@@ -113,13 +115,13 @@ function ShiftsPage() {
 
 function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
   const { t } = useI18n();
-  const { staff } = useStaffStore();
+  const { staff: allStaff } = useStaffStore();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">No shifts yet.</div>;
   return (
     <div className="grid gap-4">
       {shifts.map((s) => {
-        const guide = staff.find((p) => p.id === s.assignedStaffId);
-        const suggestions: StaffSuggestion[] = !guide ? suggestStaffForShift(s, staff, allShifts, 3) : [];
+        const guide = allStaff.find((p) => p.id === s.assignedStaffId);
+        const suggestions: StaffSuggestion[] = !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
         const isUrgent = s.status === "unassigned" || s.status === "pending";
 
         return (

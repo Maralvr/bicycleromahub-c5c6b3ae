@@ -12,13 +12,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const location = useLocation();
 
-  const nav = [
-    { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
-    { to: "/staff", label: t.nav.staff, icon: Users },
-    { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
-    { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
-    { to: "/notifications", label: t.nav.notifications, icon: Bell },
-  ];
+  const nav = role === "staff"
+    ? [
+        { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
+        { to: "/staff", label: t.nav.myAvailability, icon: Users },
+        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/notifications", label: t.nav.notifications, icon: Bell },
+      ]
+    : [
+        { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
+        { to: "/staff", label: t.nav.staff, icon: Users },
+        { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
+        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/notifications", label: t.nav.notifications, icon: Bell },
+      ];
 
   return (
     <div className="flex min-h-screen">
@@ -37,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
-            Workspace
+            {role === "staff" ? "My workspace" : "Workspace"}
           </div>
           {nav.map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
@@ -92,11 +99,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={r}
                   onClick={() => setRole(r)}
                   className={cn(
-                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all capitalize",
+                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all",
                     role === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {r}
+                  {r === "admin" ? "Admin" : "Guide / Staff"}
                 </button>
               ))}
             </div>
