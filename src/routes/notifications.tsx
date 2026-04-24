@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { updates as initialUpdates, staff, FieldUpdate } from "@/lib/mock-data";
-import { Send, Megaphone, MapPin } from "lucide-react";
+import { Send, Megaphone, MapPin, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -45,52 +46,70 @@ function NotificationsPage() {
       <PageHeader title={t.notifications.title} subtitle={t.notifications.subtitle} />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-              <Megaphone className="h-4 w-4" />
+        <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card relative overflow-hidden lg:sticky lg:top-6">
+          <div className="absolute -top-4 -right-4 h-24 w-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-2.5 mb-3 relative">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center shadow-[var(--shadow-elegant)]">
+              <Megaphone className="h-5 w-5" />
             </div>
-            <h2 className="font-semibold">{t.notifications.broadcast}</h2>
+            <div>
+              <h2 className="font-semibold leading-tight">{t.notifications.broadcast}</h2>
+              <div className="text-xs text-muted-foreground">Reaches {staff.length} team members</div>
+            </div>
           </div>
           <Textarea
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
             placeholder={t.notifications.placeholder}
             rows={5}
-            className="mb-3 resize-none"
+            className="mb-3 resize-none bg-card relative"
           />
-          <Button onClick={send} className="w-full" disabled={!msg.trim()}>
+          <Button onClick={send} className="w-full shadow-[var(--shadow-elegant)] relative" disabled={!msg.trim()}>
             <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
           </Button>
+          <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
+            <Sparkles className="h-3 w-3 text-primary" />
+            AI can rewrite for clarity before sending
+          </div>
         </Card>
 
         <Card className="p-5 lg:col-span-2">
-          <h2 className="font-semibold mb-4">Activity feed</h2>
-          <div className="space-y-4">
-            {updates.map((u) => {
-              const author = staff.find((s) => s.id === u.authorId);
-              return (
-                <div key={u.id} className="flex gap-3 pb-4 border-b border-border last:border-0 last:pb-0">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${u.type === "broadcast" ? "bg-secondary text-secondary-foreground" : "bg-primary/15 text-foreground"}`}>
-                    {author?.avatar || "AD"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm text-foreground">{author?.name || "Admin"}</span>
-                      <Badge variant={u.type === "broadcast" ? "default" : "outline"} className="text-[10px]">
-                        {u.type === "broadcast" ? (
-                          <><Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast</>
-                        ) : (
-                          <><MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}</>
-                        )}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">· {u.time}</span>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-semibold">Activity feed</h2>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Live
+            </span>
+          </div>
+          <div className="relative">
+            <div className="absolute left-[19px] top-2 bottom-2 w-px bg-border" />
+            <div className="space-y-5">
+              {updates.map((u) => {
+                const author = staff.find((s) => s.id === u.authorId);
+                return (
+                  <div key={u.id} className="flex gap-3 relative">
+                    <div className="relative z-10">
+                      <Avatar name={author?.name || "Admin"} initials={author?.avatar || "AD"} size="md" className="ring-4 ring-card" />
                     </div>
-                    <p className="text-sm text-foreground/85 mt-1">{u.message}</p>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-foreground">{author?.name || "Admin"}</span>
+                        <Badge variant={u.type === "broadcast" ? "default" : "outline"} className="text-[10px] font-semibold">
+                          {u.type === "broadcast" ? (
+                            <><Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast</>
+                          ) : (
+                            <><MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}</>
+                          )}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">· {u.time}</span>
+                      </div>
+                      <div className={`mt-1.5 p-3 rounded-lg text-sm leading-snug ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"}`}>
+                        {u.message}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </Card>
       </div>
