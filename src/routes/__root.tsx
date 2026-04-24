@@ -1,6 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { I18nProvider } from "@/lib/i18n";
 import { CurrentUserProvider } from "@/lib/current-user";
+import { StaffStoreProvider } from "@/lib/staff-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -70,8 +71,10 @@ function RootComponent() {
   return (
     <I18nProvider>
       <CurrentUserProvider>
-        <Outlet />
-        <Toaster />
+        <StaffStoreProvider>
+          <Outlet />
+          <Toaster />
+        </StaffStoreProvider>
       </CurrentUserProvider>
     </I18nProvider>
   );
