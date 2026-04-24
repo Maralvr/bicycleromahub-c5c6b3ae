@@ -152,7 +152,7 @@ function ShiftsPage() {
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">No shifts yet.</div>;
@@ -229,12 +229,27 @@ function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicat
                     <div className="flex items-center gap-1.5 mb-2.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[10px] uppercase tracking-wider font-bold text-primary">AI suggestions</span>
-                      <span className="text-[10px] text-muted-foreground">— ranked by tags, languages, licenses & availability</span>
+                      <span className="text-[10px] text-muted-foreground">— top 3 by tags, languages, licenses & availability</span>
+                      {onOpenAssignDialog && (
+                        <button
+                          onClick={() => onOpenAssignDialog(s)}
+                          className="ml-auto text-[10px] font-semibold text-primary hover:underline"
+                        >
+                          See all candidates →
+                        </button>
+                      )}
                     </div>
                     {suggestions.length === 0 ? (
-                      <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                        No matching staff available — all guides have conflicts or missing required skills.
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                          No matching guide currently free.
+                        </div>
+                        {onOpenAssignDialog && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onOpenAssignDialog(s)}>
+                            Override manually
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
