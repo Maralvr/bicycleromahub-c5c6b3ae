@@ -115,13 +115,13 @@ function ShiftsPage() {
 
 function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
   const { t } = useI18n();
-  const { staff } = useStaffStore();
+  const { staff: allStaff } = useStaffStore();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">No shifts yet.</div>;
   return (
     <div className="grid gap-4">
       {shifts.map((s) => {
-        const guide = staff.find((p) => p.id === s.assignedStaffId);
-        const suggestions: StaffSuggestion[] = !guide ? suggestStaffForShift(s, staff, allShifts, 3) : [];
+        const guide = allStaff.find((p) => p.id === s.assignedStaffId);
+        const suggestions: StaffSuggestion[] = !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
         const isUrgent = s.status === "unassigned" || s.status === "pending";
 
         return (
