@@ -82,16 +82,16 @@ function ShiftsPage() {
           <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-5">
-          <ShiftList shifts={shifts} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="bokun" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="manual" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.source === "manual")} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === "s1")} guideView onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === "s1")} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
       </Tabs>
     </AppShell>
