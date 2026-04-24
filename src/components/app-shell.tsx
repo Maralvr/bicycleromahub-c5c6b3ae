@@ -12,13 +12,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const location = useLocation();
 
-  const nav = [
-    { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
-    { to: "/staff", label: t.nav.staff, icon: Users },
-    { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
-    { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
-    { to: "/notifications", label: t.nav.notifications, icon: Bell },
-  ];
+  const nav = role === "staff"
+    ? [
+        { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
+        { to: "/staff", label: t.nav.myAvailability, icon: Users },
+        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/notifications", label: t.nav.notifications, icon: Bell },
+      ]
+    : [
+        { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
+        { to: "/staff", label: t.nav.staff, icon: Users },
+        { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
+        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/notifications", label: t.nav.notifications, icon: Bell },
+      ];
 
   return (
     <div className="flex min-h-screen">
