@@ -101,6 +101,9 @@ function ShiftsPage() {
               <Button variant="outline" onClick={simulateBokunBooking}>
                 <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
               </Button>
+              <Button variant="outline" onClick={autoAssignAll}>
+                <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
+              </Button>
               <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
                 <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
               </Button>
@@ -120,23 +123,31 @@ function ShiftsPage() {
         )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
       </Tabs>
+
+      <SmartAssignDialog
+        shift={assignDialogShift}
+        allShifts={shifts}
+        open={!!assignDialogShift}
+        onClose={() => setAssignDialogShift(null)}
+        onAssign={assignStaff}
+      />
     </AppShell>
   );
 }
