@@ -37,15 +37,29 @@ function ShiftsPage() {
     toast.success("Shift duplicated");
   };
 
+  const simulateBokunBooking = () => {
+    const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
+    const newShift = mapBokunBookingToShift(payload);
+    setShifts((prev) => [newShift, ...prev]);
+    toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
+      description: `${payload.productTitle} — auto-mapped to a new unassigned shift.`,
+    });
+  };
+
   return (
     <AppShell>
       <PageHeader
         title={t.shifts.title}
         subtitle={t.shifts.subtitle}
         actions={
-          <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
-          </Button>
+          <>
+            <Button variant="outline" onClick={simulateBokunBooking}>
+              <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
+            </Button>
+            <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
+            </Button>
+          </>
         }
       />
 
