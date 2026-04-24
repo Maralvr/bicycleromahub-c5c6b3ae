@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
-            Workspace
+            {role === "staff" ? "My workspace" : "Workspace"}
           </div>
           {nav.map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
@@ -99,11 +99,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   key={r}
                   onClick={() => setRole(r)}
                   className={cn(
-                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all capitalize",
+                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all",
                     role === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {r}
+                  {r === "admin" ? "Admin" : "Guide / Staff"}
                 </button>
               ))}
             </div>
