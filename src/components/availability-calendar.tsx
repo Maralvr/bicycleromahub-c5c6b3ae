@@ -49,7 +49,7 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
   const { toggleAllDay, setTimeWindow, clearDate, clearMonth } = useStaffStore();
 
   const grid = useMemo(() => buildMonthGrid(cursor), [cursor]);
-  const monthLabel = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const yearMonth = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
   const today = ymd(new Date());
 
@@ -242,7 +242,7 @@ function DayEditor({
 }) {
   const [from, setFrom] = useState(current?.from ?? "09:00");
   const [to, setTo] = useState(current?.to ?? "13:00");
-  const dateLabel = new Date(date + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const dateLabel = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="space-y-3">

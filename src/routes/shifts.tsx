@@ -12,7 +12,8 @@ import { useStaffStore } from "@/lib/staff-store";
 import { shifts as initialShifts, Shift } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle } from "lucide-react";
+import { SmartAssignDialog } from "@/components/smart-assign-dialog";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -32,17 +33,44 @@ function ShiftsPage() {
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
+  const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
 
   const updateStatus = (id: string, status: Shift["status"]) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
     toast.success(`Shift ${status}`);
   };
 
-  const assignStaff = (shiftId: string, staffId: string, staffName: string) => {
+  const assignStaff = (shiftId: string, assignedStaffId: string, staffName: string) => {
     setShifts((prev) =>
-      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId: staffId, status: "pending" } : s)),
+      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId, status: "pending" } : s)),
     );
-    toast.success(`Assigned to ${staffName}`, { description: "Awaiting their accept/reject." });
+    toast.success(`Assigned to ${staffName}`, { description: "Push notification sent — awaiting accept/reject." });
+  };
+
+  const autoAssignAll = () => {
+    const unassigned = shifts.filter((s) => !s.assignedStaffId);
+    if (unassigned.length === 0) {
+      toast.info("Nothing to assign", { description: "All shifts already have a guide." });
+      return;
+    }
+    // Sort by date+time so earliest shifts get first pick of staff
+    const queue = [...unassigned].sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+    let working = [...shifts];
+    let assignedCount = 0;
+    const skipped: string[] = [];
+    for (const sh of queue) {
+      const top = suggestStaffForShift(sh, staff, working, 1)[0];
+      if (top) {
+        working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
+        assignedCount++;
+      } else {
+        skipped.push(sh.tourName);
+      }
+    }
+    setShifts(working);
+    toast.success(`Auto-assigned ${assignedCount} shift${assignedCount === 1 ? "" : "s"}`, {
+      description: skipped.length > 0 ? `${skipped.length} couldn't be matched: ${skipped.slice(0, 2).join(", ")}${skipped.length > 2 ? "…" : ""}` : "All caught up — guides notified.",
+    });
   };
 
   const duplicate = (s: Shift) => {
@@ -73,6 +101,9 @@ function ShiftsPage() {
               <Button variant="outline" onClick={simulateBokunBooking}>
                 <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
               </Button>
+              <Button variant="outline" onClick={autoAssignAll}>
+                <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
+              </Button>
               <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
                 <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
               </Button>
@@ -92,28 +123,36 @@ function ShiftsPage() {
         )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
         </TabsContent>
       </Tabs>
+
+      <SmartAssignDialog
+        shift={assignDialogShift}
+        allShifts={shifts}
+        open={!!assignDialogShift}
+        onClose={() => setAssignDialogShift(null)}
+        onAssign={assignStaff}
+      />
     </AppShell>
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">No shifts yet.</div>;
@@ -190,12 +229,27 @@ function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicat
                     <div className="flex items-center gap-1.5 mb-2.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                       <span className="text-[10px] uppercase tracking-wider font-bold text-primary">AI suggestions</span>
-                      <span className="text-[10px] text-muted-foreground">— ranked by tags, languages, licenses & availability</span>
+                      <span className="text-[10px] text-muted-foreground">— top 3 by tags, languages, licenses & availability</span>
+                      {onOpenAssignDialog && (
+                        <button
+                          onClick={() => onOpenAssignDialog(s)}
+                          className="ml-auto text-[10px] font-semibold text-primary hover:underline"
+                        >
+                          See all candidates →
+                        </button>
+                      )}
                     </div>
                     {suggestions.length === 0 ? (
-                      <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                        No matching staff available — all guides have conflicts or missing required skills.
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
+                          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                          No matching guide currently free.
+                        </div>
+                        {onOpenAssignDialog && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onOpenAssignDialog(s)}>
+                            Override manually
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -247,6 +301,11 @@ function ShiftList({ shifts, allShifts, onAssign, onAccept, onReject, onDuplicat
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {t.common.accept}
                         </Button>
                       </>
+                    )}
+                    {!guideView && guide && onOpenAssignDialog && (
+                      <Button size="sm" variant="outline" onClick={() => onOpenAssignDialog(s)}>
+                        <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
+                      </Button>
                     )}
                     {!guideView && (
                       <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>

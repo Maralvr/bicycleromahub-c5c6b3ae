@@ -36,7 +36,7 @@ function DashboardPage() {
 
   return (
     <AppShell>
-      <PageHeader eyebrow={new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })} title={t.dashboard.title} subtitle={t.dashboard.subtitle} />
+      <PageHeader eyebrow={new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" })} title={t.dashboard.title} subtitle={t.dashboard.subtitle} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
