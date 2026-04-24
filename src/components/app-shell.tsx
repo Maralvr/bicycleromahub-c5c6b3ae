@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     role === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {r === "admin" ? "Admin" : "Guide / Staff"}
+                  {r === "admin" ? "Admin" : "Guide"}
                 </button>
               ))}
             </div>
