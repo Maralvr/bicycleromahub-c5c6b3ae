@@ -100,6 +100,7 @@ const dict = {
 } as const;
 
 type Dict = typeof dict.en;
+const dictionaries: Record<Lang, Dict> = dict as unknown as Record<Lang, Dict>;
 
 const I18nContext = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: Dict }>({
   lang: "en", setLang: () => {}, t: dict.en,
@@ -119,7 +120,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <I18nContext.Provider value={{ lang, setLang, t: dict[lang] }}>
+    <I18nContext.Provider value={{ lang, setLang, t: dictionaries[lang] }}>
       {children}
     </I18nContext.Provider>
   );
