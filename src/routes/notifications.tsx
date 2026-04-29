@@ -8,10 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
-import { staff, FieldUpdate } from "@/lib/mock-data";
+import { staff, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
-import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks } from "lucide-react";
-import { useState } from "react";
+import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/notifications")({
