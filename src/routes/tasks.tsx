@@ -440,9 +440,16 @@ function NewTaskDialog({
     reset();
   };
 
-  const allSelected = isAdmin && assigneeIds.length === guideOptions.length && guideOptions.length > 0;
+  const baseList = guideQuery.trim() ? filteredGuides : guideOptions;
+  const allSelected =
+    isAdmin && baseList.length > 0 && baseList.every((g) => assigneeIds.includes(g.id));
   const toggleAll = () => {
-    setAssigneeIds(allSelected ? [] : guideOptions.map((g) => g.id));
+    if (allSelected) {
+      const ids = new Set(baseList.map((g) => g.id));
+      setAssigneeIds((prev) => prev.filter((id) => !ids.has(id)));
+    } else {
+      setAssigneeIds((prev) => Array.from(new Set([...prev, ...baseList.map((g) => g.id)])));
+    }
   };
   const toggleOne = (id: string) => {
     setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
