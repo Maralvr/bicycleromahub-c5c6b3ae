@@ -406,28 +406,40 @@ function NewTaskDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: { title: string; assigneeId: string; due: string; priority: Task["priority"] }) => void;
+  onCreate: (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
   isAdmin: boolean;
   currentStaffId: string | null | undefined;
   guideOptions: typeof staff;
 }) {
   const today = new Date().toISOString().slice(0, 10);
+  const initialIds = () =>
+    isAdmin
+      ? guideOptions[0] ? [guideOptions[0].id] : []
+      : currentStaffId ? [currentStaffId] : [];
   const [title, setTitle] = useState("");
-  const [assigneeId, setAssigneeId] = useState<string>(currentStaffId || guideOptions[0]?.id || "");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(initialIds());
   const [due, setDue] = useState(today);
   const [priority, setPriority] = useState<Task["priority"]>("medium");
 
   const reset = () => {
     setTitle("");
-    setAssigneeId(currentStaffId || guideOptions[0]?.id || "");
+    setAssigneeIds(initialIds());
     setDue(today);
     setPriority("medium");
   };
 
   const submit = () => {
-    if (!title.trim() || !assigneeId) return;
-    onCreate({ title, assigneeId, due, priority });
+    if (!title.trim() || assigneeIds.length === 0) return;
+    onCreate({ title, assigneeIds, due, priority });
     reset();
+  };
+
+  const allSelected = isAdmin && assigneeIds.length === guideOptions.length && guideOptions.length > 0;
+  const toggleAll = () => {
+    setAssigneeIds(allSelected ? [] : guideOptions.map((g) => g.id));
+  };
+  const toggleOne = (id: string) => {
+    setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   return (
@@ -436,7 +448,7 @@ function NewTaskDialog({
         <DialogHeader>
           <DialogTitle>{isAdmin ? "New task" : "Add a task for yourself"}</DialogTitle>
           <DialogDescription>
-            {isAdmin ? "Assign a task to any guide." : "Track something you need to do today."}
+            {isAdmin ? "Assign a task to one, several, or all guides." : "Track something you need to do today."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -452,15 +464,29 @@ function NewTaskDialog({
 
           {isAdmin ? (
             <div className="space-y-1.5">
-              <Label>Assignee</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger><SelectValue placeholder="Select guide" /></SelectTrigger>
-                <SelectContent>
-                  {guideOptions.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label>Assignees {assigneeIds.length > 0 && <span className="text-xs text-muted-foreground font-normal">({assigneeIds.length})</span>}</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleAll}>
+                  {allSelected ? "Clear all" : "Select all guides"}
+                </Button>
+              </div>
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {guideOptions.map((g) => {
+                  const checked = assigneeIds.includes(g.id);
+                  return (
+                    <label
+                      key={g.id}
+                      className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50"
+                    >
+                      <Checkbox checked={checked} onCheckedChange={() => toggleOne(g.id)} />
+                      <span className="text-sm">{g.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {allSelected && (
+                <p className="text-xs text-muted-foreground">This task will be created for every guide.</p>
+              )}
             </div>
           ) : (
             <div className="text-xs text-muted-foreground">
@@ -488,8 +514,8 @@ function NewTaskDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={submit} disabled={!title.trim() || !assigneeId}>
-            <Plus className="h-4 w-4 mr-1" /> Add task
+          <Button onClick={submit} disabled={!title.trim() || assigneeIds.length === 0}>
+            <Plus className="h-4 w-4 mr-1" /> {assigneeIds.length > 1 ? `Add ${assigneeIds.length} tasks` : "Add task"}
           </Button>
         </DialogFooter>
       </DialogContent>
