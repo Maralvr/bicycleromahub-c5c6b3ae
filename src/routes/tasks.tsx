@@ -420,6 +420,11 @@ function NewTaskDialog({
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialIds());
   const [due, setDue] = useState(today);
   const [priority, setPriority] = useState<Task["priority"]>("medium");
+  const [guideQuery, setGuideQuery] = useState("");
+
+  const filteredGuides = guideOptions.filter((g) =>
+    g.name.toLowerCase().includes(guideQuery.trim().toLowerCase()),
+  );
 
   const reset = () => {
     setTitle("");
