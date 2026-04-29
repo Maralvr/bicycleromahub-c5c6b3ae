@@ -15,6 +15,7 @@ import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -49,6 +50,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiveShiftsRoute = LiveShiftsRouteImport.update({
+  id: '/live-shifts',
+  path: '/live-shifts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/live-shifts'
     | '/notifications'
     | '/rental-points'
     | '/reset-password'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/live-shifts'
     | '/notifications'
     | '/rental-points'
     | '/reset-password'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/live-shifts'
     | '/notifications'
     | '/rental-points'
     | '/reset-password'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
+  LiveShiftsRoute: typeof LiveShiftsRoute
   NotificationsRoute: typeof NotificationsRoute
   RentalPointsRoute: typeof RentalPointsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/live-shifts': {
+      id: '/live-shifts'
+      path: '/live-shifts'
+      fullPath: '/live-shifts'
+      preLoaderRoute: typeof LiveShiftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
+  LiveShiftsRoute: LiveShiftsRoute,
   NotificationsRoute: NotificationsRoute,
   RentalPointsRoute: RentalPointsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
