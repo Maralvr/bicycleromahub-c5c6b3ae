@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { Attachment } from "@/lib/mock-data";
 
 export type TaskUpdate = {
   id: string;
@@ -8,6 +9,7 @@ export type TaskUpdate = {
   type: "progress" | "completed" | "blocker";
   createdAt: string; // ISO
   read: boolean; // read by admins
+  attachments?: Attachment[];
 };
 
 type TaskUpdatesStore = {
