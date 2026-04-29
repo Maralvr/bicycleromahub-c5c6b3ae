@@ -16,6 +16,8 @@ import { shifts as allShifts, Staff } from "@/lib/mock-data";
 import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
+import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
+import { useLiveStaff } from "@/lib/live-staff";
 
 export const Route = createFileRoute("/staff")({
   head: () => ({
@@ -371,6 +373,16 @@ function AdminStaffDirectory() {
                   </div>
                 </div>
               </SheetHeader>
+
+              <div className="pt-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm text-foreground">Rental points</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Locations this staff member can be assigned to.</p>
+                  </div>
+                </div>
+                <StaffRentalPointsPanel userId={liveOpenStaff.profileId ?? null} />
+              </div>
 
               <div className="pt-5">
                 <div className="mb-3">
