@@ -280,6 +280,11 @@ function TaskRow({
         />
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-medium leading-snug ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{task.title}</div>
+          {task.description && (
+            <p className={`text-xs mt-1 whitespace-pre-wrap ${task.done ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+              {task.description}
+            </p>
+          )}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {assignee && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
