@@ -1,6 +1,7 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { I18nProvider } from "@/lib/i18n";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { CurrentUserProvider } from "@/lib/current-user";
 import { StaffStoreProvider } from "@/lib/staff-store";
 import { NotesStoreProvider } from "@/lib/notes-store";
@@ -8,6 +9,8 @@ import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
+
+const PUBLIC_ROUTES = ["/auth", "/reset-password"];
 
 function NotFoundComponent() {
   return (
@@ -69,20 +72,45 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { loading, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isPublic = PUBLIC_ROUTES.some((p) => location.pathname.startsWith(p));
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !isPublic) {
+      void navigate({ to: "/auth", search: { redirect: location.pathname } });
+    }
+  }, [loading, isAuthenticated, isPublic, location.pathname, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+  if (!isAuthenticated && !isPublic) return null;
+  return <>{children}</>;
+}
+
 function RootComponent() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <CurrentUserProvider>
-          <StaffStoreProvider>
-            <NotesStoreProvider>
-              <TaskUpdatesStoreProvider>
-                <Outlet />
-                <Toaster />
-              </TaskUpdatesStoreProvider>
-            </NotesStoreProvider>
-          </StaffStoreProvider>
-        </CurrentUserProvider>
+        <AuthGate>
+          <CurrentUserProvider>
+            <StaffStoreProvider>
+              <NotesStoreProvider>
+                <TaskUpdatesStoreProvider>
+                  <Outlet />
+                  <Toaster />
+                </TaskUpdatesStoreProvider>
+              </NotesStoreProvider>
+            </StaffStoreProvider>
+          </CurrentUserProvider>
+        </AuthGate>
       </AuthProvider>
     </I18nProvider>
   );
