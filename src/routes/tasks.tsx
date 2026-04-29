@@ -431,6 +431,7 @@ function NewTaskDialog({
     setAssigneeIds(initialIds());
     setDue(today);
     setPriority("medium");
+    setGuideQuery("");
   };
 
   const submit = () => {
