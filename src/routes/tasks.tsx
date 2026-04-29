@@ -12,7 +12,8 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useNotesStore } from "@/lib/notes-store";
 import { useTaskUpdates, TaskUpdate } from "@/lib/task-updates-store";
-import { tasks as initialTasks, staff, Task } from "@/lib/mock-data";
+import { tasks as initialTasks, staff, Task, Attachment } from "@/lib/mock-data";
+import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker";
 import { Plus, Calendar, AlertCircle, CheckCircle2, MessageSquarePlus, Activity, Wrench, MessageSquare, BellDot } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -72,9 +73,9 @@ function TasksPage() {
     }
   };
 
-  const submitUpdate = (task: Task, message: string, type: TaskUpdate["type"]) => {
+  const submitUpdate = (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => {
     if (!staffId) return;
-    addUpdate({ taskId: task.id, authorStaffId: staffId, message, type });
+    addUpdate({ taskId: task.id, authorStaffId: staffId, message, type, attachments: attachments.length ? attachments : undefined });
     const me = staff.find((s) => s.id === staffId);
     if (adminIds.length > 0) {
       notifyGuides(adminIds, {
@@ -82,6 +83,7 @@ function TasksPage() {
         title: type === "blocker" ? "Task blocker reported" : "Task update",
         body: `${me?.name || "Guide"} on "${task.title}": ${message}`,
         link: "/tasks",
+        attachments: attachments.length ? attachments : undefined,
       });
     }
     setUpdateDialogTask(null);
@@ -262,7 +264,8 @@ function TaskRow({
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-foreground/85">{u.message}</div>
-                      <div className="text-[10px] text-muted-foreground">{author?.name || "Guide"} · {time}{!u.read && isAdmin && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />}</div>
+                      {u.attachments && u.attachments.length > 0 && <AttachmentList attachments={u.attachments} />}
+                      <div className="text-[10px] text-muted-foreground mt-1">{author?.name || "Guide"} · {time}{!u.read && isAdmin && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />}</div>
                     </div>
                   </div>
                 );
@@ -283,21 +286,22 @@ function UpdateDialog({
 }: {
   task: Task | null;
   onClose: () => void;
-  onSubmit: (task: Task, message: string, type: TaskUpdate["type"]) => void;
+  onSubmit: (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => void;
 }) {
   const [message, setMessage] = useState("");
   const [type, setType] = useState<TaskUpdate["type"]>("progress");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const open = !!task;
+  const reset = () => { setMessage(""); setType("progress"); setAttachments([]); };
   const handleSubmit = () => {
-    if (!task || !message.trim()) return;
-    onSubmit(task, message.trim(), type);
-    setMessage("");
-    setType("progress");
+    if (!task || (!message.trim() && attachments.length === 0)) return;
+    onSubmit(task, message.trim() || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`), type, attachments);
+    reset();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); setMessage(""); setType("progress"); } }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Post task update</DialogTitle>
@@ -328,10 +332,11 @@ function UpdateDialog({
             rows={4}
             className="resize-none"
           />
+          <AttachmentPicker attachments={attachments} onChange={setAttachments} />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!message.trim()}>Send to admins</Button>
+          <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>Send to admins</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

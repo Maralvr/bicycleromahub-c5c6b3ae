@@ -18,6 +18,7 @@ export type GuideNote = {
   message: string;
   category: "general" | "bike_issue" | "customer" | "incident";
   createdAt: string; // ISO
+  attachments?: Attachment[];
 };
 
 export type Shift = {

@@ -16,6 +16,7 @@ import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
+import { AttachmentList } from "@/components/attachment-picker";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -434,6 +435,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                             <span className="text-muted-foreground">· {new Date(n.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
                           </div>
                           <div className="text-foreground/85 leading-snug whitespace-pre-wrap">{n.message}</div>
+                          {n.attachments && n.attachments.length > 0 && <AttachmentList attachments={n.attachments} />}
                         </div>
                       );
                     })}
