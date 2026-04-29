@@ -479,25 +479,42 @@ function NewTaskDialog({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label>Assignees {assigneeIds.length > 0 && <span className="text-xs text-muted-foreground font-normal">({assigneeIds.length})</span>}</Label>
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleAll}>
-                  {allSelected ? "Clear all" : "Select all guides"}
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleAll} disabled={baseList.length === 0}>
+                  {allSelected
+                    ? (guideQuery.trim() ? "Clear filtered" : "Clear all")
+                    : (guideQuery.trim() ? "Select filtered" : "Select all guides")}
                 </Button>
               </div>
-              <div className="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
-                {guideOptions.map((g) => {
-                  const checked = assigneeIds.includes(g.id);
-                  return (
-                    <label
-                      key={g.id}
-                      className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50"
-                    >
-                      <Checkbox checked={checked} onCheckedChange={() => toggleOne(g.id)} />
-                      <span className="text-sm">{g.name}</span>
-                    </label>
-                  );
-                })}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={guideQuery}
+                  onChange={(e) => setGuideQuery(e.target.value)}
+                  placeholder="Search guides…"
+                  className="pl-8 h-9"
+                />
               </div>
-              {allSelected && (
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {filteredGuides.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                    No guides match “{guideQuery}”.
+                  </div>
+                ) : (
+                  filteredGuides.map((g) => {
+                    const checked = assigneeIds.includes(g.id);
+                    return (
+                      <label
+                        key={g.id}
+                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50"
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleOne(g.id)} />
+                        <span className="text-sm">{g.name}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              {assigneeIds.length === guideOptions.length && guideOptions.length > 0 && (
                 <p className="text-xs text-muted-foreground">This task will be created for every guide.</p>
               )}
             </div>
