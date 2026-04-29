@@ -12,7 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
-import { shifts as allShifts, Staff } from "@/lib/mock-data";
+import { Staff } from "@/lib/mock-data";
+import { useShiftsStore } from "@/lib/shifts-store";
 import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
@@ -40,6 +41,7 @@ function MyAvailabilityView() {
   const { t } = useI18n();
   const { staffId } = useCurrentUser();
   const { staff, loading } = useStaffStore();
+  const { shifts: allShifts } = useShiftsStore();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
   const [editOpen, setEditOpen] = useState(false);
 
@@ -211,6 +213,7 @@ function AdminStaffDirectory() {
   const { t } = useI18n();
   const { staff: mockStaff } = useStaffStore();
   const { staff: liveStaff } = useLiveStaff();
+  const { shifts: allShifts } = useShiftsStore();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
@@ -368,7 +371,7 @@ function AdminStaffDirectory() {
                 </div>
 
                 {/* Mini availability bar — last 14 days view */}
-                <AvailabilityStrip staffMember={s} />
+                <AvailabilityStrip staffMember={s} shifts={allShifts} />
 
                 <div className="flex items-center gap-3 pt-2 mt-1 border-t border-border/60 text-[11px]">
                   <span className="flex items-center gap-1 text-muted-foreground">
@@ -447,13 +450,13 @@ function AdminStaffDirectory() {
 }
 
 /** Compact 14-day strip used on directory cards. */
-function AvailabilityStrip({ staffMember }: { staffMember: Staff }) {
+function AvailabilityStrip({ staffMember, shifts }: { staffMember: Staff; shifts: import("@/lib/mock-data").Shift[] }) {
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const u = staffMember.unavailability.find((x) => x.date === iso);
-    const hasShift = allShifts.some((s) => s.assignedStaffId === staffMember.id && s.date === iso && s.status !== "rejected");
+    const hasShift = shifts.some((s) => s.assignedStaffId === staffMember.id && s.date === iso && s.status !== "rejected");
     return { iso, day: d.getDate(), dow: d.getDay(), unavail: u, hasShift };
   });
 

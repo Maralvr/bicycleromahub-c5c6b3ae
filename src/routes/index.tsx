@@ -5,7 +5,7 @@ import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { shifts } from "@/lib/mock-data";
+import { useShiftsStore } from "@/lib/shifts-store";
 import { useStaffStore } from "@/lib/staff-store";
 import { useTasksStore } from "@/lib/tasks-store";
 import { useNotesStore } from "@/lib/notes-store";
@@ -41,6 +41,7 @@ function DashboardPage() {
   const { staff } = useStaffStore();
   const { tasks } = useTasksStore();
   const { feed } = useNotesStore();
+  const { shifts } = useShiftsStore();
   const today = new Date().toISOString().slice(0, 10);
   if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);

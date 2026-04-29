@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
-import { shifts } from "@/lib/mock-data";
+import { useShiftsStore } from "@/lib/shifts-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { Navigate } from "@tanstack/react-router";
 
@@ -22,6 +22,7 @@ function CalendarPage() {
   const { t } = useI18n();
   const { role } = useCurrentUser();
   const { staff } = useStaffStore();
+  const { shifts } = useShiftsStore();
 
   // Guides have their own /shifts view; the all-tours calendar is admin-only.
   if (role !== "admin") {

@@ -9,7 +9,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
-import { shifts as initialShifts, Shift, GuideNote, staff as mockStaff } from "@/lib/mock-data";
+import type { Shift, GuideNote } from "@/lib/mock-data";
+import { useShiftsStore } from "@/lib/shifts-store";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
@@ -35,8 +36,8 @@ function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
+  const { shifts, addShift, updateShift, setStatus, assignShift } = useShiftsStore();
   const isAdmin = role === "admin";
-  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
@@ -55,16 +56,14 @@ function ShiftsPage() {
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
-  const updateStatus = (id: string, status: Shift["status"]) => {
-    setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  const updateStatus = async (id: string, status: Shift["status"]) => {
+    await setStatus(id, status);
     toast.success(`Shift ${status}`);
   };
 
-  const assignStaff = (shiftId: string, assignedStaffId: string, staffName: string) => {
+  const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
-    setShifts((prev) =>
-      prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId, status: "pending" } : s)),
-    );
+    await assignShift(shiftId, assignedStaffId);
     if (prevShift) {
       const updated = { ...prevShift, assignedStaffId };
       // Notify the newly assigned guide
@@ -91,7 +90,7 @@ function ShiftsPage() {
     toast.success(`Assigned to ${staffName}`, { description: "Push notification sent — awaiting accept/reject." });
   };
 
-  const autoAssignAll = () => {
+  const autoAssignAll = async () => {
     const unassigned = shifts.filter((s) => !s.assignedStaffId);
     if (unassigned.length === 0) {
       toast.info("Nothing to assign", { description: "All shifts already have a guide." });
@@ -105,6 +104,7 @@ function ShiftsPage() {
       const top = suggestStaffForShift(sh, staff, working, 1)[0];
       if (top) {
         working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
+        await assignShift(sh.id, top.staff.id);
         notifyGuide({
           staffId: top.staff.id,
           type: "assigned",
@@ -118,22 +118,25 @@ function ShiftsPage() {
         skipped.push(sh.tourName);
       }
     }
-    setShifts(working);
     toast.success(`Auto-assigned ${assignedCount} shift${assignedCount === 1 ? "" : "s"}`, {
       description: skipped.length > 0 ? `${skipped.length} couldn't be matched: ${skipped.slice(0, 2).join(", ")}${skipped.length > 2 ? "…" : ""}` : "All caught up — guides notified.",
     });
   };
 
-  const duplicate = (s: Shift) => {
-    setShifts((prev) => [...prev, { ...s, id: `${s.id}-copy-${Date.now()}`, status: "unassigned", assignedStaffId: null }]);
+  const duplicate = async (s: Shift) => {
+    const { id: _omit, ...rest } = s;
+    void _omit;
+    await addShift({ ...rest, status: "unassigned", assignedStaffId: null });
     toast.success("Shift duplicated");
   };
 
-  const simulateBokunBooking = () => {
+  const simulateBokunBooking = async () => {
     const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
-    const newShift = mapBokunBookingToShift(payload);
-    const suggestions = suggestStaffForShift(newShift, staff, shifts, 1);
-    setShifts((prev) => [newShift, ...prev]);
+    const newShiftDraft = mapBokunBookingToShift(payload);
+    const { id: _omit, ...rest } = newShiftDraft;
+    void _omit;
+    const created = await addShift(rest);
+    const suggestions = created ? suggestStaffForShift(created, staff, shifts, 1) : [];
     toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
       description: suggestions[0]
         ? `${payload.productTitle} — AI suggests ${suggestions[0].staff.name}.`
@@ -410,7 +413,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                       <MessageSquare className="h-3 w-3" /> Guide notes ({shiftNotes.length})
                     </div>
                     {shiftNotes.map((n) => {
-                      const author = mockStaff.find((p) => p.id === n.authorStaffId);
+                      const author = allStaff.find((p) => p.id === n.authorStaffId);
                       const catMeta: Record<GuideNote["category"], { label: string; icon: typeof Wrench; cls: string }> = {
                         general: { label: "General", icon: MessageSquare, cls: "bg-muted/60 border-border/60" },
                         bike_issue: { label: "Bike issue", icon: Wrench, cls: "bg-warning/10 border-warning/30" },
