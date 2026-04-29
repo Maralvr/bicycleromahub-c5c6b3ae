@@ -72,9 +72,9 @@ function TasksPage() {
     }
   };
 
-  const submitUpdate = (task: Task, message: string, type: TaskUpdate["type"]) => {
+  const submitUpdate = (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => {
     if (!staffId) return;
-    addUpdate({ taskId: task.id, authorStaffId: staffId, message, type });
+    addUpdate({ taskId: task.id, authorStaffId: staffId, message, type, attachments: attachments.length ? attachments : undefined });
     const me = staff.find((s) => s.id === staffId);
     if (adminIds.length > 0) {
       notifyGuides(adminIds, {
@@ -82,6 +82,7 @@ function TasksPage() {
         title: type === "blocker" ? "Task blocker reported" : "Task update",
         body: `${me?.name || "Guide"} on "${task.title}": ${message}`,
         link: "/tasks",
+        attachments: attachments.length ? attachments : undefined,
       });
     }
     setUpdateDialogTask(null);
