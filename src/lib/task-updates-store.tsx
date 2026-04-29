@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { Attachment } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export type TaskUpdate = {
   id: string;
@@ -22,40 +23,66 @@ type TaskUpdatesStore = {
 };
 
 const Ctx = createContext<TaskUpdatesStore | null>(null);
-const KEY = "ebr.taskUpdates.v1";
+
+type TaskUpdateRow = {
+  id: string;
+  task_id: string;
+  author_staff_id: string;
+  message: string;
+  type: TaskUpdate["type"];
+  created_at: string;
+  read: boolean;
+  attachments: Attachment[] | null;
+};
+
+const fromRow = (row: TaskUpdateRow): TaskUpdate => ({
+  id: row.id,
+  taskId: row.task_id,
+  authorStaffId: row.author_staff_id,
+  message: row.message,
+  type: row.type,
+  createdAt: row.created_at,
+  read: row.read,
+  attachments: row.attachments ?? undefined,
+});
 
 export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) {
-  const [updates, setUpdates] = useState<TaskUpdate[]>(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
-  });
+  const [updates, setUpdates] = useState<TaskUpdate[]>([]);
 
-  useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(updates)); } catch {}
-  }, [updates]);
-
-  // live cross-tab sync
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === KEY && e.newValue) {
-        try { setUpdates(JSON.parse(e.newValue)); } catch {}
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+  const fetchUpdates = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("task_updates")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error) setUpdates(((data ?? []) as TaskUpdateRow[]).map(fromRow));
   }, []);
 
+  useEffect(() => {
+    void fetchUpdates();
+    const channel = supabase
+      .channel("task-updates-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_updates" }, () => {
+        void fetchUpdates();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchUpdates]);
+
   const addUpdate: TaskUpdatesStore["addUpdate"] = useCallback((u) => {
-    setUpdates((prev) => [
-      {
-        ...u,
-        id: `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        createdAt: new Date().toISOString(),
-        read: false,
-      },
-      ...prev,
-    ]);
+    void supabase.from("task_updates").insert({
+      task_id: u.taskId,
+      author_staff_id: u.authorStaffId,
+      message: u.message,
+      type: u.type,
+      attachments: u.attachments ?? [],
+      read: false,
+    }).then(({ data, error }) => {
+      if (error) return;
+      if (data) void fetchUpdates();
+    });
   }, []);
 
   const updatesForTask = useCallback(
@@ -64,10 +91,12 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
   );
 
   const markRead = useCallback((id: string) => {
+    void supabase.from("task_updates").update({ read: true }).eq("id", id);
     setUpdates((prev) => prev.map((u) => (u.id === id ? { ...u, read: true } : u)));
   }, []);
 
   const markAllRead = useCallback(() => {
+    void supabase.from("task_updates").update({ read: true }).eq("read", false);
     setUpdates((prev) => prev.map((u) => ({ ...u, read: true })));
   }, []);
 
