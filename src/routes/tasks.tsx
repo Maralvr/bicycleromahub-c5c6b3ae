@@ -31,7 +31,11 @@ const priorityStyles = {
 
 function TasksPage() {
   const { t } = useI18n();
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { role, staffId } = useCurrentUser();
+  const isAdmin = role === "admin";
+  const [allTasks, setTasks] = useState<Task[]>(initialTasks);
+
+  const tasks = isAdmin ? allTasks : allTasks.filter((task) => task.assigneeId === staffId);
 
   const toggle = (id: string) => {
     setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, done: !task.done } : task)));
@@ -45,11 +49,13 @@ function TasksPage() {
     <AppShell>
       <PageHeader
         title={t.tasks.title}
-        subtitle={t.tasks.subtitle}
+        subtitle={isAdmin ? t.tasks.subtitle : "Your assigned tasks"}
         actions={
-          <Button onClick={() => toast.success("Task editor would open")} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> {t.tasks.newTask}
-          </Button>
+          isAdmin ? (
+            <Button onClick={() => toast.success("Task editor would open")} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {t.tasks.newTask}
+            </Button>
+          ) : null
         }
       />
 
