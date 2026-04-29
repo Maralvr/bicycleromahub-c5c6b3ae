@@ -10,8 +10,8 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { staff, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
-import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE } from "@/components/attachment-picker";
-import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2 } from "lucide-react";
+import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE, AttachmentList } from "@/components/attachment-picker";
+import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2, ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -42,6 +42,14 @@ function NotificationsPage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [expandedNotif, setExpandedNotif] = useState<string | null>(null);
+  const [expandedFeed, setExpandedFeed] = useState<Set<string>>(new Set());
+  const toggleFeed = (id: string) =>
+    setExpandedFeed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const onFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -184,25 +192,52 @@ function NotificationsPage() {
               <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                 {myNotifs.slice(0, 20).map((n) => {
                   const Icon = n.type === "broadcast" ? Megaphone : n.type === "shift_cancelled" ? AlertTriangle : n.type === "unassigned" ? X : n.type === "task" ? ListChecks : CalendarRange;
+                  const isOpen = expandedNotif === n.id;
                   return (
-                    <button
+                    <div
                       key={n.id}
-                      onClick={() => markRead(n.id)}
-                      className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
+                      className={`rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Icon className="h-3 w-3 text-primary" />
-                        <span className="font-semibold text-foreground">{n.title}</span>
-                        {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
-                      </div>
-                      <div className="text-muted-foreground line-clamp-2">{n.body}</div>
-                      {n.attachments && n.attachments.length > 0 && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
-                          <Paperclip className="h-2.5 w-2.5" />
-                          {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!n.read) markRead(n.id);
+                          setExpandedNotif(isOpen ? null : n.id);
+                        }}
+                        className="w-full text-left p-2.5"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className="h-3 w-3 text-primary" />
+                          <span className="font-semibold text-foreground">{n.title}</span>
+                          {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+                          <ChevronDown
+                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read ? "ml-auto" : ""}`}
+                          />
+                        </div>
+                        <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>{n.body}</div>
+                        {!isOpen && n.attachments && n.attachments.length > 0 && (
+                          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
+                            <Paperclip className="h-2.5 w-2.5" />
+                            {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </button>
+                      {isOpen && n.attachments && n.attachments.length > 0 && (
+                        <div className="px-2.5 pb-2.5">
+                          <AttachmentList attachments={n.attachments} />
                         </div>
                       )}
-                    </button>
+                      {isOpen && n.link && (
+                        <div className="px-2.5 pb-2.5">
+                          <a
+                            href={n.link}
+                            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                          >
+                            Open <ChevronDown className="h-3 w-3 -rotate-90" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -222,6 +257,8 @@ function NotificationsPage() {
             <div className="space-y-5">
               {updates.map((u) => {
                 const author = staff.find((s) => s.id === u.authorId);
+                const isLong = u.message.length > 180;
+                const isOpen = expandedFeed.has(u.id);
                 return (
                   <div key={u.id} className="flex gap-3 relative">
                     <div className="relative z-10">
@@ -239,8 +276,21 @@ function NotificationsPage() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">· {u.time}</span>
                       </div>
-                      <div className={`mt-1.5 p-3 rounded-lg text-sm leading-snug ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"}`}>
-                        {u.message}
+                      <div
+                        onClick={() => isLong && toggleFeed(u.id)}
+                        className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
+                      >
+                        <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
+                        {isLong && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleFeed(u.id); }}
+                            className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            {isOpen ? "Show less" : "Show more"}
+                            <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
                         {u.attachments && u.attachments.length > 0 && (
                           <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {u.attachments.map((a) => (
