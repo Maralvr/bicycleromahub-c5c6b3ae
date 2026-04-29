@@ -37,7 +37,7 @@ function ShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
-  const { notesByShift, addNote } = useNotesStore();
+  const { notesByShift, addNote, notifyGuide } = useNotesStore();
 
   const handleNoteSubmit = (note: GuideNote) => {
     const sh = shifts.find((s) => s.id === note.shiftId);
@@ -51,15 +51,41 @@ function ShiftsPage() {
   const upcomingShifts = shifts.filter((s) => !isPast(s));
   const pastShifts = shifts.filter(isPast);
 
+  const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
+
   const updateStatus = (id: string, status: Shift["status"]) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
     toast.success(`Shift ${status}`);
   };
 
   const assignStaff = (shiftId: string, assignedStaffId: string, staffName: string) => {
+    const prevShift = shifts.find((s) => s.id === shiftId);
     setShifts((prev) =>
       prev.map((s) => (s.id === shiftId ? { ...s, assignedStaffId, status: "pending" } : s)),
     );
+    if (prevShift) {
+      const updated = { ...prevShift, assignedStaffId };
+      // Notify the newly assigned guide
+      notifyGuide({
+        staffId: assignedStaffId,
+        type: prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId ? "reassigned" : "assigned",
+        title: prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId ? "Shift reassigned to you" : "New shift assigned",
+        body: shiftSummary(updated),
+        shiftId,
+        link: "/shifts",
+      });
+      // If reassigned away from previous guide, notify them too
+      if (prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId) {
+        notifyGuide({
+          staffId: prevShift.assignedStaffId,
+          type: "unassigned",
+          title: "Shift removed from your schedule",
+          body: `${shiftSummary(prevShift)} — reassigned to ${staffName}.`,
+          shiftId,
+          link: "/shifts",
+        });
+      }
+    }
     toast.success(`Assigned to ${staffName}`, { description: "Push notification sent — awaiting accept/reject." });
   };
 
@@ -69,7 +95,6 @@ function ShiftsPage() {
       toast.info("Nothing to assign", { description: "All shifts already have a guide." });
       return;
     }
-    // Sort by date+time so earliest shifts get first pick of staff
     const queue = [...unassigned].sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
     let working = [...shifts];
     let assignedCount = 0;
@@ -78,6 +103,14 @@ function ShiftsPage() {
       const top = suggestStaffForShift(sh, staff, working, 1)[0];
       if (top) {
         working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
+        notifyGuide({
+          staffId: top.staff.id,
+          type: "assigned",
+          title: "New shift assigned",
+          body: shiftSummary(sh),
+          shiftId: sh.id,
+          link: "/shifts",
+        });
         assignedCount++;
       } else {
         skipped.push(sh.tourName);
