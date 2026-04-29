@@ -133,18 +133,16 @@ function TasksPage() {
         title={t.tasks.title}
         subtitle={isAdmin ? t.tasks.subtitle : "Your assigned tasks"}
         actions={
-          isAdmin ? (
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <Button variant="outline" size="sm" onClick={() => { markAllRead(); toast.success("Marked updates as read"); }}>
-                  <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update{unreadCount > 1 ? "s" : ""}
-                </Button>
-              )}
-              <Button onClick={() => toast.success("Task editor would open")} className="shadow-[var(--shadow-elegant)]">
-                <Plus className="h-4 w-4 mr-1" /> {t.tasks.newTask}
+          <div className="flex items-center gap-2">
+            {isAdmin && unreadCount > 0 && (
+              <Button variant="outline" size="sm" onClick={() => { markAllRead(); toast.success("Marked updates as read"); }}>
+                <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update{unreadCount > 1 ? "s" : ""}
               </Button>
-            </div>
-          ) : null
+            )}
+            <Button onClick={() => setNewTaskOpen(true)} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {isAdmin ? t.tasks.newTask : "Add task for me"}
+            </Button>
+          </div>
         }
       />
 
