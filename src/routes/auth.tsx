@@ -68,21 +68,6 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}${search.redirect ?? "/"}` },
-      });
-      if (error) throw error;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg);
-      setBusy(false);
-    }
-  };
-
   const handleForgot = async () => {
     if (!email) {
       toast.error("Enter your email first");
