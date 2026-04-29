@@ -201,6 +201,12 @@ function NotificationsPage() {
                         {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
                       </div>
                       <div className="text-muted-foreground line-clamp-2">{n.body}</div>
+                      {n.attachments && n.attachments.length > 0 && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
+                          <Paperclip className="h-2.5 w-2.5" />
+                          {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
