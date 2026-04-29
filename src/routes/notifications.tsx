@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
-import { staff, FieldUpdate, Attachment } from "@/lib/mock-data";
+import { useStaffStore } from "@/lib/staff-store";
+import { Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
 import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE, AttachmentList } from "@/components/attachment-picker";
 import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2, ChevronDown } from "lucide-react";
@@ -28,16 +29,15 @@ export const Route = createFileRoute("/notifications")({
 function NotificationsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
+  const { staff } = useStaffStore();
   const isAdmin = role === "admin";
-  const { feed, notifyGuides, notifications, markAllRead, markRead } = useNotesStore();
+  const { feed, addFieldUpdate, notifyGuides, notifications, markAllRead, markRead } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const unread = myNotifs.filter((n) => !n.read).length;
-  const [extra, setExtra] = useState<FieldUpdate[]>([]);
-  const allUpdates = [...extra, ...feed];
   // Guides only see broadcasts (sent to everyone) or their own field updates.
   const updates = isAdmin
-    ? allUpdates
-    : allUpdates.filter((u) => u.type === "broadcast" || u.authorId === staffId);
+    ? feed
+    : feed.filter((u) => u.type === "broadcast" || u.authorId === staffId);
   const [msg, setMsg] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -71,20 +71,18 @@ function NotificationsPage() {
 
   const send = () => {
     if (!msg.trim() && attachments.length === 0) return;
-    const newUpdate: FieldUpdate = {
-      id: `u-${Date.now()}`,
+    const message = msg || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`);
+    addFieldUpdate({
       authorId: "admin",
-      message: msg || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`),
+      message,
       type: "broadcast",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       attachments: attachments.length ? attachments : undefined,
-    };
-    setExtra([newUpdate, ...extra]);
+    });
     const guideIds = staff.filter((s) => s.role === "guide").map((s) => s.id);
     notifyGuides(guideIds, {
       type: "broadcast",
       title: "Broadcast from admins",
-      body: newUpdate.message,
+      body: message,
       link: "/notifications",
       attachments: attachments.length ? attachments : undefined,
     });
