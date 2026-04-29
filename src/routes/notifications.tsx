@@ -25,7 +25,7 @@ export const Route = createFileRoute("/notifications")({
 
 function NotificationsPage() {
   const { t } = useI18n();
-  const { feed } = useNotesStore();
+  const { feed, notifyGuides } = useNotesStore();
   const [extra, setExtra] = useState<FieldUpdate[]>([]);
   const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
@@ -40,8 +40,15 @@ function NotificationsPage() {
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setExtra([newUpdate, ...extra]);
+    const guideIds = staff.filter((s) => s.role === "guide").map((s) => s.id);
+    notifyGuides(guideIds, {
+      type: "broadcast",
+      title: "Broadcast from admins",
+      body: msg,
+      link: "/notifications",
+    });
     setMsg("");
-    toast.success("Push notification sent to team");
+    toast.success(`Push notification sent to ${guideIds.length} guides`);
   };
 
   return (
