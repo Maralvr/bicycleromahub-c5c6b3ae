@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
+import { useCurrentUser } from "@/lib/current-user";
 import { staff, FieldUpdate } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
-import { Send, Megaphone, MapPin, Sparkles } from "lucide-react";
+import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/notifications")({
 
 function NotificationsPage() {
   const { t } = useI18n();
-  const { feed, notifyGuides } = useNotesStore();
+  const { role, staffId } = useCurrentUser();
+  const isAdmin = role === "admin";
+  const { feed, notifyGuides, notifications, markAllRead, markRead } = useNotesStore();
+  const myNotifs = notifications.filter((n) => n.staffId === staffId);
+  const unread = myNotifs.filter((n) => !n.read).length;
   const [extra, setExtra] = useState<FieldUpdate[]>([]);
   const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
