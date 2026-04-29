@@ -17,7 +17,7 @@ import { useNotesStore } from "@/lib/notes-store";
 import { useTaskUpdates, TaskUpdate } from "@/lib/task-updates-store";
 import { tasks as initialTasks, staff, Task, Attachment } from "@/lib/mock-data";
 import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker";
-import { Plus, Calendar, AlertCircle, CheckCircle2, MessageSquarePlus, Activity, Wrench, MessageSquare, BellDot } from "lucide-react";
+import { Plus, Calendar, AlertCircle, CheckCircle2, MessageSquarePlus, Activity, Wrench, MessageSquare, BellDot, Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
