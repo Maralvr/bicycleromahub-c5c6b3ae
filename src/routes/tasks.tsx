@@ -484,6 +484,18 @@ function NewTaskDialog({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label>
+              Description <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add context, steps, or anything the assignee should know…"
+              rows={3}
+            />
+          </div>
+
           {isAdmin ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
