@@ -249,7 +249,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                 {s.notes && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{s.notes}</div>}
 
                 {/* AI suggestions panel for unassigned shifts */}
-                {!guide && !guideView && (
+                {!guide && !guideView && !pastView && (
                   <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20">
                     <div className="flex items-center gap-1.5 mb-2.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -317,7 +317,10 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
 
                   <div className="flex gap-2">
-                    {guideView && s.status === "pending" && (
+                    {pastView && (
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Completed</Badge>
+                    )}
+                    {!pastView && guideView && s.status === "pending" && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => onReject(s.id)}>
                           <XCircle className="h-3.5 w-3.5 mr-1" /> {t.common.reject}
@@ -327,7 +330,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         </Button>
                       </>
                     )}
-                    {!guideView && guide && onOpenAssignDialog && (
+                    {!pastView && !guideView && guide && onOpenAssignDialog && (
                       <Button size="sm" variant="outline" onClick={() => onOpenAssignDialog(s)}>
                         <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
                       </Button>
