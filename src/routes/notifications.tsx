@@ -34,25 +34,60 @@ function NotificationsPage() {
   const [extra, setExtra] = useState<FieldUpdate[]>([]);
   const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const onFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const next: Attachment[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_SIZE) {
+        toast.error(`${file.name} is too large (max 10MB)`);
+        continue;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      next.push({
+        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        mime: file.type || "application/octet-stream",
+        size: file.size,
+        dataUrl,
+      });
+    }
+    setAttachments((prev) => [...prev, ...next]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id));
 
   const send = () => {
-    if (!msg.trim()) return;
+    if (!msg.trim() && attachments.length === 0) return;
     const newUpdate: FieldUpdate = {
       id: `u-${Date.now()}`,
       authorId: "admin",
-      message: msg,
+      message: msg || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`),
       type: "broadcast",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      attachments: attachments.length ? attachments : undefined,
     };
     setExtra([newUpdate, ...extra]);
     const guideIds = staff.filter((s) => s.role === "guide").map((s) => s.id);
     notifyGuides(guideIds, {
       type: "broadcast",
       title: "Broadcast from admins",
-      body: msg,
+      body: newUpdate.message,
       link: "/notifications",
+      attachments: attachments.length ? attachments : undefined,
     });
     setMsg("");
+    setAttachments([]);
     toast.success(`Push notification sent to ${guideIds.length} guides`);
   };
 
