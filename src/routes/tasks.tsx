@@ -413,7 +413,7 @@ function NewTaskDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
+  onCreate: (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
   isAdmin: boolean;
   currentStaffId: string | null | undefined;
   guideOptions: typeof staff;
