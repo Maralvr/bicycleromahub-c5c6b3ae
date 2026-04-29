@@ -61,32 +61,78 @@ function NotificationsPage() {
       <PageHeader title={t.notifications.title} subtitle={t.notifications.subtitle} />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card relative overflow-hidden lg:sticky lg:top-6">
-          <div className="absolute -top-4 -right-4 h-24 w-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-2.5 mb-3 relative">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center shadow-[var(--shadow-elegant)]">
-              <Megaphone className="h-5 w-5" />
+        {isAdmin ? (
+          <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card relative overflow-hidden lg:sticky lg:top-6">
+            <div className="absolute -top-4 -right-4 h-24 w-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-2.5 mb-3 relative">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center shadow-[var(--shadow-elegant)]">
+                <Megaphone className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-semibold leading-tight">{t.notifications.broadcast}</h2>
+                <div className="text-xs text-muted-foreground">Reaches {staff.filter((s) => s.role === "guide").length} guides</div>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold leading-tight">{t.notifications.broadcast}</h2>
-              <div className="text-xs text-muted-foreground">Reaches {staff.length} team members</div>
+            <Textarea
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              placeholder={t.notifications.placeholder}
+              rows={5}
+              className="mb-3 resize-none bg-card relative"
+            />
+            <Button onClick={send} className="w-full shadow-[var(--shadow-elegant)] relative" disabled={!msg.trim()}>
+              <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
+            </Button>
+            <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
+              <Sparkles className="h-3 w-3 text-primary" />
+              AI can rewrite for clarity before sending
             </div>
-          </div>
-          <Textarea
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            placeholder={t.notifications.placeholder}
-            rows={5}
-            className="mb-3 resize-none bg-card relative"
-          />
-          <Button onClick={send} className="w-full shadow-[var(--shadow-elegant)] relative" disabled={!msg.trim()}>
-            <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
-          </Button>
-          <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
-            <Sparkles className="h-3 w-3 text-primary" />
-            AI can rewrite for clarity before sending
-          </div>
-        </Card>
+          </Card>
+        ) : (
+          <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card relative overflow-hidden lg:sticky lg:top-6">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center shadow-[var(--shadow-elegant)]">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold leading-tight">My notifications</h2>
+                  <div className="text-xs text-muted-foreground">{unread > 0 ? `${unread} unread` : "All caught up"}</div>
+                </div>
+              </div>
+              {unread > 0 && staffId && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => markAllRead(staffId)}>
+                  <CheckCheck className="h-3.5 w-3.5 mr-1" /> Read all
+                </Button>
+              )}
+            </div>
+            {myNotifs.length === 0 ? (
+              <div className="text-xs text-muted-foreground italic py-6 text-center">
+                You'll see schedule changes, broadcasts and updates here.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {myNotifs.slice(0, 20).map((n) => {
+                  const Icon = n.type === "broadcast" ? Megaphone : n.type === "shift_cancelled" ? AlertTriangle : n.type === "unassigned" ? X : n.type === "task" ? ListChecks : CalendarRange;
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => markRead(n.id)}
+                      className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Icon className="h-3 w-3 text-primary" />
+                        <span className="font-semibold text-foreground">{n.title}</span>
+                        {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+                      </div>
+                      <div className="text-muted-foreground line-clamp-2">{n.body}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
 
         <Card className="p-5 lg:col-span-2">
           <div className="flex items-center justify-between mb-5">
