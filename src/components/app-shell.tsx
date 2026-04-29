@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { staff } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
@@ -36,10 +37,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <img src={logo} alt="eBicycle Roma" className="h-12 w-12 rounded-xl object-contain bg-white ring-1 ring-border shadow-sm" />
             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success ring-2 ring-card" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
             <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
           </div>
+          {role === "staff" && staffId && <NotificationBell staffId={staffId} />}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -145,12 +147,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.tagline}</div>
               </div>
             </div>
-            <div className="flex gap-1 p-0.5 bg-muted rounded-md">
-              {(["en", "it"] as const).map((l) => (
-                <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
-                  {l.toUpperCase()}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              {role === "staff" && staffId && <NotificationBell staffId={staffId} />}
+              <div className="flex gap-1 p-0.5 bg-muted rounded-md">
+                {(["en", "it"] as const).map((l) => (
+                  <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
+                    {l.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <nav className="flex overflow-x-auto px-2 gap-1 pb-1.5">
