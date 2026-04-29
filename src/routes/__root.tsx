@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { I18nProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth";
 import { CurrentUserProvider } from "@/lib/current-user";
 import { StaffStoreProvider } from "@/lib/staff-store";
 import { NotesStoreProvider } from "@/lib/notes-store";
@@ -71,16 +72,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <I18nProvider>
-      <CurrentUserProvider>
-        <StaffStoreProvider>
-          <NotesStoreProvider>
-            <TaskUpdatesStoreProvider>
-              <Outlet />
-              <Toaster />
-            </TaskUpdatesStoreProvider>
-          </NotesStoreProvider>
-        </StaffStoreProvider>
-      </CurrentUserProvider>
+      <AuthProvider>
+        <CurrentUserProvider>
+          <StaffStoreProvider>
+            <NotesStoreProvider>
+              <TaskUpdatesStoreProvider>
+                <Outlet />
+                <Toaster />
+              </TaskUpdatesStoreProvider>
+            </NotesStoreProvider>
+          </StaffStoreProvider>
+        </CurrentUserProvider>
+      </AuthProvider>
     </I18nProvider>
   );
 }
