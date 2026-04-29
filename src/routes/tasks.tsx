@@ -188,6 +188,7 @@ function TasksPage() {
               <TaskRow
                 key={task.id}
                 task={task}
+                staff={staff}
                 onToggle={toggle}
                 isAdmin={isAdmin}
                 isMine={task.assigneeId === staffId}
@@ -212,6 +213,7 @@ function TasksPage() {
               <TaskRow
                 key={task.id}
                 task={task}
+                staff={staff}
                 onToggle={toggle}
                 isAdmin={isAdmin}
                 isMine={task.assigneeId === staffId}
@@ -249,9 +251,10 @@ const updateTypeStyles: Record<TaskUpdate["type"], { label: string; cls: string;
 };
 
 function TaskRow({
-  task, onToggle, isAdmin, isMine, updates, onPostUpdate,
+  task, staff, onToggle, isAdmin, isMine, updates, onPostUpdate,
 }: {
   task: Task;
+  staff: Staff[];
   onToggle: (id: string) => void;
   isAdmin: boolean;
   isMine: boolean;
@@ -409,7 +412,7 @@ function NewTaskDialog({
   onCreate: (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
   isAdmin: boolean;
   currentStaffId: string | null | undefined;
-  guideOptions: typeof staff;
+  guideOptions: Staff[];
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const initialIds = () =>
