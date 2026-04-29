@@ -292,7 +292,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         </div>
                       </div>
                     )}
-                    {s.rate !== undefined && (
+                    {s.rate !== undefined && !guideView && (
                       <div>
                         <div className="text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">{t.common.rate}</div>
                         <div className="font-semibold text-foreground mt-0.5 flex items-center gap-0.5"><Euro className="h-3 w-3" />{s.rate}</div>
