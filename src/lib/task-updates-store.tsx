@@ -71,19 +71,25 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
     };
   }, [fetchUpdates]);
 
-  const addUpdate: TaskUpdatesStore["addUpdate"] = useCallback((u) => {
-    void supabase.from("task_updates").insert({
-      task_id: u.taskId,
-      author_staff_id: u.authorStaffId,
-      message: u.message,
-      type: u.type,
-      attachments: u.attachments ?? [],
-      read: false,
-    }).then(({ error }) => {
-      if (error) return;
-      void fetchUpdates();
-    });
-  }, [fetchUpdates]);
+  const addUpdate: TaskUpdatesStore["addUpdate"] = useCallback(
+    (u) => {
+      void supabase
+        .from("task_updates")
+        .insert({
+          task_id: u.taskId,
+          author_staff_id: u.authorStaffId,
+          message: u.message,
+          type: u.type,
+          attachments: u.attachments ?? [],
+          read: false,
+        })
+        .then(({ error }) => {
+          if (error) return;
+          void fetchUpdates();
+        });
+    },
+    [fetchUpdates],
+  );
 
   const updatesForTask = useCallback(
     (taskId: string) => updates.filter((u) => u.taskId === taskId),
@@ -103,7 +109,9 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
   const unreadCount = updates.filter((u) => !u.read).length;
 
   return (
-    <Ctx.Provider value={{ updates, addUpdate, updatesForTask, unreadCount, markRead, markAllRead }}>
+    <Ctx.Provider
+      value={{ updates, addUpdate, updatesForTask, unreadCount, markRead, markAllRead }}
+    >
       {children}
     </Ctx.Provider>
   );

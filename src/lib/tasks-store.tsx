@@ -1,9 +1,19 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Task } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
 
-type TaskInput = Pick<Task, "title" | "description" | "due" | "priority"> & { assigneeIds: string[] };
+type TaskInput = Pick<Task, "title" | "description" | "due" | "priority"> & {
+  assigneeIds: string[];
+};
 
 type TasksStore = {
   tasks: Task[];
@@ -82,51 +92,58 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
     return map;
   }, [staff]);
 
-  const tasks = useMemo<Task[]>(() => rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    description: row.description ?? undefined,
-    assigneeId: userIdToStaffId.get(row.assigned_to) ?? row.assigned_to,
-    due: row.due,
-    priority: row.priority,
-    done: row.done,
-  })), [rows, userIdToStaffId]);
+  const tasks = useMemo<Task[]>(
+    () =>
+      rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description ?? undefined,
+        assigneeId: userIdToStaffId.get(row.assigned_to) ?? row.assigned_to,
+        due: row.due,
+        priority: row.priority,
+        done: row.done,
+      })),
+    [rows, userIdToStaffId],
+  );
 
-  const createTasks: TasksStore["createTasks"] = useCallback(async (input) => {
-    const payload = input.assigneeIds
-      .map((staffId) => ({
-        title: input.title.trim(),
-        description: input.description?.trim() || null,
-        assigned_to: staffIdToUserId.get(staffId),
-        due: input.due,
-        priority: input.priority,
-        done: false,
-      }))
-      .filter((task) => task.assigned_to);
+  const createTasks: TasksStore["createTasks"] = useCallback(
+    async (input) => {
+      const payload = input.assigneeIds
+        .map((staffId) => ({
+          title: input.title.trim(),
+          description: input.description?.trim() || null,
+          assigned_to: staffIdToUserId.get(staffId),
+          due: input.due,
+          priority: input.priority,
+          done: false,
+        }))
+        .filter((task) => task.assigned_to);
 
-    if (payload.length === 0) return [];
+      if (payload.length === 0) return [];
 
-    let result = await supabase.from("tasks").insert(payload).select("*");
-    if (result.error && result.error.message.toLowerCase().includes("description")) {
-      result = await supabase
-        .from("tasks")
-        .insert(payload.map(({ description: _description, ...task }) => task))
-        .select("*");
-    }
-    if (result.error) throw result.error;
+      let result = await supabase.from("tasks").insert(payload).select("*");
+      if (result.error && result.error.message.toLowerCase().includes("description")) {
+        result = await supabase
+          .from("tasks")
+          .insert(payload.map(({ description: _description, ...task }) => task))
+          .select("*");
+      }
+      if (result.error) throw result.error;
 
-    const inserted = (result.data ?? []) as TaskRow[];
-    setRows((prev) => [...inserted, ...prev]);
-    return inserted.map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description ?? undefined,
-      assigneeId: userIdToStaffId.get(row.assigned_to) ?? row.assigned_to,
-      due: row.due,
-      priority: row.priority,
-      done: row.done,
-    }));
-  }, [staffIdToUserId, userIdToStaffId]);
+      const inserted = (result.data ?? []) as TaskRow[];
+      setRows((prev) => [...inserted, ...prev]);
+      return inserted.map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description ?? undefined,
+        assigneeId: userIdToStaffId.get(row.assigned_to) ?? row.assigned_to,
+        due: row.due,
+        priority: row.priority,
+        done: row.done,
+      }));
+    },
+    [staffIdToUserId, userIdToStaffId],
+  );
 
   const toggleTask: TasksStore["toggleTask"] = useCallback(async (id, done) => {
     const { error: updateError } = await supabase.from("tasks").update({ done }).eq("id", id);
@@ -135,7 +152,9 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TasksContext.Provider value={{ tasks, loading, error, createTasks, toggleTask, refresh: fetchTasks }}>
+    <TasksContext.Provider
+      value={{ tasks, loading, error, createTasks, toggleTask, refresh: fetchTasks }}
+    >
       {children}
     </TasksContext.Provider>
   );

@@ -1,4 +1,12 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useLocation, useNavigate } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -41,10 +49,16 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "eBicycle Roma — Operations Hub" },
-      { name: "description", content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma." },
+      {
+        name: "description",
+        content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma.",
+      },
       { name: "author", content: "eBicycle Roma" },
       { property: "og:title", content: "eBicycle Roma — Operations Hub" },
-      { property: "og:description", content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma." },
+      {
+        property: "og:description",
+        content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

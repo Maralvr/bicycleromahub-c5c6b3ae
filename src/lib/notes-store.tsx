@@ -6,7 +6,15 @@ import { useStaffStore } from "@/lib/staff-store";
 export type GuideNotification = {
   id: string;
   staffId: string;
-  type: "assigned" | "reassigned" | "unassigned" | "shift_updated" | "shift_cancelled" | "broadcast" | "reminder" | "task";
+  type:
+    | "assigned"
+    | "reassigned"
+    | "unassigned"
+    | "shift_updated"
+    | "shift_cancelled"
+    | "broadcast"
+    | "reminder"
+    | "task";
   title: string;
   body: string;
   shiftId?: string;
@@ -23,7 +31,10 @@ type NotesStore = {
   addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => void;
   notifications: GuideNotification[];
   notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => void;
-  notifyGuides: (staffIds: string[], n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">) => void;
+  notifyGuides: (
+    staffIds: string[],
+    n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">,
+  ) => void;
   markRead: (id: string) => void;
   markAllRead: (staffId: string) => void;
   clearForGuide: (staffId: string) => void;
@@ -80,7 +91,11 @@ const fieldUpdateFromRow = (row: FieldUpdateRow): FieldUpdate => ({
   authorId: row.author_id,
   message: row.message,
   type: row.type,
-  time: row.time ?? (row.created_at ? new Date(row.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""),
+  time:
+    row.time ??
+    (row.created_at
+      ? new Date(row.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : ""),
   attachments: row.attachments ?? undefined,
 });
 
@@ -145,9 +160,13 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, () => {
         void fetchFeed();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "guide_notifications" }, () => {
-        void fetchNotifications();
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "guide_notifications" },
+        () => {
+          void fetchNotifications();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -155,32 +174,35 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchFeed, fetchNotes, fetchNotifications]);
 
-  const addNote = useCallback<NotesStore["addNote"]>((note, tourName) => {
-    const author = staff.find((s) => s.id === note.authorStaffId);
-    const categoryLabel: Record<GuideNote["category"], string> = {
-      general: "left a post-tour note",
-      bike_issue: "reported a bike issue",
-      customer: "left a customer note",
-      incident: "reported an incident",
-    };
-    const message = `${author?.name || "Guide"} ${categoryLabel[note.category]} on "${tourName}": ${note.message}`;
+  const addNote = useCallback<NotesStore["addNote"]>(
+    (note, tourName) => {
+      const author = staff.find((s) => s.id === note.authorStaffId);
+      const categoryLabel: Record<GuideNote["category"], string> = {
+        general: "left a post-tour note",
+        bike_issue: "reported a bike issue",
+        customer: "left a customer note",
+        incident: "reported an incident",
+      };
+      const message = `${author?.name || "Guide"} ${categoryLabel[note.category]} on "${tourName}": ${note.message}`;
 
-    void supabase.from("guide_notes").insert({
-      id: note.id,
-      shift_id: note.shiftId,
-      author_staff_id: note.authorStaffId,
-      message: note.message,
-      category: note.category,
-      attachments: note.attachments ?? [],
-    });
-    void supabase.from("field_updates").insert({
-      author_id: note.authorStaffId,
-      message,
-      type: "field",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachments: note.attachments ?? [],
-    });
-  }, [staff]);
+      void supabase.from("guide_notes").insert({
+        id: note.id,
+        shift_id: note.shiftId,
+        author_staff_id: note.authorStaffId,
+        message: note.message,
+        category: note.category,
+        attachments: note.attachments ?? [],
+      });
+      void supabase.from("field_updates").insert({
+        author_id: note.authorStaffId,
+        message,
+        type: "field",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        attachments: note.attachments ?? [],
+      });
+    },
+    [staff],
+  );
 
   const notifyGuide: NotesStore["notifyGuide"] = useCallback((n) => {
     void supabase.from("guide_notifications").insert({
@@ -207,16 +229,18 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
   const notifyGuides: NotesStore["notifyGuides"] = useCallback((staffIds, n) => {
     if (staffIds.length === 0) return;
-    void supabase.from("guide_notifications").insert(staffIds.map((staffId) => ({
-      staff_id: staffId,
-      type: n.type,
-      title: n.title,
-      body: n.body,
-      shift_id: n.shiftId ?? null,
-      link: n.link ?? null,
-      attachments: n.attachments ?? [],
-      read: false,
-    })));
+    void supabase.from("guide_notifications").insert(
+      staffIds.map((staffId) => ({
+        staff_id: staffId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        shift_id: n.shiftId ?? null,
+        link: n.link ?? null,
+        attachments: n.attachments ?? [],
+        read: false,
+      })),
+    );
   }, []);
 
   const markRead = useCallback((id: string) => {
@@ -234,10 +258,25 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.filter((n) => n.staffId !== staffId));
   }, []);
 
-  const unreadCountFor = (staffId: string) => notifications.filter((n) => n.staffId === staffId && !n.read).length;
+  const unreadCountFor = (staffId: string) =>
+    notifications.filter((n) => n.staffId === staffId && !n.read).length;
 
   return (
-    <NotesContext.Provider value={{ notesByShift, feed, addNote, addFieldUpdate, notifications, notifyGuide, notifyGuides, markRead, markAllRead, clearForGuide, unreadCountFor }}>
+    <NotesContext.Provider
+      value={{
+        notesByShift,
+        feed,
+        addNote,
+        addFieldUpdate,
+        notifications,
+        notifyGuide,
+        notifyGuides,
+        markRead,
+        markAllRead,
+        clearForGuide,
+        unreadCountFor,
+      }}
+    >
       {children}
     </NotesContext.Provider>
   );
