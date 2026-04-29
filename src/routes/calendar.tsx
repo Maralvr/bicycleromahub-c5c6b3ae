@@ -31,7 +31,7 @@ function CalendarPage() {
   return (
     <AppShell>
       <PageHeader
-        title={t.nav.calendar ?? "Calendar"}
+        title={t.nav.calendar}
         subtitle="All scheduled tours across day, week and month."
       />
       <ShiftsCalendar shifts={shifts} staff={staff} />
