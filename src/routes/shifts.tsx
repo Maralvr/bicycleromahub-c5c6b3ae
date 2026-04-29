@@ -35,6 +35,11 @@ function ShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isPast = (s: Shift) => s.date < todayStr;
+  const upcomingShifts = shifts.filter((s) => !isPast(s));
+  const pastShifts = shifts.filter(isPast);
+
   const updateStatus = (id: string, status: Shift["status"]) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
     toast.success(`Shift ${status}`);
