@@ -201,10 +201,44 @@ function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType
 
 function AdminStaffDirectory() {
   const { t } = useI18n();
-  const { staff } = useStaffStore();
+  const { staff: mockStaff } = useStaffStore();
+  const { staff: liveStaff } = useLiveStaff();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
+
+  // Merge: mock staff first, enriched with profileId when name matches a live row,
+  // then append any live rows that didn't match a mock entry.
+  const staff = useMemo<Staff[]>(() => {
+    const liveByName = new Map(liveStaff.map((l) => [l.name.toLowerCase(), l]));
+    const usedLiveIds = new Set<string>();
+    const merged: Staff[] = mockStaff.map((m) => {
+      const live = liveByName.get(m.name.toLowerCase());
+      if (live) {
+        usedLiveIds.add(live.id);
+        return { ...m, profileId: live.profile_id, isLive: true };
+      }
+      return m;
+    });
+    for (const l of liveStaff) {
+      if (usedLiveIds.has(l.id)) continue;
+      merged.push({
+        id: `live-${l.id}`,
+        profileId: l.profile_id,
+        isLive: true,
+        name: l.name,
+        avatar: l.avatar || l.name.slice(0, 2).toUpperCase(),
+        role: l.role,
+        status: l.status,
+        phone: l.phone ?? "",
+        tags: l.tags ?? [],
+        languages: l.languages ?? [],
+        licenses: l.licenses ?? [],
+        unavailability: [],
+      });
+    }
+    return merged;
+  }, [mockStaff, liveStaff]);
 
   const counts = useMemo(
     () => ({
