@@ -79,11 +79,11 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
       type: u.type,
       attachments: u.attachments ?? [],
       read: false,
-    }).then(({ data, error }) => {
+    }).then(({ error }) => {
       if (error) return;
-      if (data) void fetchUpdates();
+      void fetchUpdates();
     });
-  }, []);
+  }, [fetchUpdates]);
 
   const updatesForTask = useCallback(
     (taskId: string) => updates.filter((u) => u.taskId === taskId),
