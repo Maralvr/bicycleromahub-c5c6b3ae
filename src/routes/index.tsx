@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { shifts, staff, tasks, updates } from "@/lib/mock-data";
+import { useRequireAdmin } from "@/lib/require-admin";
 import { AlertTriangle, CalendarRange, ClipboardCheck, Users2, Sparkles, MapPin, Clock, ArrowUpRight, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -19,8 +20,10 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
+  const { ready } = useRequireAdmin();
   const { t } = useI18n();
   const today = new Date().toISOString().slice(0, 10);
+  if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);
   const pending = shifts.filter((s) => s.status === "pending");
   const unassigned = shifts.filter((s) => s.status === "unassigned");

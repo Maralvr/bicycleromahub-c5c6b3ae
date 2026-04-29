@@ -22,6 +22,7 @@ import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
 import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
+import { useRequireAdmin } from "@/lib/require-admin";
 
 const BOKUN_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bokun-webhook`;
 
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/live-shifts")({
 });
 
 function LiveShiftsPage() {
+  const { ready } = useRequireAdmin();
   const [pointFilter, setPointFilter] = useState<string>(ALL);
   const { points } = useRentalPoints();
   const { staff } = useLiveStaff();
@@ -55,6 +57,8 @@ function LiveShiftsPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcoming = shifts.filter((s) => s.date >= todayStr);
   const past = shifts.filter((s) => s.date < todayStr);
+
+  if (!ready) return null;
 
   return (
     <AppShell>

@@ -1,11 +1,12 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { staff } from "./mock-data";
+import { useAuth } from "./auth";
 
 export type ViewRole = "admin" | "staff";
 
 type CurrentUserContextValue = {
   role: ViewRole;
-  staffId: string; // the staff member identity used when role === "staff"
+  staffId: string;
   setRole: (r: ViewRole) => void;
   setStaffId: (id: string) => void;
   displayName: string;
@@ -18,16 +19,18 @@ const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
 const STORAGE_KEY = "ebr.currentUser";
 
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<ViewRole>("admin");
+  const { isAdmin, profile, user } = useAuth();
+  // Default role is derived from real auth roles. Admins may still impersonate
+  // a guide via the role switcher (kept for QA). Non-admins are locked to staff.
+  const [roleOverride, setRoleOverride] = useState<ViewRole | null>(null);
   const [staffId, setStaffIdState] = useState<string>("s1");
 
-  // Hydrate from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as { role?: ViewRole; staffId?: string };
-        if (parsed.role) setRoleState(parsed.role);
+        if (parsed.role) setRoleOverride(parsed.role);
         if (parsed.staffId) setStaffIdState(parsed.staffId);
       }
     } catch {
@@ -35,7 +38,12 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const persist = (next: { role: ViewRole; staffId: string }) => {
+  // If signed-in profile has a linked staff_id, prefer it
+  useEffect(() => {
+    if (profile?.staff_id) setStaffIdState(profile.staff_id);
+  }, [profile?.staff_id]);
+
+  const persist = (next: { role: ViewRole | null; staffId: string }) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
@@ -43,27 +51,40 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Effective role: non-admins always "staff"; admins respect override or default to admin
+  const role: ViewRole = isAdmin ? (roleOverride ?? "admin") : "staff";
+
   const setRole = (r: ViewRole) => {
-    setRoleState(r);
+    if (!isAdmin && r === "admin") return; // guard: non-admins cannot assume admin
+    setRoleOverride(r);
     persist({ role: r, staffId });
   };
   const setStaffId = (id: string) => {
     setStaffIdState(id);
-    persist({ role, staffId: id });
+    persist({ role: roleOverride, staffId: id });
   };
 
   const member = staff.find((s) => s.id === staffId) ?? staff[0];
-  const isAdmin = role === "admin";
+  const isAdminView = role === "admin";
 
   const value: CurrentUserContextValue = {
     role,
     staffId,
     setRole,
     setStaffId,
-    displayName: isAdmin ? "Admin" : member.name,
-    initials: isAdmin ? "AD" : member.avatar,
-    subtitle: isAdmin ? "Operations" : member.role.charAt(0).toUpperCase() + member.role.slice(1),
+    displayName: isAdminView
+      ? profile?.display_name || "Admin"
+      : profile?.display_name || member.name,
+    initials: isAdminView
+      ? profile?.avatar_initials || "AD"
+      : profile?.avatar_initials || member.avatar,
+    subtitle: isAdminView
+      ? "Operations"
+      : member.role.charAt(0).toUpperCase() + member.role.slice(1),
   };
+
+  // Touch user to silence unused warning when not needed
+  void user;
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
 }
