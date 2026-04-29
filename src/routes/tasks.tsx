@@ -45,9 +45,39 @@ function TasksPage() {
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   const tasks = isAdmin ? allTasks : allTasks.filter((task) => task.assigneeId === staffId);
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
+  const guideOptions = staff.filter((s) => s.role === "guide");
+
+  const createTask = (input: { title: string; assigneeId: string; due: string; priority: Task["priority"] }) => {
+    const newTask: Task = {
+      id: `t-${Date.now()}`,
+      title: input.title.trim(),
+      assigneeId: input.assigneeId,
+      due: input.due,
+      priority: input.priority,
+      done: false,
+    };
+    setTasks((prev) => [newTask, ...prev]);
+    setNewTaskOpen(false);
+    // If a guide created a task for themselves, notify admins
+    if (!isAdmin && input.assigneeId === staffId) {
+      const me = staff.find((s) => s.id === staffId);
+      if (adminIds.length > 0) {
+        notifyGuides(adminIds, {
+          type: "task",
+          title: "New self-assigned task",
+          body: `${me?.name || "Guide"} added: ${newTask.title}`,
+          link: "/tasks",
+        });
+      }
+      toast.success("Task added", { description: "Admins notified." });
+    } else {
+      toast.success("Task added");
+    }
+  };
 
   const toggle = (id: string) => {
     const task = allTasks.find((x) => x.id === id);
