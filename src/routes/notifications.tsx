@@ -115,12 +115,52 @@ function NotificationsPage() {
               rows={5}
               className="mb-3 resize-none bg-card relative"
             />
-            <Button onClick={send} className="w-full shadow-[var(--shadow-elegant)] relative" disabled={!msg.trim()}>
-              <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
-            </Button>
+            {attachments.length > 0 && (
+              <div className="mb-3 space-y-1.5 relative">
+                {attachments.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card text-xs">
+                    {a.mime.startsWith("image/") ? (
+                      <img src={a.dataUrl} alt={a.name} className="h-8 w-8 rounded object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{a.name}</div>
+                      <div className="text-[10px] text-muted-foreground">{(a.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeAttachment(a.id)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => onFiles(e.target.files)}
+            />
+            <div className="flex gap-2 relative">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+                title="Attach files"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button onClick={send} className="flex-1 shadow-[var(--shadow-elegant)]" disabled={!msg.trim() && attachments.length === 0}>
+                <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
+              </Button>
+            </div>
             <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
               <Sparkles className="h-3 w-3 text-primary" />
-              AI can rewrite for clarity before sending
+              AI can rewrite for clarity before sending · Attach images, PDFs or any file (max 10MB)
             </div>
           </Card>
         ) : (
