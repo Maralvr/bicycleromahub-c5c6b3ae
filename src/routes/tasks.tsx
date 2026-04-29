@@ -264,7 +264,8 @@ function TaskRow({
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-foreground/85">{u.message}</div>
-                      <div className="text-[10px] text-muted-foreground">{author?.name || "Guide"} · {time}{!u.read && isAdmin && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />}</div>
+                      {u.attachments && u.attachments.length > 0 && <AttachmentList attachments={u.attachments} />}
+                      <div className="text-[10px] text-muted-foreground mt-1">{author?.name || "Guide"} · {time}{!u.read && isAdmin && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />}</div>
                     </div>
                   </div>
                 );
