@@ -167,7 +167,6 @@ function ShiftsPage() {
         {isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="all">{t.common.all}</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
             <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
@@ -182,11 +181,6 @@ function ShiftsPage() {
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
             <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="calendar" className="mt-5">
-            <ShiftsCalendar shifts={shifts} staff={staff} />
           </TabsContent>
         )}
         {isAdmin && (
