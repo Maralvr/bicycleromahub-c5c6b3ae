@@ -1,5 +1,9 @@
 export type Staff = {
   id: string;
+  /** auth user id (= profiles.id). null for legacy mock-only staff. */
+  profileId?: string | null;
+  /** True when this row reflects a real auth user from public.staff. */
+  isLive?: boolean;
   name: string;
   avatar: string;
   role: "guide" | "rental" | "mechanic" | "admin";
