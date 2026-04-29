@@ -17,12 +17,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck, Webhook } from "lucide-react";
-import { bokunWebhook } from "@/server/bokun-webhook.functions";
 import { toast } from "sonner";
 import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
 import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
+
+const BOKUN_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bokun-webhook`;
 
 const ALL = "__all";
 
@@ -67,8 +68,10 @@ function LiveShiftsPage() {
               onClick={async () => {
                 try {
                   const startISO = new Date(Date.now() + 86400000).toISOString().replace(/T.*/, "T10:00:00.000Z");
-                  const res = await bokunWebhook({
-                    data: {
+                  const res = await fetch(BOKUN_WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
                       bookingId: Math.floor(Math.random() * 100000),
                       confirmationCode: `BKN-${Date.now()}`,
                       productTitle: "Colosseum & Roman Forum E-Bike Tour",
@@ -78,9 +81,11 @@ function LiveShiftsPage() {
                       customer: { fullName: "Test Booking", phoneNumber: "+39 000 000 0000" },
                       pricingCategoryBookings: [{ pricingCategory: { title: "Adult" }, quantity: 4 }],
                       totalPrice: 240,
-                    },
+                    }),
                   });
-                  toast.success(`Bokun booking ${res.action}`, { description: "Live shifts refreshed." });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+                  toast.success(`Bokun booking ${json.action}`, { description: "Live shifts refreshed." });
                   await refresh();
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Webhook failed");
