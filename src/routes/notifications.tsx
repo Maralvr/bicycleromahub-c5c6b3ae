@@ -184,25 +184,52 @@ function NotificationsPage() {
               <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                 {myNotifs.slice(0, 20).map((n) => {
                   const Icon = n.type === "broadcast" ? Megaphone : n.type === "shift_cancelled" ? AlertTriangle : n.type === "unassigned" ? X : n.type === "task" ? ListChecks : CalendarRange;
+                  const isOpen = expandedNotif === n.id;
                   return (
-                    <button
+                    <div
                       key={n.id}
-                      onClick={() => markRead(n.id)}
-                      className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
+                      className={`rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Icon className="h-3 w-3 text-primary" />
-                        <span className="font-semibold text-foreground">{n.title}</span>
-                        {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
-                      </div>
-                      <div className="text-muted-foreground line-clamp-2">{n.body}</div>
-                      {n.attachments && n.attachments.length > 0 && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
-                          <Paperclip className="h-2.5 w-2.5" />
-                          {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!n.read) markRead(n.id);
+                          setExpandedNotif(isOpen ? null : n.id);
+                        }}
+                        className="w-full text-left p-2.5"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className="h-3 w-3 text-primary" />
+                          <span className="font-semibold text-foreground">{n.title}</span>
+                          {!n.read && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+                          <ChevronDown
+                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read ? "ml-auto" : ""}`}
+                          />
+                        </div>
+                        <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>{n.body}</div>
+                        {!isOpen && n.attachments && n.attachments.length > 0 && (
+                          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
+                            <Paperclip className="h-2.5 w-2.5" />
+                            {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </button>
+                      {isOpen && n.attachments && n.attachments.length > 0 && (
+                        <div className="px-2.5 pb-2.5">
+                          <AttachmentList attachments={n.attachments} />
                         </div>
                       )}
-                    </button>
+                      {isOpen && n.link && (
+                        <div className="px-2.5 pb-2.5">
+                          <a
+                            href={n.link}
+                            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                          >
+                            Open <ChevronDown className="h-3 w-3 -rotate-90" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
