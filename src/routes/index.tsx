@@ -5,7 +5,10 @@ import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { shifts, staff, tasks, updates } from "@/lib/mock-data";
+import { shifts } from "@/lib/mock-data";
+import { useStaffStore } from "@/lib/staff-store";
+import { useTasksStore } from "@/lib/tasks-store";
+import { useNotesStore } from "@/lib/notes-store";
 import { useRequireAdmin } from "@/lib/require-admin";
 import { AlertTriangle, CalendarRange, ClipboardCheck, Users2, Sparkles, MapPin, Clock, ArrowUpRight, TrendingUp } from "lucide-react";
 
@@ -22,6 +25,9 @@ export const Route = createFileRoute("/")({
 function DashboardPage() {
   const { ready } = useRequireAdmin();
   const { t } = useI18n();
+  const { staff } = useStaffStore();
+  const { tasks } = useTasksStore();
+  const { feed } = useNotesStore();
   const today = new Date().toISOString().slice(0, 10);
   if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);
@@ -148,7 +154,7 @@ function DashboardPage() {
             <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
           </div>
           <div className="space-y-4">
-            {updates.map((u) => {
+            {feed.slice(0, 5).map((u) => {
               const author = staff.find((s) => s.id === u.authorId);
               return (
                 <div key={u.id} className="flex gap-3">
