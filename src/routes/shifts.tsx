@@ -168,6 +168,8 @@ function ShiftsPage() {
             allShifts={shifts}
             guideView={!isAdmin}
             pastView
+            notesByShift={notesByShift}
+            onLeaveNote={setNoteDialogShift}
             onAssign={assignStaff}
             onOpenAssignDialog={setAssignDialogShift}
             onAccept={(id) => updateStatus(id, "accepted")}
@@ -183,6 +185,14 @@ function ShiftsPage() {
         open={!!assignDialogShift}
         onClose={() => setAssignDialogShift(null)}
         onAssign={assignStaff}
+      />
+
+      <LeaveNoteDialog
+        shift={noteDialogShift}
+        authorStaffId={staffId || "s1"}
+        open={!!noteDialogShift}
+        onClose={() => setNoteDialogShift(null)}
+        onSubmit={handleNoteSubmit}
       />
     </AppShell>
   );
