@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck } from "lucide-react";
+import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck, Webhook } from "lucide-react";
+import { bokunWebhook } from "@/server/bokun-webhook.functions";
 import { toast } from "sonner";
 import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
@@ -60,9 +61,38 @@ function LiveShiftsPage() {
         title="Live shifts"
         subtitle="Real-time bookings from the database. Manual + Bokun-synced."
         actions={
-          <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> New shift
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const startISO = new Date(Date.now() + 86400000).toISOString().replace(/T.*/, "T10:00:00.000Z");
+                  const res = await bokunWebhook({
+                    data: {
+                      bookingId: Math.floor(Math.random() * 100000),
+                      confirmationCode: `BKN-${Date.now()}`,
+                      productTitle: "Colosseum & Roman Forum E-Bike Tour",
+                      startDateTime: startISO,
+                      durationMinutes: 180,
+                      pickupPlace: { title: "Piazza Venezia, Rome" },
+                      customer: { fullName: "Test Booking", phoneNumber: "+39 000 000 0000" },
+                      pricingCategoryBookings: [{ pricingCategory: { title: "Adult" }, quantity: 4 }],
+                      totalPrice: 240,
+                    },
+                  });
+                  toast.success(`Bokun booking ${res.action}`, { description: "Live shifts refreshed." });
+                  await refresh();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Webhook failed");
+                }
+              }}
+            >
+              <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun
+            </Button>
+            <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> New shift
+            </Button>
+          </>
         }
       />
 
