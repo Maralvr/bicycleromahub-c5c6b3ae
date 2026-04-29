@@ -30,6 +30,7 @@ import {
 import { MapPin, Phone, Clock, Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-points";
+import { useRequireAdmin } from "@/lib/require-admin";
 
 export const Route = createFileRoute("/rental-points")({
   head: () => ({
@@ -42,10 +43,12 @@ export const Route = createFileRoute("/rental-points")({
 });
 
 function RentalPointsPage() {
+  const { ready } = useRequireAdmin();
   const { points, loading, error, create, update, remove } = useRentalPoints();
   const [editing, setEditing] = useState<RentalPoint | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<RentalPoint | null>(null);
+  if (!ready) return null;
 
   return (
     <AppShell>
