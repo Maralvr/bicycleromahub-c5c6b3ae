@@ -371,7 +371,7 @@ function AdminStaffDirectory() {
                 </div>
 
                 {/* Mini availability bar — last 14 days view */}
-                <AvailabilityStrip staffMember={s} />
+                <AvailabilityStrip staffMember={s} shifts={allShifts} />
 
                 <div className="flex items-center gap-3 pt-2 mt-1 border-t border-border/60 text-[11px]">
                   <span className="flex items-center gap-1 text-muted-foreground">
@@ -450,13 +450,13 @@ function AdminStaffDirectory() {
 }
 
 /** Compact 14-day strip used on directory cards. */
-function AvailabilityStrip({ staffMember }: { staffMember: Staff }) {
+function AvailabilityStrip({ staffMember, shifts }: { staffMember: Staff; shifts: import("@/lib/mock-data").Shift[] }) {
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const u = staffMember.unavailability.find((x) => x.date === iso);
-    const hasShift = allShifts.some((s) => s.assignedStaffId === staffMember.id && s.date === iso && s.status !== "rejected");
+    const hasShift = shifts.some((s) => s.assignedStaffId === staffMember.id && s.date === iso && s.status !== "rejected");
     return { iso, day: d.getDate(), dow: d.getDay(), unavail: u, hasShift };
   });
 
