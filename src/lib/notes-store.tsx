@@ -99,6 +99,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       message: `${author?.name || "Guide"} ${categoryLabel[note.category]} on "${tourName}": ${note.message}`,
       type: "field",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      attachments: note.attachments,
     };
     setFeed((prev) => [update, ...prev]);
   };
