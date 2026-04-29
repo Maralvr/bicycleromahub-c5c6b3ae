@@ -8,6 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useNotesStore } from "@/lib/notes-store";
@@ -42,9 +45,39 @@ function TasksPage() {
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   const tasks = isAdmin ? allTasks : allTasks.filter((task) => task.assigneeId === staffId);
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
+  const guideOptions = staff.filter((s) => s.role === "guide");
+
+  const createTask = (input: { title: string; assigneeId: string; due: string; priority: Task["priority"] }) => {
+    const newTask: Task = {
+      id: `t-${Date.now()}`,
+      title: input.title.trim(),
+      assigneeId: input.assigneeId,
+      due: input.due,
+      priority: input.priority,
+      done: false,
+    };
+    setTasks((prev) => [newTask, ...prev]);
+    setNewTaskOpen(false);
+    // If a guide created a task for themselves, notify admins
+    if (!isAdmin && input.assigneeId === staffId) {
+      const me = staff.find((s) => s.id === staffId);
+      if (adminIds.length > 0) {
+        notifyGuides(adminIds, {
+          type: "task",
+          title: "New self-assigned task",
+          body: `${me?.name || "Guide"} added: ${newTask.title}`,
+          link: "/tasks",
+        });
+      }
+      toast.success("Task added", { description: "Admins notified." });
+    } else {
+      toast.success("Task added");
+    }
+  };
 
   const toggle = (id: string) => {
     const task = allTasks.find((x) => x.id === id);
@@ -100,18 +133,16 @@ function TasksPage() {
         title={t.tasks.title}
         subtitle={isAdmin ? t.tasks.subtitle : "Your assigned tasks"}
         actions={
-          isAdmin ? (
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <Button variant="outline" size="sm" onClick={() => { markAllRead(); toast.success("Marked updates as read"); }}>
-                  <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update{unreadCount > 1 ? "s" : ""}
-                </Button>
-              )}
-              <Button onClick={() => toast.success("Task editor would open")} className="shadow-[var(--shadow-elegant)]">
-                <Plus className="h-4 w-4 mr-1" /> {t.tasks.newTask}
+          <div className="flex items-center gap-2">
+            {isAdmin && unreadCount > 0 && (
+              <Button variant="outline" size="sm" onClick={() => { markAllRead(); toast.success("Marked updates as read"); }}>
+                <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update{unreadCount > 1 ? "s" : ""}
               </Button>
-            </div>
-          ) : null
+            )}
+            <Button onClick={() => setNewTaskOpen(true)} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {isAdmin ? t.tasks.newTask : "Add task for me"}
+            </Button>
+          </div>
         }
       />
 
@@ -184,6 +215,15 @@ function TasksPage() {
         task={updateDialogTask}
         onClose={() => setUpdateDialogTask(null)}
         onSubmit={submitUpdate}
+      />
+
+      <NewTaskDialog
+        open={newTaskOpen}
+        onClose={() => setNewTaskOpen(false)}
+        onCreate={createTask}
+        isAdmin={isAdmin}
+        currentStaffId={staffId}
+        guideOptions={guideOptions}
       />
     </AppShell>
   );
@@ -337,6 +377,102 @@ function UpdateDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>Send to admins</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NewTaskDialog({
+  open, onClose, onCreate, isAdmin, currentStaffId, guideOptions,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (input: { title: string; assigneeId: string; due: string; priority: Task["priority"] }) => void;
+  isAdmin: boolean;
+  currentStaffId: string | null | undefined;
+  guideOptions: typeof staff;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [title, setTitle] = useState("");
+  const [assigneeId, setAssigneeId] = useState<string>(currentStaffId || guideOptions[0]?.id || "");
+  const [due, setDue] = useState(today);
+  const [priority, setPriority] = useState<Task["priority"]>("medium");
+
+  const reset = () => {
+    setTitle("");
+    setAssigneeId(currentStaffId || guideOptions[0]?.id || "");
+    setDue(today);
+    setPriority("medium");
+  };
+
+  const submit = () => {
+    if (!title.trim() || !assigneeId) return;
+    onCreate({ title, assigneeId, due, priority });
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isAdmin ? "New task" : "Add a task for yourself"}</DialogTitle>
+          <DialogDescription>
+            {isAdmin ? "Assign a task to any guide." : "Track something you need to do today."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Title</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Inspect bike #12 brakes"
+              autoFocus
+            />
+          </div>
+
+          {isAdmin ? (
+            <div className="space-y-1.5">
+              <Label>Assignee</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
+                <SelectTrigger><SelectValue placeholder="Select guide" /></SelectTrigger>
+                <SelectContent>
+                  {guideOptions.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              This task will be assigned to you and visible to admins.
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Due</Label>
+              <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as Task["priority"])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={submit} disabled={!title.trim() || !assigneeId}>
+            <Plus className="h-4 w-4 mr-1" /> Add task
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
