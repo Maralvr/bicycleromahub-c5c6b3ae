@@ -41,6 +41,7 @@ function MyAvailabilityView() {
   const { t } = useI18n();
   const { staffId } = useCurrentUser();
   const { staff, loading } = useStaffStore();
+  const { shifts: allShifts } = useShiftsStore();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
   const [editOpen, setEditOpen] = useState(false);
 
@@ -212,6 +213,7 @@ function AdminStaffDirectory() {
   const { t } = useI18n();
   const { staff: mockStaff } = useStaffStore();
   const { staff: liveStaff } = useLiveStaff();
+  const { shifts: allShifts } = useShiftsStore();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
