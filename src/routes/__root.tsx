@@ -3,6 +3,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { CurrentUserProvider } from "@/lib/current-user";
 import { StaffStoreProvider } from "@/lib/staff-store";
 import { NotesStoreProvider } from "@/lib/notes-store";
+import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
