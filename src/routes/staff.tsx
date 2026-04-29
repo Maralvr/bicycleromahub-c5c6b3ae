@@ -12,7 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
-import { shifts as allShifts, Staff } from "@/lib/mock-data";
+import { Staff } from "@/lib/mock-data";
+import { useShiftsStore } from "@/lib/shifts-store";
 import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
