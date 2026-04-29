@@ -13,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
+import { useStaffStore } from "@/lib/staff-store";
 import { useNotesStore } from "@/lib/notes-store";
 import { useTaskUpdates, TaskUpdate } from "@/lib/task-updates-store";
-import { tasks as initialTasks, staff, Task, Attachment } from "@/lib/mock-data";
+import { useTasksStore } from "@/lib/tasks-store";
+import { Staff, Task, Attachment } from "@/lib/mock-data";
 import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker";
 import { Plus, Calendar, AlertCircle, CheckCircle2, MessageSquarePlus, Activity, Wrench, MessageSquare, BellDot, Search } from "lucide-react";
 import { useState } from "react";
@@ -41,7 +43,8 @@ function TasksPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const isAdmin = role === "admin";
-  const [allTasks, setTasks] = useState<Task[]>(initialTasks);
+  const { staff } = useStaffStore();
+  const { tasks: allTasks, createTasks, toggleTask } = useTasksStore();
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
@@ -51,32 +54,22 @@ function TasksPage() {
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
   const guideOptions = staff.filter((s) => s.role === "guide");
 
-  const createTask = (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
-    const stamp = Date.now();
-    const desc = input.description.trim();
-    const newTasks: Task[] = input.assigneeIds.map((aid, i) => ({
-      id: `t-${stamp}-${i}`,
-      title: input.title.trim(),
-      description: desc || undefined,
-      assigneeId: aid,
-      due: input.due,
-      priority: input.priority,
-      done: false,
-    }));
-    setTasks((prev) => [...newTasks, ...prev]);
+  const createTask = async (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
+    const newTasks = await createTasks(input);
     setNewTaskOpen(false);
+    const assigneeIds = newTasks.map((task) => task.assigneeId);
 
     // Admin assigned to multiple guides -> notify each guide
-    if (isAdmin && input.assigneeIds.length > 0) {
-      notifyGuides(input.assigneeIds, {
+    if (isAdmin && assigneeIds.length > 0) {
+      notifyGuides(assigneeIds, {
         type: "task",
-        title: input.assigneeIds.length > 1 ? "New task for the team" : "New task assigned",
+        title: assigneeIds.length > 1 ? "New task for the team" : "New task assigned",
         body: input.title.trim(),
         link: "/tasks",
       });
       toast.success(
-        input.assigneeIds.length > 1
-          ? `Task assigned to ${input.assigneeIds.length} guides`
+        assigneeIds.length > 1
+          ? `Task assigned to ${assigneeIds.length} guides`
           : "Task assigned",
       );
       return;
@@ -99,11 +92,11 @@ function TasksPage() {
     }
   };
 
-  const toggle = (id: string) => {
+  const toggle = async (id: string) => {
     const task = allTasks.find((x) => x.id === id);
     if (!task) return;
     const nowDone = !task.done;
-    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: nowDone } : x)));
+    await toggleTask(id, nowDone);
     // Guides marking their own task as done -> live update for admins
     if (!isAdmin && task.assigneeId === staffId && nowDone) {
       const me = staff.find((s) => s.id === staffId);
