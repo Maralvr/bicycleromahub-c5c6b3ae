@@ -55,7 +55,13 @@ function TasksPage() {
   const guideOptions = staff.filter((s) => s.role === "guide");
 
   const createTask = async (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
-    const newTasks = await createTasks(input);
+    let newTasks: Task[] = [];
+    try {
+      newTasks = await createTasks(input);
+    } catch (error) {
+      toast.error("Could not create task", { description: error instanceof Error ? error.message : "Please try again." });
+      return;
+    }
     setNewTaskOpen(false);
     const assigneeIds = newTasks.map((task) => task.assigneeId);
 
@@ -96,7 +102,12 @@ function TasksPage() {
     const task = allTasks.find((x) => x.id === id);
     if (!task) return;
     const nowDone = !task.done;
-    await toggleTask(id, nowDone);
+    try {
+      await toggleTask(id, nowDone);
+    } catch (error) {
+      toast.error("Could not update task", { description: error instanceof Error ? error.message : "Please try again." });
+      return;
+    }
     // Guides marking their own task as done -> live update for admins
     if (!isAdmin && task.assigneeId === staffId && nowDone) {
       const me = staff.find((s) => s.id === staffId);
