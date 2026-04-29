@@ -424,6 +424,7 @@ function NewTaskDialog({
       ? guideOptions[0] ? [guideOptions[0].id] : []
       : currentStaffId ? [currentStaffId] : [];
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialIds());
   const [due, setDue] = useState(today);
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -435,6 +436,7 @@ function NewTaskDialog({
 
   const reset = () => {
     setTitle("");
+    setDescription("");
     setAssigneeIds(initialIds());
     setDue(today);
     setPriority("medium");
@@ -443,7 +445,7 @@ function NewTaskDialog({
 
   const submit = () => {
     if (!title.trim() || assigneeIds.length === 0) return;
-    onCreate({ title, assigneeIds, due, priority });
+    onCreate({ title, description, assigneeIds, due, priority });
     reset();
   };
 
