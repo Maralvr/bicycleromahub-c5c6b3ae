@@ -16,6 +16,8 @@ import { shifts as allShifts, Staff } from "@/lib/mock-data";
 import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
+import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
+import { useLiveStaff } from "@/lib/live-staff";
 
 export const Route = createFileRoute("/staff")({
   head: () => ({
@@ -199,10 +201,44 @@ function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType
 
 function AdminStaffDirectory() {
   const { t } = useI18n();
-  const { staff } = useStaffStore();
+  const { staff: mockStaff } = useStaffStore();
+  const { staff: liveStaff } = useLiveStaff();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
+
+  // Merge: mock staff first, enriched with profileId when name matches a live row,
+  // then append any live rows that didn't match a mock entry.
+  const staff = useMemo<Staff[]>(() => {
+    const liveByName = new Map(liveStaff.map((l) => [l.name.toLowerCase(), l]));
+    const usedLiveIds = new Set<string>();
+    const merged: Staff[] = mockStaff.map((m) => {
+      const live = liveByName.get(m.name.toLowerCase());
+      if (live) {
+        usedLiveIds.add(live.id);
+        return { ...m, profileId: live.profile_id, isLive: true };
+      }
+      return m;
+    });
+    for (const l of liveStaff) {
+      if (usedLiveIds.has(l.id)) continue;
+      merged.push({
+        id: `live-${l.id}`,
+        profileId: l.profile_id,
+        isLive: true,
+        name: l.name,
+        avatar: l.avatar || l.name.slice(0, 2).toUpperCase(),
+        role: l.role,
+        status: l.status,
+        phone: l.phone ?? "",
+        tags: l.tags ?? [],
+        languages: l.languages ?? [],
+        licenses: l.licenses ?? [],
+        unavailability: [],
+      });
+    }
+    return merged;
+  }, [mockStaff, liveStaff]);
 
   const counts = useMemo(
     () => ({
@@ -282,7 +318,12 @@ function AdminStaffDirectory() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{s.name}</h3>
+                      <h3 className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                        <span className="truncate">{s.name}</span>
+                        {s.isLive && (
+                          <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-wider bg-success/15 text-success border-0 flex-shrink-0">Live</Badge>
+                        )}
+                      </h3>
                       <div className="text-xs text-muted-foreground capitalize">{s.role}</div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
@@ -371,6 +412,16 @@ function AdminStaffDirectory() {
                   </div>
                 </div>
               </SheetHeader>
+
+              <div className="pt-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-sm text-foreground">Rental points</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Locations this staff member can be assigned to.</p>
+                  </div>
+                </div>
+                <StaffRentalPointsPanel userId={liveOpenStaff.profileId ?? null} />
+              </div>
 
               <div className="pt-5">
                 <div className="mb-3">
