@@ -39,9 +39,17 @@ function StaffPage() {
 function MyAvailabilityView() {
   const { t } = useI18n();
   const { staffId } = useCurrentUser();
-  const { staff } = useStaffStore();
+  const { staff, loading } = useStaffStore();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
   const [editOpen, setEditOpen] = useState(false);
+
+  if (loading || !me) {
+    return (
+      <AppShell>
+        <div className="text-sm text-muted-foreground py-12 text-center">Loading your profile…</div>
+      </AppShell>
+    );
+  }
 
   // Stats for "my month"
   const yearMonth = new Date().toISOString().slice(0, 7);
