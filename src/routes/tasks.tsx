@@ -7,17 +7,43 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
+import { useStaffStore } from "@/lib/staff-store";
 import { useNotesStore } from "@/lib/notes-store";
 import { useTaskUpdates, TaskUpdate } from "@/lib/task-updates-store";
-import { tasks as initialTasks, staff, Task, Attachment } from "@/lib/mock-data";
+import { useTasksStore } from "@/lib/tasks-store";
+import { Staff, Task, Attachment } from "@/lib/mock-data";
 import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker";
-import { Plus, Calendar, AlertCircle, CheckCircle2, MessageSquarePlus, Activity, Wrench, MessageSquare, BellDot, Search } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  AlertCircle,
+  CheckCircle2,
+  MessageSquarePlus,
+  Activity,
+  Wrench,
+  MessageSquare,
+  BellDot,
+  Search,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -41,7 +67,8 @@ function TasksPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const isAdmin = role === "admin";
-  const [allTasks, setTasks] = useState<Task[]>(initialTasks);
+  const { staff } = useStaffStore();
+  const { tasks: allTasks, createTasks, toggleTask } = useTasksStore();
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
@@ -51,33 +78,35 @@ function TasksPage() {
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
   const guideOptions = staff.filter((s) => s.role === "guide");
 
-  const createTask = (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
-    const stamp = Date.now();
-    const desc = input.description.trim();
-    const newTasks: Task[] = input.assigneeIds.map((aid, i) => ({
-      id: `t-${stamp}-${i}`,
-      title: input.title.trim(),
-      description: desc || undefined,
-      assigneeId: aid,
-      due: input.due,
-      priority: input.priority,
-      done: false,
-    }));
-    setTasks((prev) => [...newTasks, ...prev]);
+  const createTask = async (input: {
+    title: string;
+    description: string;
+    assigneeIds: string[];
+    due: string;
+    priority: Task["priority"];
+  }) => {
+    let newTasks: Task[] = [];
+    try {
+      newTasks = await createTasks(input);
+    } catch (error) {
+      toast.error("Could not create task", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+      return;
+    }
     setNewTaskOpen(false);
+    const assigneeIds = newTasks.map((task) => task.assigneeId);
 
     // Admin assigned to multiple guides -> notify each guide
-    if (isAdmin && input.assigneeIds.length > 0) {
-      notifyGuides(input.assigneeIds, {
+    if (isAdmin && assigneeIds.length > 0) {
+      notifyGuides(assigneeIds, {
         type: "task",
-        title: input.assigneeIds.length > 1 ? "New task for the team" : "New task assigned",
+        title: assigneeIds.length > 1 ? "New task for the team" : "New task assigned",
         body: input.title.trim(),
         link: "/tasks",
       });
       toast.success(
-        input.assigneeIds.length > 1
-          ? `Task assigned to ${input.assigneeIds.length} guides`
-          : "Task assigned",
+        assigneeIds.length > 1 ? `Task assigned to ${assigneeIds.length} guides` : "Task assigned",
       );
       return;
     }
@@ -99,11 +128,18 @@ function TasksPage() {
     }
   };
 
-  const toggle = (id: string) => {
+  const toggle = async (id: string) => {
     const task = allTasks.find((x) => x.id === id);
     if (!task) return;
     const nowDone = !task.done;
-    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: nowDone } : x)));
+    try {
+      await toggleTask(id, nowDone);
+    } catch (error) {
+      toast.error("Could not update task", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+      return;
+    }
     // Guides marking their own task as done -> live update for admins
     if (!isAdmin && task.assigneeId === staffId && nowDone) {
       const me = staff.find((s) => s.id === staffId);
@@ -126,9 +162,20 @@ function TasksPage() {
     }
   };
 
-  const submitUpdate = (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => {
+  const submitUpdate = (
+    task: Task,
+    message: string,
+    type: TaskUpdate["type"],
+    attachments: Attachment[],
+  ) => {
     if (!staffId) return;
-    addUpdate({ taskId: task.id, authorStaffId: staffId, message, type, attachments: attachments.length ? attachments : undefined });
+    addUpdate({
+      taskId: task.id,
+      authorStaffId: staffId,
+      message,
+      type,
+      attachments: attachments.length ? attachments : undefined,
+    });
     const me = staff.find((s) => s.id === staffId);
     if (adminIds.length > 0) {
       notifyGuides(adminIds, {
@@ -155,8 +202,16 @@ function TasksPage() {
         actions={
           <div className="flex items-center gap-2">
             {isAdmin && unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={() => { markAllRead(); toast.success("Marked updates as read"); }}>
-                <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update{unreadCount > 1 ? "s" : ""}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  markAllRead();
+                  toast.success("Marked updates as read");
+                }}
+              >
+                <BellDot className="h-4 w-4 mr-1" /> {unreadCount} new update
+                {unreadCount > 1 ? "s" : ""}
               </Button>
             )}
             <Button onClick={() => setNewTaskOpen(true)} className="shadow-[var(--shadow-elegant)]">
@@ -169,12 +224,22 @@ function TasksPage() {
       <Card className="p-5 mb-6 bg-gradient-to-br from-primary/8 via-card to-card border-primary/20">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">Today's progress</div>
-            <div className="text-2xl font-bold tracking-tight">{done.length} <span className="text-muted-foreground font-medium text-base">/ {tasks.length} completed</span></div>
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">
+              Today's progress
+            </div>
+            <div className="text-2xl font-bold tracking-tight">
+              {done.length}{" "}
+              <span className="text-muted-foreground font-medium text-base">
+                / {tasks.length} completed
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3 min-w-[200px]">
             <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-primary to-primary-glow rounded-full transition-all" style={{ width: `${completion}%` }} />
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary-glow rounded-full transition-all"
+                style={{ width: `${completion}%` }}
+              />
             </div>
             <span className="text-sm font-bold tabular-nums">{completion}%</span>
           </div>
@@ -188,13 +253,16 @@ function TasksPage() {
               <AlertCircle className="h-4 w-4 text-warning-foreground" />
             </div>
             <h2 className="font-semibold">{t.common.todo}</h2>
-            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{open.length}</span>
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">
+              {open.length}
+            </span>
           </div>
           <div className="space-y-2">
             {open.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
+                staff={staff}
                 onToggle={toggle}
                 isAdmin={isAdmin}
                 isMine={task.assigneeId === staffId}
@@ -202,7 +270,9 @@ function TasksPage() {
                 onPostUpdate={() => setUpdateDialogTask(task)}
               />
             ))}
-            {open.length === 0 && <div className="text-sm text-muted-foreground text-center py-8">All done! 🎉</div>}
+            {open.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-8">All done! 🎉</div>
+            )}
           </div>
         </Card>
 
@@ -212,13 +282,16 @@ function TasksPage() {
               <CheckCircle2 className="h-4 w-4 text-success-foreground" />
             </div>
             <h2 className="font-semibold">{t.common.done}</h2>
-            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{done.length}</span>
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">
+              {done.length}
+            </span>
           </div>
           <div className="space-y-2">
             {done.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
+                staff={staff}
                 onToggle={toggle}
                 isAdmin={isAdmin}
                 isMine={task.assigneeId === staffId}
@@ -226,7 +299,11 @@ function TasksPage() {
                 onPostUpdate={() => setUpdateDialogTask(task)}
               />
             ))}
-            {done.length === 0 && <div className="text-sm text-muted-foreground text-center py-8">No tasks completed yet.</div>}
+            {done.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-8">
+                No tasks completed yet.
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -249,16 +326,38 @@ function TasksPage() {
   );
 }
 
-const updateTypeStyles: Record<TaskUpdate["type"], { label: string; cls: string; Icon: typeof MessageSquare }> = {
-  progress: { label: "Update", cls: "bg-primary/10 text-primary border-primary/30", Icon: MessageSquare },
-  completed: { label: "Done", cls: "bg-success/15 text-success-foreground border-success/30", Icon: CheckCircle2 },
-  blocker: { label: "Blocker", cls: "bg-destructive/10 text-destructive border-destructive/30", Icon: Wrench },
+const updateTypeStyles: Record<
+  TaskUpdate["type"],
+  { label: string; cls: string; Icon: typeof MessageSquare }
+> = {
+  progress: {
+    label: "Update",
+    cls: "bg-primary/10 text-primary border-primary/30",
+    Icon: MessageSquare,
+  },
+  completed: {
+    label: "Done",
+    cls: "bg-success/15 text-success-foreground border-success/30",
+    Icon: CheckCircle2,
+  },
+  blocker: {
+    label: "Blocker",
+    cls: "bg-destructive/10 text-destructive border-destructive/30",
+    Icon: Wrench,
+  },
 };
 
 function TaskRow({
-  task, onToggle, isAdmin, isMine, updates, onPostUpdate,
+  task,
+  staff,
+  onToggle,
+  isAdmin,
+  isMine,
+  updates,
+  onPostUpdate,
 }: {
   task: Task;
+  staff: Staff[];
   onToggle: (id: string) => void;
   isAdmin: boolean;
   isMine: boolean;
@@ -272,7 +371,9 @@ function TaskRow({
   const hasUnread = updates.some((u) => !u.read);
 
   return (
-    <div className={`p-3 rounded-lg border transition-all ${task.done ? "border-border/40 opacity-70 bg-muted/30" : "border-border/60 bg-card hover:border-primary/40 hover:shadow-sm"} ${hasUnread && isAdmin ? "ring-1 ring-primary/40" : ""}`}>
+    <div
+      className={`p-3 rounded-lg border transition-all ${task.done ? "border-border/40 opacity-70 bg-muted/30" : "border-border/60 bg-card hover:border-primary/40 hover:shadow-sm"} ${hasUnread && isAdmin ? "ring-1 ring-primary/40" : ""}`}
+    >
       <div className="flex items-start gap-3">
         <Checkbox
           checked={task.done}
@@ -281,28 +382,46 @@ function TaskRow({
           className="mt-0.5"
         />
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium leading-snug ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{task.title}</div>
+          <div
+            className={`text-sm font-medium leading-snug ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}
+          >
+            {task.title}
+          </div>
           {task.description && (
-            <p className={`text-xs mt-1 whitespace-pre-wrap ${task.done ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+            <p
+              className={`text-xs mt-1 whitespace-pre-wrap ${task.done ? "text-muted-foreground/70" : "text-muted-foreground"}`}
+            >
               {task.description}
             </p>
           )}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {assignee && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Avatar name={assignee.name} initials={assignee.avatar} size="sm" className="!h-5 !w-5 text-[9px] !rounded-full" />
+                <Avatar
+                  name={assignee.name}
+                  initials={assignee.avatar}
+                  size="sm"
+                  className="!h-5 !w-5 text-[9px] !rounded-full"
+                />
                 <span className="font-medium text-foreground/80">{assignee.name}</span>
               </div>
             )}
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" /> {task.due}
             </div>
-            <Badge variant="outline" className={`text-[10px] uppercase tracking-wider font-bold ${priorityStyles[task.priority]}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] uppercase tracking-wider font-bold ${priorityStyles[task.priority]}`}
+            >
               {t.common[task.priority]}
             </Badge>
             {updates.length > 0 && (
-              <Badge variant="outline" className={`text-[10px] gap-1 ${hasUnread && isAdmin ? "border-primary text-primary" : ""}`}>
-                <Activity className="h-2.5 w-2.5" /> {updates.length} update{updates.length > 1 ? "s" : ""}
+              <Badge
+                variant="outline"
+                className={`text-[10px] gap-1 ${hasUnread && isAdmin ? "border-primary text-primary" : ""}`}
+              >
+                <Activity className="h-2.5 w-2.5" /> {updates.length} update
+                {updates.length > 1 ? "s" : ""}
               </Badge>
             )}
           </div>
@@ -321,22 +440,38 @@ function TaskRow({
                 const author = staff.find((s) => s.id === u.authorStaffId);
                 const meta = updateTypeStyles[u.type];
                 const Icon = meta.Icon;
-                const time = new Date(u.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                const time = new Date(u.createdAt).toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
                 return (
                   <div key={u.id} className="text-xs flex items-start gap-2">
-                    <span className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${meta.cls}`}>
+                    <span
+                      className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${meta.cls}`}
+                    >
                       <Icon className="h-2.5 w-2.5" /> {meta.label}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-foreground/85">{u.message}</div>
-                      {u.attachments && u.attachments.length > 0 && <AttachmentList attachments={u.attachments} />}
-                      <div className="text-[10px] text-muted-foreground mt-1">{author?.name || "Guide"} · {time}{!u.read && isAdmin && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />}</div>
+                      {u.attachments && u.attachments.length > 0 && (
+                        <AttachmentList attachments={u.attachments} />
+                      )}
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        {author?.name || "Guide"} · {time}
+                        {!u.read && isAdmin && (
+                          <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
               {updates.length > 4 && (
-                <div className="text-[10px] text-muted-foreground italic">+{updates.length - 4} earlier updates</div>
+                <div className="text-[10px] text-muted-foreground italic">
+                  +{updates.length - 4} earlier updates
+                </div>
               )}
             </div>
           )}
@@ -347,26 +482,53 @@ function TaskRow({
 }
 
 function UpdateDialog({
-  task, onClose, onSubmit,
+  task,
+  onClose,
+  onSubmit,
 }: {
   task: Task | null;
   onClose: () => void;
-  onSubmit: (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => void;
+  onSubmit: (
+    task: Task,
+    message: string,
+    type: TaskUpdate["type"],
+    attachments: Attachment[],
+  ) => void;
 }) {
   const [message, setMessage] = useState("");
   const [type, setType] = useState<TaskUpdate["type"]>("progress");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const open = !!task;
-  const reset = () => { setMessage(""); setType("progress"); setAttachments([]); };
+  const reset = () => {
+    setMessage("");
+    setType("progress");
+    setAttachments([]);
+  };
   const handleSubmit = () => {
     if (!task || (!message.trim() && attachments.length === 0)) return;
-    onSubmit(task, message.trim() || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`), type, attachments);
+    onSubmit(
+      task,
+      message.trim() ||
+        (attachments.length === 1
+          ? `Shared ${attachments[0].name}`
+          : `Shared ${attachments.length} files`),
+      type,
+      attachments,
+    );
     reset();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          onClose();
+          reset();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Post task update</DialogTitle>
@@ -400,8 +562,12 @@ function UpdateDialog({
           <AttachmentPicker attachments={attachments} onChange={setAttachments} />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>Send to admins</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>
+            Send to admins
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -409,20 +575,35 @@ function UpdateDialog({
 }
 
 function NewTaskDialog({
-  open, onClose, onCreate, isAdmin, currentStaffId, guideOptions,
+  open,
+  onClose,
+  onCreate,
+  isAdmin,
+  currentStaffId,
+  guideOptions,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
+  onCreate: (input: {
+    title: string;
+    description: string;
+    assigneeIds: string[];
+    due: string;
+    priority: Task["priority"];
+  }) => void;
   isAdmin: boolean;
   currentStaffId: string | null | undefined;
-  guideOptions: typeof staff;
+  guideOptions: Staff[];
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const initialIds = () =>
     isAdmin
-      ? guideOptions[0] ? [guideOptions[0].id] : []
-      : currentStaffId ? [currentStaffId] : [];
+      ? guideOptions[0]
+        ? [guideOptions[0].id]
+        : []
+      : currentStaffId
+        ? [currentStaffId]
+        : [];
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialIds());
@@ -465,12 +646,22 @@ function NewTaskDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          onClose();
+          reset();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isAdmin ? "New task" : "Add a task for yourself"}</DialogTitle>
           <DialogDescription>
-            {isAdmin ? "Assign a task to one, several, or all guides." : "Track something you need to do today."}
+            {isAdmin
+              ? "Assign a task to one, several, or all guides."
+              : "Track something you need to do today."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -486,7 +677,8 @@ function NewTaskDialog({
 
           <div className="space-y-1.5">
             <Label>
-              Description <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              Description{" "}
+              <span className="text-xs text-muted-foreground font-normal">(optional)</span>
             </Label>
             <Textarea
               value={description}
@@ -499,11 +691,29 @@ function NewTaskDialog({
           {isAdmin ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label>Assignees {assigneeIds.length > 0 && <span className="text-xs text-muted-foreground font-normal">({assigneeIds.length})</span>}</Label>
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleAll} disabled={baseList.length === 0}>
+                <Label>
+                  Assignees{" "}
+                  {assigneeIds.length > 0 && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      ({assigneeIds.length})
+                    </span>
+                  )}
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={toggleAll}
+                  disabled={baseList.length === 0}
+                >
                   {allSelected
-                    ? (guideQuery.trim() ? "Clear filtered" : "Clear all")
-                    : (guideQuery.trim() ? "Select filtered" : "Select all guides")}
+                    ? guideQuery.trim()
+                      ? "Clear filtered"
+                      : "Clear all"
+                    : guideQuery.trim()
+                      ? "Select filtered"
+                      : "Select all guides"}
                 </Button>
               </div>
               <div className="relative">
@@ -536,7 +746,9 @@ function NewTaskDialog({
                 )}
               </div>
               {assigneeIds.length === guideOptions.length && guideOptions.length > 0 && (
-                <p className="text-xs text-muted-foreground">This task will be created for every guide.</p>
+                <p className="text-xs text-muted-foreground">
+                  This task will be created for every guide.
+                </p>
               )}
             </div>
           ) : (
@@ -553,7 +765,9 @@ function NewTaskDialog({
             <div className="space-y-1.5">
               <Label>Priority</Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as Task["priority"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -564,9 +778,12 @@ function NewTaskDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={!title.trim() || assigneeIds.length === 0}>
-            <Plus className="h-4 w-4 mr-1" /> {assigneeIds.length > 1 ? `Add ${assigneeIds.length} tasks` : "Add task"}
+            <Plus className="h-4 w-4 mr-1" />{" "}
+            {assigneeIds.length > 1 ? `Add ${assigneeIds.length} tasks` : "Add task"}
           </Button>
         </DialogFooter>
       </DialogContent>
