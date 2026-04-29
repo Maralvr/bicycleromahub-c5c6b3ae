@@ -168,12 +168,6 @@ function ShiftsPage() {
             <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
             <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
-          </TabsList>
-        )}
-        {false && (
-          <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
-        )}
-        {/* removed duplicate closing handled below */}
             <TabsTrigger value="past">Past tours</TabsTrigger>
           </TabsList>
         )}
