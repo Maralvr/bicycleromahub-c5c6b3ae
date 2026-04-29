@@ -280,9 +280,11 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string
                       {guide ? <Avatar name={guide.name} initials={guide.avatar} size="sm" /> : <User className="h-3 w-3" />}
                       {guide?.name || "Unassigned"}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Users className="h-3 w-3" /> {s.participants.adults + s.participants.teens + s.participants.infants} pax
-                    </div>
+                    {s.participants && (
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3 w-3" /> {s.participants.adults + s.participants.teens + s.participants.infants} pax
+                      </div>
+                    )}
                     {s.rate !== undefined && (
                       <div className="flex items-center gap-1.5"><Euro className="h-3 w-3" /> {s.rate}</div>
                     )}
