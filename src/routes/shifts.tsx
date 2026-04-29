@@ -124,25 +124,45 @@ function ShiftsPage() {
             <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
             <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
             <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
+            <TabsTrigger value="past">Past tours</TabsTrigger>
+          </TabsList>
+        )}
+        {!isAdmin && (
+          <TabsList className="bg-muted">
+            <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
+            <TabsTrigger value="past">Past tours</TabsTrigger>
           </TabsList>
         )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={shifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={shifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={shifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={upcomingShifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+        </TabsContent>
+        <TabsContent value="past" className="mt-5">
+          <ShiftList
+            shifts={(isAdmin ? pastShifts : pastShifts.filter((s) => s.assignedStaffId === staffId)).sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))}
+            allShifts={shifts}
+            guideView={!isAdmin}
+            pastView
+            onAssign={assignStaff}
+            onOpenAssignDialog={setAssignDialogShift}
+            onAccept={(id) => updateStatus(id, "accepted")}
+            onReject={(id) => updateStatus(id, "rejected")}
+            onDuplicate={duplicate}
+          />
         </TabsContent>
       </Tabs>
 
