@@ -51,11 +51,13 @@ function TasksPage() {
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
   const guideOptions = staff.filter((s) => s.role === "guide");
 
-  const createTask = (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
+  const createTask = (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
     const stamp = Date.now();
+    const desc = input.description.trim();
     const newTasks: Task[] = input.assigneeIds.map((aid, i) => ({
       id: `t-${stamp}-${i}`,
       title: input.title.trim(),
+      description: desc || undefined,
       assigneeId: aid,
       due: input.due,
       priority: input.priority,
