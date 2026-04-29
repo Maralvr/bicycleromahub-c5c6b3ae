@@ -257,6 +257,8 @@ function NotificationsPage() {
             <div className="space-y-5">
               {updates.map((u) => {
                 const author = staff.find((s) => s.id === u.authorId);
+                const isLong = u.message.length > 180;
+                const isOpen = expandedFeed.has(u.id);
                 return (
                   <div key={u.id} className="flex gap-3 relative">
                     <div className="relative z-10">
@@ -274,8 +276,21 @@ function NotificationsPage() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">· {u.time}</span>
                       </div>
-                      <div className={`mt-1.5 p-3 rounded-lg text-sm leading-snug ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"}`}>
-                        {u.message}
+                      <div
+                        onClick={() => isLong && toggleFeed(u.id)}
+                        className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
+                      >
+                        <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
+                        {isLong && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleFeed(u.id); }}
+                            className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                          >
+                            {isOpen ? "Show less" : "Show more"}
+                            <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
                         {u.attachments && u.attachments.length > 0 && (
                           <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {u.attachments.map((a) => (
