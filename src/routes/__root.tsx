@@ -74,8 +74,10 @@ function RootComponent() {
       <CurrentUserProvider>
         <StaffStoreProvider>
           <NotesStoreProvider>
-            <Outlet />
-            <Toaster />
+            <TaskUpdatesStoreProvider>
+              <Outlet />
+              <Toaster />
+            </TaskUpdatesStoreProvider>
           </NotesStoreProvider>
         </StaffStoreProvider>
       </CurrentUserProvider>
