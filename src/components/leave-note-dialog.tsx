@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shift, GuideNote } from "@/lib/mock-data";
+import { Shift, GuideNote, Attachment } from "@/lib/mock-data";
+import { AttachmentPicker } from "@/components/attachment-picker";
 import { Wrench, MessageSquare, AlertTriangle, User } from "lucide-react";
 
 type Category = GuideNote["category"];
@@ -24,25 +25,32 @@ export function LeaveNoteDialog({
 }) {
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<Category>("general");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+
+  const reset = () => {
+    setMessage("");
+    setCategory("general");
+    setAttachments([]);
+  };
 
   const handleSubmit = () => {
-    if (!shift || !message.trim()) return;
+    if (!shift || (!message.trim() && attachments.length === 0)) return;
     const note: GuideNote = {
       id: `gn-${Date.now()}`,
       shiftId: shift.id,
       authorStaffId,
-      message: message.trim(),
+      message: message.trim() || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`),
       category,
       createdAt: new Date().toISOString(),
+      attachments: attachments.length ? attachments : undefined,
     };
     onSubmit(note);
-    setMessage("");
-    setCategory("general");
+    reset();
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Leave a note for admins</DialogTitle>
@@ -76,11 +84,16 @@ export function LeaveNoteDialog({
               rows={5}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label>Attachments</Label>
+            <AttachmentPicker attachments={attachments} onChange={setAttachments} />
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 mt-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!message.trim()}>Send to admins</Button>
+          <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>Send to admins</Button>
         </div>
       </DialogContent>
     </Dialog>
