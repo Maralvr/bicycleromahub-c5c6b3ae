@@ -1,5 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -25,7 +24,7 @@ const PayloadSchema = z.object({
   currency: z.string().max(8).optional(),
   notes: z.string().max(2000).optional(),
   productTags: z.array(z.string().max(80)).max(50).optional(),
-  signature: z.string().max(256).optional(),
+  status: z.enum(["CONFIRMED", "CANCELLED", "PENDING"]).optional(),
 });
 
 type Payload = z.infer<typeof PayloadSchema>;
@@ -92,43 +91,71 @@ function mapToShiftRow(p: Payload) {
   };
 }
 
-export const bokunWebhook = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => {
-    const parsed = PayloadSchema.safeParse(input);
-    if (!parsed.success) throw new Error("Invalid payload");
-    return parsed.data;
-  })
-  .handler(async ({ data }) => {
-    const secret = process.env.BOKUN_WEBHOOK_SECRET;
-    if (secret) {
-      if (!data.signature) throw new Error("Missing signature");
-      const { signature: _sig, ...rest } = data;
-      const expected = createHmac("sha256", secret).update(JSON.stringify(rest)).digest("hex");
-      try {
-        const a = Buffer.from(data.signature, "hex");
-        const b = Buffer.from(expected, "hex");
-        if (a.length !== b.length || !timingSafeEqual(a, b)) throw new Error("Invalid signature");
-      } catch {
-        throw new Error("Invalid signature");
-      }
-    }
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Bokun-Signature, X-Webhook-Signature",
+};
 
-    const row = mapToShiftRow(data);
+export const Route = createFileRoute("/api/public/bokun-webhook")({
+  server: {
+    handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
 
-    const { data: existing } = await supabaseAdmin
-      .from("shifts")
-      .select("id")
-      .eq("source", "bokun")
-      .eq("booking_id", row.booking_id)
-      .maybeSingle();
+      GET: async () =>
+        Response.json(
+          { ok: true, name: "bokun-webhook", method: "POST", note: "POST a Bokun booking payload here." },
+          { headers: CORS },
+        ),
 
-    if (existing) {
-      const { error } = await supabaseAdmin.from("shifts").update(row).eq("id", existing.id);
-      if (error) throw new Error(error.message);
-      return { ok: true, action: "updated" as const, id: existing.id };
-    }
+      POST: async ({ request }) => {
+        let json: unknown;
+        try {
+          json = await request.json();
+        } catch {
+          return Response.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
+        }
 
-    const { data: created, error } = await supabaseAdmin.from("shifts").insert(row).select("id").single();
-    if (error) throw new Error(error.message);
-    return { ok: true, action: "created" as const, id: created.id };
-  });
+        const parsed = PayloadSchema.safeParse(json);
+        if (!parsed.success) {
+          return Response.json(
+            { error: "Invalid payload", issues: parsed.error.issues },
+            { status: 400, headers: CORS },
+          );
+        }
+
+        const row = mapToShiftRow(parsed.data);
+
+        const { data: existing } = await supabaseAdmin
+          .from("shifts")
+          .select("id")
+          .eq("source", "bokun")
+          .eq("booking_id", row.booking_id)
+          .maybeSingle();
+
+        // Cancellations: delete if it exists
+        if (parsed.data.status === "CANCELLED") {
+          if (existing) {
+            await supabaseAdmin.from("shifts").delete().eq("id", existing.id);
+            return Response.json({ ok: true, action: "cancelled", id: existing.id }, { headers: CORS });
+          }
+          return Response.json({ ok: true, action: "noop" }, { headers: CORS });
+        }
+
+        if (existing) {
+          const { error } = await supabaseAdmin.from("shifts").update(row).eq("id", existing.id);
+          if (error) return Response.json({ error: error.message }, { status: 500, headers: CORS });
+          return Response.json({ ok: true, action: "updated", id: existing.id }, { headers: CORS });
+        }
+
+        const { data: created, error } = await supabaseAdmin
+          .from("shifts")
+          .insert(row)
+          .select("id")
+          .single();
+        if (error) return Response.json({ error: error.message }, { status: 500, headers: CORS });
+        return Response.json({ ok: true, action: "created", id: created.id }, { headers: CORS });
+      },
+    },
+  },
+});
