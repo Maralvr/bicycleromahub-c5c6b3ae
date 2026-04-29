@@ -318,7 +318,12 @@ function AdminStaffDirectory() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{s.name}</h3>
+                      <h3 className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                        <span className="truncate">{s.name}</span>
+                        {s.isLive && (
+                          <Badge className="h-4 px-1.5 text-[9px] uppercase tracking-wider bg-success/15 text-success border-0 flex-shrink-0">Live</Badge>
+                        )}
+                      </h3>
                       <div className="text-xs text-muted-foreground capitalize">{s.role}</div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
