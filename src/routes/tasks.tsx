@@ -285,21 +285,22 @@ function UpdateDialog({
 }: {
   task: Task | null;
   onClose: () => void;
-  onSubmit: (task: Task, message: string, type: TaskUpdate["type"]) => void;
+  onSubmit: (task: Task, message: string, type: TaskUpdate["type"], attachments: Attachment[]) => void;
 }) {
   const [message, setMessage] = useState("");
   const [type, setType] = useState<TaskUpdate["type"]>("progress");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const open = !!task;
+  const reset = () => { setMessage(""); setType("progress"); setAttachments([]); };
   const handleSubmit = () => {
-    if (!task || !message.trim()) return;
-    onSubmit(task, message.trim(), type);
-    setMessage("");
-    setType("progress");
+    if (!task || (!message.trim() && attachments.length === 0)) return;
+    onSubmit(task, message.trim() || (attachments.length === 1 ? `Shared ${attachments[0].name}` : `Shared ${attachments.length} files`), type, attachments);
+    reset();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); setMessage(""); setType("progress"); } }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { onClose(); reset(); } }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Post task update</DialogTitle>
@@ -330,10 +331,11 @@ function UpdateDialog({
             rows={4}
             className="resize-none"
           />
+          <AttachmentPicker attachments={attachments} onChange={setAttachments} />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!message.trim()}>Send to admins</Button>
+          <Button onClick={handleSubmit} disabled={!message.trim() && attachments.length === 0}>Send to admins</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
