@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
+import { useCurrentUser } from "@/lib/current-user";
 import { tasks as initialTasks, staff, Task } from "@/lib/mock-data";
 import { Plus, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
