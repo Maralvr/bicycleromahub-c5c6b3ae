@@ -13,6 +13,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TasksRoute = TasksRouteImport.update({
@@ -35,6 +36,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -65,14 +74,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/notifications' | '/shifts' | '/staff' | '/tasks'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/notifications'
+    | '/shifts'
+    | '/staff'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/notifications' | '/shifts' | '/staff' | '/tasks'
-  id: '__root__' | '/' | '/notifications' | '/shifts' | '/staff' | '/tasks'
+  to: '/' | '/calendar' | '/notifications' | '/shifts' | '/staff' | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/notifications'
+    | '/shifts'
+    | '/staff'
+    | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
   NotificationsRoute: typeof NotificationsRoute
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +151,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
   NotificationsRoute: NotificationsRoute,
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,

@@ -15,7 +15,7 @@ import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
-import { ShiftsCalendar } from "@/components/shifts-calendar";
+
 import { AttachmentList } from "@/components/attachment-picker";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare } from "lucide-react";
 import { useState } from "react";
@@ -167,7 +167,6 @@ function ShiftsPage() {
         {isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="all">{t.common.all}</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
             <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
@@ -182,11 +181,6 @@ function ShiftsPage() {
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
             <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="calendar" className="mt-5">
-            <ShiftsCalendar shifts={shifts} staff={staff} />
           </TabsContent>
         )}
         {isAdmin && (
