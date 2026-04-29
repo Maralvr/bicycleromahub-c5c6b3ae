@@ -53,7 +53,7 @@ const dict = {
   it: {
     appName: "eBicycle Roma",
     tagline: "Centro Operativo",
-    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni" },
     common: {
       today: "Oggi", upcoming: "Prossimi", pending: "In attesa", accepted: "Accettato",
       rejected: "Rifiutato", assigned: "Assegnato", unassigned: "Non assegnato",
