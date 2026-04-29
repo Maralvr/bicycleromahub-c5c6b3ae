@@ -413,7 +413,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                       <MessageSquare className="h-3 w-3" /> Guide notes ({shiftNotes.length})
                     </div>
                     {shiftNotes.map((n) => {
-                      const author = mockStaff.find((p) => p.id === n.authorStaffId);
+                      const author = allStaff.find((p) => p.id === n.authorStaffId);
                       const catMeta: Record<GuideNote["category"], { label: string; icon: typeof Wrench; cls: string }> = {
                         general: { label: "General", icon: MessageSquare, cls: "bg-muted/60 border-border/60" },
                         bike_issue: { label: "Bike issue", icon: Wrench, cls: "bg-warning/10 border-warning/30" },
