@@ -51,11 +51,13 @@ function TasksPage() {
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
   const guideOptions = staff.filter((s) => s.role === "guide");
 
-  const createTask = (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
+  const createTask = (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
     const stamp = Date.now();
+    const desc = input.description.trim();
     const newTasks: Task[] = input.assigneeIds.map((aid, i) => ({
       id: `t-${stamp}-${i}`,
       title: input.title.trim(),
+      description: desc || undefined,
       assigneeId: aid,
       due: input.due,
       priority: input.priority,
@@ -280,6 +282,11 @@ function TaskRow({
         />
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-medium leading-snug ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}>{task.title}</div>
+          {task.description && (
+            <p className={`text-xs mt-1 whitespace-pre-wrap ${task.done ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+              {task.description}
+            </p>
+          )}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {assignee && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -406,7 +413,7 @@ function NewTaskDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
+  onCreate: (input: { title: string; description: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => void;
   isAdmin: boolean;
   currentStaffId: string | null | undefined;
   guideOptions: typeof staff;
@@ -417,6 +424,7 @@ function NewTaskDialog({
       ? guideOptions[0] ? [guideOptions[0].id] : []
       : currentStaffId ? [currentStaffId] : [];
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(initialIds());
   const [due, setDue] = useState(today);
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -428,6 +436,7 @@ function NewTaskDialog({
 
   const reset = () => {
     setTitle("");
+    setDescription("");
     setAssigneeIds(initialIds());
     setDue(today);
     setPriority("medium");
@@ -436,7 +445,7 @@ function NewTaskDialog({
 
   const submit = () => {
     if (!title.trim() || assigneeIds.length === 0) return;
-    onCreate({ title, assigneeIds, due, priority });
+    onCreate({ title, description, assigneeIds, due, priority });
     reset();
   };
 
@@ -472,6 +481,18 @@ function NewTaskDialog({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Inspect bike #12 brakes"
               autoFocus
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>
+              Description <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add context, steps, or anything the assignee should know…"
+              rows={3}
             />
           </div>
 
