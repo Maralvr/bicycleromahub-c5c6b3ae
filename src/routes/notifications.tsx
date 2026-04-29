@@ -10,8 +10,8 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { staff, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
-import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE } from "@/components/attachment-picker";
-import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2 } from "lucide-react";
+import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE, AttachmentList } from "@/components/attachment-picker";
+import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2, ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
