@@ -42,6 +42,14 @@ function NotificationsPage() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [expandedNotif, setExpandedNotif] = useState<string | null>(null);
+  const [expandedFeed, setExpandedFeed] = useState<Set<string>>(new Set());
+  const toggleFeed = (id: string) =>
+    setExpandedFeed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const onFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
