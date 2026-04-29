@@ -6,7 +6,7 @@ const dict = {
   en: {
     appName: "eBicycle Roma",
     tagline: "Operations Hub",
-    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", calendar: "Calendar", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts" },
     common: {
       today: "Today", upcoming: "Upcoming", pending: "Pending", accepted: "Accepted",
       rejected: "Rejected", assigned: "Assigned", unassigned: "Unassigned",
