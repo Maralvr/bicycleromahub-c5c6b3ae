@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -7,7 +7,6 @@ const PayloadSchema = z.object({
   bookingId: z.union([z.string(), z.number()]),
   confirmationCode: z.string().max(64).optional(),
   productTitle: z.string().min(1).max(255),
-  productId: z.union([z.string(), z.number()]).optional(),
   startDateTime: z.string().min(1).max(64),
   endDateTime: z.string().max(64).optional(),
   durationMinutes: z.number().int().min(1).max(60 * 24).optional(),
@@ -20,18 +19,13 @@ const PayloadSchema = z.object({
     phoneNumber: z.string().max(40).optional(),
     email: z.string().email().max(254).optional(),
   }),
-  pricingCategoryBookings: z
-    .array(z.object({ pricingCategory: z.object({ title: z.string().max(80) }), quantity: z.number().int().min(0).max(500) }))
-    .max(20)
-    .optional(),
-  extraBookings: z
-    .array(z.object({ extra: z.object({ title: z.string().max(120) }), quantity: z.number().int().min(0).max(500) }))
-    .max(20)
-    .optional(),
+  pricingCategoryBookings: z.array(z.object({ pricingCategory: z.object({ title: z.string().max(80) }), quantity: z.number().int().min(0).max(500) })).max(20).optional(),
+  extraBookings: z.array(z.object({ extra: z.object({ title: z.string().max(120) }), quantity: z.number().int().min(0).max(500) })).max(20).optional(),
   totalPrice: z.number().min(0).max(1_000_000).optional(),
   currency: z.string().max(8).optional(),
   notes: z.string().max(2000).optional(),
   productTags: z.array(z.string().max(80)).max(50).optional(),
+  signature: z.string().max(256).optional(),
 });
 
 type Payload = z.infer<typeof PayloadSchema>;
@@ -59,7 +53,6 @@ function fmtTime(iso: string) {
   const d = new Date(iso);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:00`;
 }
-function fmtDate(iso: string) { return iso.slice(0, 10); }
 function computeEnd(start: string, end?: string, durationMinutes?: number) {
   if (end) return fmtTime(end);
   const mins = durationMinutes ?? 180;
@@ -82,7 +75,7 @@ function mapToShiftRow(p: Payload) {
     source: "bokun" as const,
     booking_id: p.confirmationCode || `BKN-${p.bookingId}`,
     tour_name: p.productTitle,
-    date: fmtDate(p.startDateTime),
+    date: p.startDateTime.slice(0, 10),
     start_time: fmtTime(p.startDateTime),
     end_time: computeEnd(p.startDateTime, p.endDateTime, p.durationMinutes),
     meeting_point: meeting,
@@ -99,62 +92,43 @@ function mapToShiftRow(p: Payload) {
   };
 }
 
-export const Route = createFileRoute("/api/public/bokun-webhook")({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const body = await request.text();
+export const bokunWebhook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => {
+    const parsed = PayloadSchema.safeParse(input);
+    if (!parsed.success) throw new Error("Invalid payload");
+    return parsed.data;
+  })
+  .handler(async ({ data }) => {
+    const secret = process.env.BOKUN_WEBHOOK_SECRET;
+    if (secret) {
+      if (!data.signature) throw new Error("Missing signature");
+      const { signature: _sig, ...rest } = data;
+      const expected = createHmac("sha256", secret).update(JSON.stringify(rest)).digest("hex");
+      try {
+        const a = Buffer.from(data.signature, "hex");
+        const b = Buffer.from(expected, "hex");
+        if (a.length !== b.length || !timingSafeEqual(a, b)) throw new Error("Invalid signature");
+      } catch {
+        throw new Error("Invalid signature");
+      }
+    }
 
-        // Optional signature verification — only enforced when secret is set
-        const secret = process.env.BOKUN_WEBHOOK_SECRET;
-        if (secret) {
-          const signature = request.headers.get("x-bokun-signature") || request.headers.get("x-webhook-signature");
-          if (!signature) {
-            return new Response("Missing signature", { status: 401 });
-          }
-          const expected = createHmac("sha256", secret).update(body).digest("hex");
-          try {
-            const sigBuf = Buffer.from(signature, "hex");
-            const expBuf = Buffer.from(expected, "hex");
-            if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-              return new Response("Invalid signature", { status: 401 });
-            }
-          } catch {
-            return new Response("Invalid signature", { status: 401 });
-          }
-        }
+    const row = mapToShiftRow(data);
 
-        let json: unknown;
-        try { json = JSON.parse(body); } catch {
-          return new Response("Invalid JSON", { status: 400 });
-        }
+    const { data: existing } = await supabaseAdmin
+      .from("shifts")
+      .select("id")
+      .eq("source", "bokun")
+      .eq("booking_id", row.booking_id)
+      .maybeSingle();
 
-        const parsed = PayloadSchema.safeParse(json);
-        if (!parsed.success) {
-          return Response.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
-        }
+    if (existing) {
+      const { error } = await supabaseAdmin.from("shifts").update(row).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+      return { ok: true, action: "updated" as const, id: existing.id };
+    }
 
-        const row = mapToShiftRow(parsed.data);
-
-        // Upsert by booking_id to make webhook idempotent
-        const { data: existing } = await supabaseAdmin
-          .from("shifts")
-          .select("id")
-          .eq("source", "bokun")
-          .eq("booking_id", row.booking_id)
-          .maybeSingle();
-
-        if (existing) {
-          const { error } = await supabaseAdmin.from("shifts").update(row).eq("id", existing.id);
-          if (error) return Response.json({ error: error.message }, { status: 500 });
-          return Response.json({ ok: true, action: "updated", id: existing.id });
-        }
-
-        const { data, error } = await supabaseAdmin.from("shifts").insert(row).select("id").single();
-        if (error) return Response.json({ error: error.message }, { status: 500 });
-        return Response.json({ ok: true, action: "created", id: data.id });
-      },
-      GET: async () => Response.json({ ok: true, name: "bokun-webhook", method: "POST" }),
-    },
-  },
-});
+    const { data: created, error } = await supabaseAdmin.from("shifts").insert(row).select("id").single();
+    if (error) throw new Error(error.message);
+    return { ok: true, action: "created" as const, id: created.id };
+  });

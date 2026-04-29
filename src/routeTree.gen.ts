@@ -19,7 +19,6 @@ import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiPublicBokunWebhookRouteImport } from './routes/api/public/bokun-webhook'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -71,11 +70,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicBokunWebhookRoute = ApiPublicBokunWebhookRouteImport.update({
-  id: '/api/public/bokun-webhook',
-  path: '/api/public/bokun-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,7 +82,6 @@ export interface FileRoutesByFullPath {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
-  '/api/public/bokun-webhook': typeof ApiPublicBokunWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,7 +94,6 @@ export interface FileRoutesByTo {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
-  '/api/public/bokun-webhook': typeof ApiPublicBokunWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,7 +107,6 @@ export interface FileRoutesById {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
-  '/api/public/bokun-webhook': typeof ApiPublicBokunWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,7 +121,6 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
-    | '/api/public/bokun-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,7 +133,6 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
-    | '/api/public/bokun-webhook'
   id:
     | '__root__'
     | '/'
@@ -156,7 +145,6 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
-    | '/api/public/bokun-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,7 +158,6 @@ export interface RootRouteChildren {
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
-  ApiPublicBokunWebhookRoute: typeof ApiPublicBokunWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,13 +232,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/bokun-webhook': {
-      id: '/api/public/bokun-webhook'
-      path: '/api/public/bokun-webhook'
-      fullPath: '/api/public/bokun-webhook'
-      preLoaderRoute: typeof ApiPublicBokunWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -266,8 +246,16 @@ const rootRouteChildren: RootRouteChildren = {
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
-  ApiPublicBokunWebhookRoute: ApiPublicBokunWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
