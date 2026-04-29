@@ -96,7 +96,7 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
     const payload = input.assigneeIds
       .map((staffId) => ({
         title: input.title.trim(),
-        description: input.description.trim() || null,
+        description: input.description?.trim() || null,
         assigned_to: staffIdToUserId.get(staffId),
         due: input.due,
         priority: input.priority,
