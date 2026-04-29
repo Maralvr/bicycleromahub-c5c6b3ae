@@ -58,6 +58,8 @@ function LiveShiftsPage() {
   const upcoming = shifts.filter((s) => s.date >= todayStr);
   const past = shifts.filter((s) => s.date < todayStr);
 
+  if (!ready) return null;
+
   return (
     <AppShell>
       <PageHeader
