@@ -36,6 +36,15 @@ function ShiftsPage() {
   const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
+  const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
+  const { notesByShift, addNote } = useNotesStore();
+
+  const handleNoteSubmit = (note: GuideNote) => {
+    const sh = shifts.find((s) => s.id === note.shiftId);
+    if (!sh) return;
+    addNote(note, sh.tourName);
+    toast.success("Note sent to admins", { description: "They've been notified in the activity feed." });
+  };
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
