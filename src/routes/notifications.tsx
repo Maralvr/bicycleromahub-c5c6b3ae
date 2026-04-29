@@ -141,8 +141,9 @@ function NotificationsPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="shrink-0"
                 title="Attach files"
+                disabled={uploading || attachments.length >= DEFAULT_MAX_FILES}
               >
-                <Paperclip className="h-4 w-4" />
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </Button>
               <Button onClick={send} className="flex-1 shadow-[var(--shadow-elegant)]" disabled={!msg.trim() && attachments.length === 0}>
                 <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
@@ -150,7 +151,7 @@ function NotificationsPage() {
             </div>
             <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
               <Sparkles className="h-3 w-3 text-primary" />
-              AI can rewrite for clarity before sending · Attach images, PDFs or any file (max 10MB)
+              {attachments.length}/{DEFAULT_MAX_FILES} files · max {(DEFAULT_MAX_SIZE / 1024 / 1024).toFixed(0)}MB · images auto-compressed
             </div>
           </Card>
         ) : (
