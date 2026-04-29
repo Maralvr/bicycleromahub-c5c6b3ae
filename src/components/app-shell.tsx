@@ -24,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
         { to: "/staff", label: t.nav.staff, icon: Users },
         { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
+        { to: "/calendar", label: t.nav.calendar, icon: CalendarDays },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
       ];
