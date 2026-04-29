@@ -51,19 +51,37 @@ function TasksPage() {
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
   const guideOptions = staff.filter((s) => s.role === "guide");
 
-  const createTask = (input: { title: string; assigneeId: string; due: string; priority: Task["priority"] }) => {
-    const newTask: Task = {
-      id: `t-${Date.now()}`,
+  const createTask = (input: { title: string; assigneeIds: string[]; due: string; priority: Task["priority"] }) => {
+    const stamp = Date.now();
+    const newTasks: Task[] = input.assigneeIds.map((aid, i) => ({
+      id: `t-${stamp}-${i}`,
       title: input.title.trim(),
-      assigneeId: input.assigneeId,
+      assigneeId: aid,
       due: input.due,
       priority: input.priority,
       done: false,
-    };
-    setTasks((prev) => [newTask, ...prev]);
+    }));
+    setTasks((prev) => [...newTasks, ...prev]);
     setNewTaskOpen(false);
+
+    // Admin assigned to multiple guides -> notify each guide
+    if (isAdmin && input.assigneeIds.length > 0) {
+      notifyGuides(input.assigneeIds, {
+        type: "task",
+        title: input.assigneeIds.length > 1 ? "New task for the team" : "New task assigned",
+        body: input.title.trim(),
+        link: "/tasks",
+      });
+      toast.success(
+        input.assigneeIds.length > 1
+          ? `Task assigned to ${input.assigneeIds.length} guides`
+          : "Task assigned",
+      );
+      return;
+    }
+
     // If a guide created a task for themselves, notify admins
-    if (!isAdmin && input.assigneeId === staffId) {
+    if (!isAdmin && input.assigneeIds[0] === staffId) {
       const me = staff.find((s) => s.id === staffId);
       if (adminIds.length > 0) {
         notifyGuides(adminIds, {
