@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { GuideNote, FieldUpdate, updates as initialUpdates } from "@/lib/mock-data";
+import { GuideNote, FieldUpdate, Attachment, updates as initialUpdates } from "@/lib/mock-data";
 import { staff as mockStaff } from "@/lib/mock-data";
 
 export type GuideNotification = {
@@ -12,6 +12,7 @@ export type GuideNotification = {
   link?: string;
   createdAt: string; // ISO
   read: boolean;
+  attachments?: Attachment[];
 };
 
 type NotesStore = {

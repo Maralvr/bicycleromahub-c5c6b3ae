@@ -49,12 +49,21 @@ export type Task = {
   done: boolean;
 };
 
+export type Attachment = {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  dataUrl: string; // base64 data URL (prototype storage)
+};
+
 export type FieldUpdate = {
   id: string;
   authorId: string;
   message: string;
   type: "broadcast" | "field";
   time: string;
+  attachments?: Attachment[];
 };
 
 export const staff: Staff[] = [
