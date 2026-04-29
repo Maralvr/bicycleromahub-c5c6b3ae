@@ -216,6 +216,15 @@ function TasksPage() {
         onClose={() => setUpdateDialogTask(null)}
         onSubmit={submitUpdate}
       />
+
+      <NewTaskDialog
+        open={newTaskOpen}
+        onClose={() => setNewTaskOpen(false)}
+        onCreate={createTask}
+        isAdmin={isAdmin}
+        currentStaffId={staffId}
+        guideOptions={guideOptions}
+      />
     </AppShell>
   );
 }
