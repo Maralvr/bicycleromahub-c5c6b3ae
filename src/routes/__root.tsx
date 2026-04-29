@@ -6,6 +6,7 @@ import { CurrentUserProvider } from "@/lib/current-user";
 import { StaffStoreProvider } from "@/lib/staff-store";
 import { NotesStoreProvider } from "@/lib/notes-store";
 import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
+import { TasksStoreProvider } from "@/lib/tasks-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -103,10 +104,12 @@ function RootComponent() {
           <StaffStoreProvider>
             <CurrentUserProvider>
               <NotesStoreProvider>
-                <TaskUpdatesStoreProvider>
-                  <Outlet />
-                  <Toaster />
-                </TaskUpdatesStoreProvider>
+                <TasksStoreProvider>
+                  <TaskUpdatesStoreProvider>
+                    <Outlet />
+                    <Toaster />
+                  </TaskUpdatesStoreProvider>
+                </TasksStoreProvider>
               </NotesStoreProvider>
             </CurrentUserProvider>
           </StaffStoreProvider>
