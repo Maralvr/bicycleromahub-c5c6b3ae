@@ -15,6 +15,7 @@ import { StaffStoreProvider } from "@/lib/staff-store";
 import { NotesStoreProvider } from "@/lib/notes-store";
 import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
 import { TasksStoreProvider } from "@/lib/tasks-store";
+import { ShiftsStoreProvider } from "@/lib/shifts-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -117,14 +118,16 @@ function RootComponent() {
         <AuthGate>
           <StaffStoreProvider>
             <CurrentUserProvider>
-              <NotesStoreProvider>
-                <TasksStoreProvider>
-                  <TaskUpdatesStoreProvider>
-                    <Outlet />
-                    <Toaster />
-                  </TaskUpdatesStoreProvider>
-                </TasksStoreProvider>
-              </NotesStoreProvider>
+              <ShiftsStoreProvider>
+                <NotesStoreProvider>
+                  <TasksStoreProvider>
+                    <TaskUpdatesStoreProvider>
+                      <Outlet />
+                      <Toaster />
+                    </TaskUpdatesStoreProvider>
+                  </TasksStoreProvider>
+                </NotesStoreProvider>
+              </ShiftsStoreProvider>
             </CurrentUserProvider>
           </StaffStoreProvider>
         </AuthGate>
