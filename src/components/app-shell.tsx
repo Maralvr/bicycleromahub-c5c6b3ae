@@ -4,13 +4,14 @@ import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, 
 import logo from "@/assets/logo.jpg";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
-import { staff } from "@/lib/mock-data";
+import { useStaffStore } from "@/lib/staff-store";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
+  const { staff } = useStaffStore();
   const location = useLocation();
 
   const nav = role === "staff"

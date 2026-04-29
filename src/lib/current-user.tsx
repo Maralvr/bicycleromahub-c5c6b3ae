@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { staff } from "./mock-data";
 import { useAuth } from "./auth";
+import { useStaffStore } from "./staff-store";
 
 export type ViewRole = "admin" | "staff";
 
@@ -20,10 +20,9 @@ const STORAGE_KEY = "ebr.currentUser";
 
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const { isAdmin, profile, user } = useAuth();
-  // Default role is derived from real auth roles. Admins may still impersonate
-  // a guide via the role switcher (kept for QA). Non-admins are locked to staff.
+  const { staff } = useStaffStore();
   const [roleOverride, setRoleOverride] = useState<ViewRole | null>(null);
-  const [staffId, setStaffIdState] = useState<string>("s1");
+  const [staffId, setStaffIdState] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -38,10 +37,17 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // If signed-in profile has a linked staff_id, prefer it
+  // Auto-bind to the staff row that matches the signed-in user (by profile_id),
+  // unless the admin has manually impersonated someone.
   useEffect(() => {
-    if (profile?.staff_id) setStaffIdState(profile.staff_id);
-  }, [profile?.staff_id]);
+    if (!user) return;
+    const myRow = staff.find((s) => s.profileId === user.id);
+    if (myRow && !staffId) {
+      setStaffIdState(myRow.id);
+    } else if (!staffId && staff[0]) {
+      setStaffIdState(staff[0].id);
+    }
+  }, [user, staff, staffId]);
 
   const persist = (next: { role: ViewRole | null; staffId: string }) => {
     try {
@@ -51,11 +57,10 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Effective role: non-admins always "staff"; admins respect override or default to admin
   const role: ViewRole = isAdmin ? (roleOverride ?? "admin") : "staff";
 
   const setRole = (r: ViewRole) => {
-    if (!isAdmin && r === "admin") return; // guard: non-admins cannot assume admin
+    if (!isAdmin && r === "admin") return;
     setRoleOverride(r);
     persist({ role: r, staffId });
   };
@@ -64,7 +69,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     persist({ role: roleOverride, staffId: id });
   };
 
-  const member = staff.find((s) => s.id === staffId) ?? staff[0];
+  const member = staff.find((s) => s.id === staffId);
   const isAdminView = role === "admin";
 
   const value: CurrentUserContextValue = {
@@ -74,17 +79,14 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     setStaffId,
     displayName: isAdminView
       ? profile?.display_name || "Admin"
-      : profile?.display_name || member.name,
+      : profile?.display_name || member?.name || "Guide",
     initials: isAdminView
       ? profile?.avatar_initials || "AD"
-      : profile?.avatar_initials || member.avatar,
+      : profile?.avatar_initials || member?.avatar || "GD",
     subtitle: isAdminView
       ? "Operations"
-      : member.role.charAt(0).toUpperCase() + member.role.slice(1),
+      : member ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : "Guide",
   };
-
-  // Touch user to silence unused warning when not needed
-  void user;
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
 }

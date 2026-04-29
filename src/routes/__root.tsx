@@ -100,16 +100,16 @@ function RootComponent() {
     <I18nProvider>
       <AuthProvider>
         <AuthGate>
-          <CurrentUserProvider>
-            <StaffStoreProvider>
+          <StaffStoreProvider>
+            <CurrentUserProvider>
               <NotesStoreProvider>
                 <TaskUpdatesStoreProvider>
                   <Outlet />
                   <Toaster />
                 </TaskUpdatesStoreProvider>
               </NotesStoreProvider>
-            </StaffStoreProvider>
-          </CurrentUserProvider>
+            </CurrentUserProvider>
+          </StaffStoreProvider>
         </AuthGate>
       </AuthProvider>
     </I18nProvider>
