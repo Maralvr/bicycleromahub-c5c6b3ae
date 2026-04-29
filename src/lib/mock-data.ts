@@ -11,6 +11,15 @@ export type Staff = {
   unavailability: { date: string; allDay: boolean; from?: string; to?: string; reason?: string }[];
 };
 
+export type GuideNote = {
+  id: string;
+  shiftId: string;
+  authorStaffId: string;
+  message: string;
+  category: "general" | "bike_issue" | "customer" | "incident";
+  createdAt: string; // ISO
+};
+
 export type Shift = {
   id: string;
   source: "bokun" | "manual";
@@ -27,6 +36,7 @@ export type Shift = {
   assignedStaffId: string | null;
   status: "pending" | "accepted" | "rejected" | "unassigned";
   requiredTags: string[];
+  guideNotes?: GuideNote[];
 };
 
 export type Task = {

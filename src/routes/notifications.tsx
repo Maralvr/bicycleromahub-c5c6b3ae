@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
-import { updates as initialUpdates, staff, FieldUpdate } from "@/lib/mock-data";
+import { staff, FieldUpdate } from "@/lib/mock-data";
+import { useNotesStore } from "@/lib/notes-store";
 import { Send, Megaphone, MapPin, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,7 +25,9 @@ export const Route = createFileRoute("/notifications")({
 
 function NotificationsPage() {
   const { t } = useI18n();
-  const [updates, setUpdates] = useState<FieldUpdate[]>(initialUpdates);
+  const { feed } = useNotesStore();
+  const [extra, setExtra] = useState<FieldUpdate[]>([]);
+  const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
 
   const send = () => {
@@ -36,7 +39,7 @@ function NotificationsPage() {
       type: "broadcast",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
-    setUpdates([newUpdate, ...updates]);
+    setExtra([newUpdate, ...extra]);
     setMsg("");
     toast.success("Push notification sent to team");
   };

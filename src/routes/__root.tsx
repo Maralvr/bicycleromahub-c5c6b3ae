@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { I18nProvider } from "@/lib/i18n";
 import { CurrentUserProvider } from "@/lib/current-user";
 import { StaffStoreProvider } from "@/lib/staff-store";
+import { NotesStoreProvider } from "@/lib/notes-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -71,8 +72,10 @@ function RootComponent() {
     <I18nProvider>
       <CurrentUserProvider>
         <StaffStoreProvider>
-          <Outlet />
-          <Toaster />
+          <NotesStoreProvider>
+            <Outlet />
+            <Toaster />
+          </NotesStoreProvider>
         </StaffStoreProvider>
       </CurrentUserProvider>
     </I18nProvider>

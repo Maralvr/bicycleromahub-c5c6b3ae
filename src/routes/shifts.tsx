@@ -9,11 +9,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
-import { shifts as initialShifts, Shift } from "@/lib/mock-data";
+import { shifts as initialShifts, Shift, GuideNote, staff as mockStaff } from "@/lib/mock-data";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2 } from "lucide-react";
+import { LeaveNoteDialog } from "@/components/leave-note-dialog";
+import { useNotesStore } from "@/lib/notes-store";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -34,6 +36,15 @@ function ShiftsPage() {
   const isAdmin = role === "admin";
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
+  const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
+  const { notesByShift, addNote } = useNotesStore();
+
+  const handleNoteSubmit = (note: GuideNote) => {
+    const sh = shifts.find((s) => s.id === note.shiftId);
+    if (!sh) return;
+    addNote(note, sh.tourName);
+    toast.success("Note sent to admins", { description: "They've been notified in the activity feed." });
+  };
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
@@ -157,6 +168,8 @@ function ShiftsPage() {
             allShifts={shifts}
             guideView={!isAdmin}
             pastView
+            notesByShift={notesByShift}
+            onLeaveNote={setNoteDialogShift}
             onAssign={assignStaff}
             onOpenAssignDialog={setAssignDialogShift}
             onAccept={(id) => updateStatus(id, "accepted")}
@@ -173,11 +186,19 @@ function ShiftsPage() {
         onClose={() => setAssignDialogShift(null)}
         onAssign={assignStaff}
       />
+
+      <LeaveNoteDialog
+        shift={noteDialogShift}
+        authorStaffId={staffId || "s1"}
+        open={!!noteDialogShift}
+        onClose={() => setNoteDialogShift(null)}
+        onSubmit={handleNoteSubmit}
+      />
     </AppShell>
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView, pastView }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean; pastView?: boolean }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView, pastView, notesByShift, onLeaveNote }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
@@ -187,6 +208,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         const guide = allStaff.find((p) => p.id === s.assignedStaffId);
         const suggestions: StaffSuggestion[] = !pastView && !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
+        const shiftNotes = notesByShift?.[s.id] || [];
 
         return (
           <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${isUrgent ? "ring-1 ring-warning/20" : ""}`}>
@@ -316,9 +338,14 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {pastView && (
                       <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Completed</Badge>
+                    )}
+                    {pastView && guideView && onLeaveNote && (
+                      <Button size="sm" onClick={() => onLeaveNote(s)} className="shadow-[var(--shadow-elegant)]">
+                        <MessageSquarePlus className="h-3.5 w-3.5 mr-1" /> {shiftNotes.length > 0 ? "Add another note" : "Leave a note"}
+                      </Button>
                     )}
                     {!pastView && guideView && s.status === "pending" && (
                       <>
@@ -335,13 +362,44 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
                       </Button>
                     )}
-                    {!guideView && (
+                    {!guideView && !pastView && (
                       <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
                       </Button>
                     )}
                   </div>
                 </div>
+
+                {pastView && shiftNotes.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3" /> Guide notes ({shiftNotes.length})
+                    </div>
+                    {shiftNotes.map((n) => {
+                      const author = mockStaff.find((p) => p.id === n.authorStaffId);
+                      const catMeta: Record<GuideNote["category"], { label: string; icon: typeof Wrench; cls: string }> = {
+                        general: { label: "General", icon: MessageSquare, cls: "bg-muted/60 border-border/60" },
+                        bike_issue: { label: "Bike issue", icon: Wrench, cls: "bg-warning/10 border-warning/30" },
+                        customer: { label: "Customer", icon: User, cls: "bg-secondary/10 border-secondary/30" },
+                        incident: { label: "Incident", icon: AlertTriangle, cls: "bg-destructive/10 border-destructive/30" },
+                      };
+                      const meta = catMeta[n.category];
+                      const Icon = meta.icon;
+                      return (
+                        <div key={n.id} className={`p-3 rounded-lg border text-xs ${meta.cls}`}>
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider h-4 px-1.5">
+                              <Icon className="h-2.5 w-2.5 mr-1" /> {meta.label}
+                            </Badge>
+                            <span className="font-semibold text-foreground">{author?.name || "Guide"}</span>
+                            <span className="text-muted-foreground">· {new Date(n.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
+                          </div>
+                          <div className="text-foreground/85 leading-snug whitespace-pre-wrap">{n.message}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
