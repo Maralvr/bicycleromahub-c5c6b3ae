@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -203,7 +203,7 @@ function RentalPointDialog({
   onClose: () => void;
   onSubmit: (input: RentalPointInput) => Promise<void>;
 }) {
-  const [form, setForm] = useState<RentalPointInput>({
+  const emptyForm: RentalPointInput = {
     name: "",
     address: "",
     city: "Rome",
@@ -211,46 +211,31 @@ function RentalPointDialog({
     opening_hours: "",
     notes: "",
     active: true,
-  });
+  };
+  const [form, setForm] = useState<RentalPointInput>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
-  // Reset form when opening
-  const wasOpen = useState(open)[0];
-  if (open && form.name === "" && initial) {
-    // hydrate from initial
-    setForm({
-      name: initial.name,
-      address: initial.address ?? "",
-      city: initial.city ?? "Rome",
-      phone: initial.phone ?? "",
-      opening_hours: initial.opening_hours ?? "",
-      notes: initial.notes ?? "",
-      active: initial.active,
-    });
-  }
-  // (intentional: simple hydration; full reset handled in onOpenChange)
-  void wasOpen;
+  useEffect(() => {
+    if (open) {
+      setForm(
+        initial
+          ? {
+              name: initial.name,
+              address: initial.address ?? "",
+              city: initial.city ?? "Rome",
+              phone: initial.phone ?? "",
+              opening_hours: initial.opening_hours ?? "",
+              notes: initial.notes ?? "",
+              active: initial.active,
+            }
+          : emptyForm,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) {
-          onClose();
-          setForm({ name: "", address: "", city: "Rome", phone: "", opening_hours: "", notes: "", active: true });
-        } else if (initial) {
-          setForm({
-            name: initial.name,
-            address: initial.address ?? "",
-            city: initial.city ?? "Rome",
-            phone: initial.phone ?? "",
-            opening_hours: initial.opening_hours ?? "",
-            notes: initial.notes ?? "",
-            active: initial.active,
-          });
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit rental point" : "New rental point"}</DialogTitle>
