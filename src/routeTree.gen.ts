@@ -13,6 +13,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -36,6 +37,11 @@ const ShiftsRoute = ShiftsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentalPointsRoute = RentalPointsRouteImport.update({
+  id: '/rental-points',
+  path: '/rental-points',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
+  '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
+  '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/notifications': typeof NotificationsRoute
+  '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/notifications'
+    | '/rental-points'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/notifications'
+    | '/rental-points'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/notifications'
+    | '/rental-points'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   NotificationsRoute: typeof NotificationsRoute
+  RentalPointsRoute: typeof RentalPointsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rental-points': {
+      id: '/rental-points'
+      path: '/rental-points'
+      fullPath: '/rental-points'
+      preLoaderRoute: typeof RentalPointsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   NotificationsRoute: NotificationsRoute,
+  RentalPointsRoute: RentalPointsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
@@ -208,3 +229,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
