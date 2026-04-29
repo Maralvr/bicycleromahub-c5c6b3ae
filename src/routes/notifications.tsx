@@ -10,7 +10,8 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { staff, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
-import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download } from "lucide-react";
+import { processFiles, DEFAULT_MAX_FILES, DEFAULT_MAX_SIZE } from "@/components/attachment-picker";
+import { Send, Megaphone, MapPin, Sparkles, Bell, CheckCheck, CalendarRange, AlertTriangle, X, ListChecks, Paperclip, FileText, Image as ImageIcon, Download, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -35,34 +36,23 @@ function NotificationsPage() {
   const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-
   const onFiles = async (files: FileList | null) => {
-    if (!files) return;
-    const next: Attachment[] = [];
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_SIZE) {
-        toast.error(`${file.name} is too large (max 10MB)`);
-        continue;
-      }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const next = await processFiles(files, {
+        maxFiles: DEFAULT_MAX_FILES,
+        maxSize: DEFAULT_MAX_SIZE,
+        existingCount: attachments.length,
       });
-      next.push({
-        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        name: file.name,
-        mime: file.type || "application/octet-stream",
-        size: file.size,
-        dataUrl,
-      });
+      if (next.length) setAttachments((prev) => [...prev, ...next]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    setAttachments((prev) => [...prev, ...next]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id));
@@ -151,8 +141,9 @@ function NotificationsPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="shrink-0"
                 title="Attach files"
+                disabled={uploading || attachments.length >= DEFAULT_MAX_FILES}
               >
-                <Paperclip className="h-4 w-4" />
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </Button>
               <Button onClick={send} className="flex-1 shadow-[var(--shadow-elegant)]" disabled={!msg.trim() && attachments.length === 0}>
                 <Send className="h-4 w-4 mr-2" /> {t.notifications.sendMessage}
@@ -160,7 +151,7 @@ function NotificationsPage() {
             </div>
             <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1 relative">
               <Sparkles className="h-3 w-3 text-primary" />
-              AI can rewrite for clarity before sending · Attach images, PDFs or any file (max 10MB)
+              {attachments.length}/{DEFAULT_MAX_FILES} files · max {(DEFAULT_MAX_SIZE / 1024 / 1024).toFixed(0)}MB · images auto-compressed
             </div>
           </Card>
         ) : (
