@@ -36,34 +36,23 @@ function NotificationsPage() {
   const updates = [...extra, ...feed];
   const [msg, setMsg] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-
   const onFiles = async (files: FileList | null) => {
-    if (!files) return;
-    const next: Attachment[] = [];
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_SIZE) {
-        toast.error(`${file.name} is too large (max 10MB)`);
-        continue;
-      }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const next = await processFiles(files, {
+        maxFiles: DEFAULT_MAX_FILES,
+        maxSize: DEFAULT_MAX_SIZE,
+        existingCount: attachments.length,
       });
-      next.push({
-        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        name: file.name,
-        mime: file.type || "application/octet-stream",
-        size: file.size,
-        dataUrl,
-      });
+      if (next.length) setAttachments((prev) => [...prev, ...next]);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    setAttachments((prev) => [...prev, ...next]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id));
