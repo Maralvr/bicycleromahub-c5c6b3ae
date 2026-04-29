@@ -87,7 +87,7 @@ function TasksPage() {
         notifyGuides(adminIds, {
           type: "task",
           title: "New self-assigned task",
-          body: `${me?.name || "Guide"} added: ${newTask.title}`,
+          body: `${me?.name || "Guide"} added: ${input.title.trim()}`,
           link: "/tasks",
         });
       }
