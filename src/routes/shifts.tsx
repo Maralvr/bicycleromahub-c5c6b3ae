@@ -338,9 +338,14 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {pastView && (
                       <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Completed</Badge>
+                    )}
+                    {pastView && guideView && onLeaveNote && (
+                      <Button size="sm" onClick={() => onLeaveNote(s)} className="shadow-[var(--shadow-elegant)]">
+                        <MessageSquarePlus className="h-3.5 w-3.5 mr-1" /> {shiftNotes.length > 0 ? "Add another note" : "Leave a note"}
+                      </Button>
                     )}
                     {!pastView && guideView && s.status === "pending" && (
                       <>
@@ -357,13 +362,44 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
                       </Button>
                     )}
-                    {!guideView && (
+                    {!guideView && !pastView && (
                       <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
                       </Button>
                     )}
                   </div>
                 </div>
+
+                {pastView && shiftNotes.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3" /> Guide notes ({shiftNotes.length})
+                    </div>
+                    {shiftNotes.map((n) => {
+                      const author = mockStaff.find((p) => p.id === n.authorStaffId);
+                      const catMeta: Record<GuideNote["category"], { label: string; icon: typeof Wrench; cls: string }> = {
+                        general: { label: "General", icon: MessageSquare, cls: "bg-muted/60 border-border/60" },
+                        bike_issue: { label: "Bike issue", icon: Wrench, cls: "bg-warning/10 border-warning/30" },
+                        customer: { label: "Customer", icon: User, cls: "bg-secondary/10 border-secondary/30" },
+                        incident: { label: "Incident", icon: AlertTriangle, cls: "bg-destructive/10 border-destructive/30" },
+                      };
+                      const meta = catMeta[n.category];
+                      const Icon = meta.icon;
+                      return (
+                        <div key={n.id} className={`p-3 rounded-lg border text-xs ${meta.cls}`}>
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider h-4 px-1.5">
+                              <Icon className="h-2.5 w-2.5 mr-1" /> {meta.label}
+                            </Badge>
+                            <span className="font-semibold text-foreground">{author?.name || "Guide"}</span>
+                            <span className="text-muted-foreground">· {new Date(n.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
+                          </div>
+                          <div className="text-foreground/85 leading-snug whitespace-pre-wrap">{n.message}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
