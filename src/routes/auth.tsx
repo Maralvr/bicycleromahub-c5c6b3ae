@@ -68,21 +68,6 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}${search.redirect ?? "/"}` },
-      });
-      if (error) throw error;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(msg);
-      setBusy(false);
-    }
-  };
-
   const handleForgot = async () => {
     if (!email) {
       toast.error("Enter your email first");
@@ -131,15 +116,6 @@ function AuthPage() {
             {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
-
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-          <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">or</span></div>
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={busy}>
-          Continue with Google
-        </Button>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           {mode === "signin" ? (
