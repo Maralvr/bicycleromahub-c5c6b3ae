@@ -33,7 +33,11 @@ function NotificationsPage() {
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const unread = myNotifs.filter((n) => !n.read).length;
   const [extra, setExtra] = useState<FieldUpdate[]>([]);
-  const updates = [...extra, ...feed];
+  const allUpdates = [...extra, ...feed];
+  // Guides only see broadcasts (sent to everyone) or their own field updates.
+  const updates = isAdmin
+    ? allUpdates
+    : allUpdates.filter((u) => u.type === "broadcast" || u.authorId === staffId);
   const [msg, setMsg] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
