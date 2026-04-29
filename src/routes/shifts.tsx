@@ -434,6 +434,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                             <span className="text-muted-foreground">· {new Date(n.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
                           </div>
                           <div className="text-foreground/85 leading-snug whitespace-pre-wrap">{n.message}</div>
+                          {n.attachments && n.attachments.length > 0 && <AttachmentList attachments={n.attachments} />}
                         </div>
                       );
                     })}
