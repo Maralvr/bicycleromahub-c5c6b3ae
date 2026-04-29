@@ -20,6 +20,7 @@ type NotesStore = {
   notesByShift: Record<string, GuideNote[]>;
   feed: FieldUpdate[];
   addNote: (note: GuideNote, tourName: string) => void;
+  addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => void;
   notifications: GuideNotification[];
   notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => void;
   notifyGuides: (staffIds: string[], n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">) => void;
@@ -194,6 +195,16 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback((update) => {
+    void supabase.from("field_updates").insert({
+      author_id: update.authorId,
+      message: update.message,
+      type: update.type,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      attachments: update.attachments ?? [],
+    });
+  }, []);
+
   const notifyGuides: NotesStore["notifyGuides"] = useCallback((staffIds, n) => {
     if (staffIds.length === 0) return;
     void supabase.from("guide_notifications").insert(staffIds.map((staffId) => ({
@@ -226,7 +237,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const unreadCountFor = (staffId: string) => notifications.filter((n) => n.staffId === staffId && !n.read).length;
 
   return (
-    <NotesContext.Provider value={{ notesByShift, feed, addNote, notifications, notifyGuide, notifyGuides, markRead, markAllRead, clearForGuide, unreadCountFor }}>
+    <NotesContext.Provider value={{ notesByShift, feed, addNote, addFieldUpdate, notifications, notifyGuide, notifyGuides, markRead, markAllRead, clearForGuide, unreadCountFor }}>
       {children}
     </NotesContext.Provider>
   );
