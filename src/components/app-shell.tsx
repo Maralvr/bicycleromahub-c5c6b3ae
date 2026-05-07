@@ -14,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
+  const { signOut } = useAuth();
 
   const nav = role === "staff"
     ? [
