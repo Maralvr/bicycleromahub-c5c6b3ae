@@ -536,6 +536,53 @@ export type Database = {
         }
         Relationships: []
       }
+      waiver_signatures: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          email: string | null
+          external_signature_id: string | null
+          id: string
+          matched_shift_id: string | null
+          raw_payload: Json
+          signed_at: string
+          signer_name: string | null
+          waiver_template_id: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          email?: string | null
+          external_signature_id?: string | null
+          id?: string
+          matched_shift_id?: string | null
+          raw_payload?: Json
+          signed_at?: string
+          signer_name?: string | null
+          waiver_template_id?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          email?: string | null
+          external_signature_id?: string | null
+          id?: string
+          matched_shift_id?: string | null
+          raw_payload?: Json
+          signed_at?: string
+          signer_name?: string | null
+          waiver_template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiver_signatures_matched_shift_id_fkey"
+            columns: ["matched_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
