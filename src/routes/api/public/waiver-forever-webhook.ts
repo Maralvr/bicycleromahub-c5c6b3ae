@@ -147,17 +147,19 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
           signed_at: extracted.signedAt,
           waiver_template_id: extracted.waiverTemplateId,
           matched_shift_id: matchedShiftId,
-          raw_payload: payload,
+          raw_payload: payload as never,
         };
 
         // Upsert on external_signature_id when present, otherwise insert.
         if (extracted.externalId) {
           const { error } = await supabaseAdmin
             .from("waiver_signatures")
-            .upsert(row, { onConflict: "external_signature_id" });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .upsert(row as any, { onConflict: "external_signature_id" });
           if (error) return jsonResponse({ error: error.message }, 500);
         } else {
-          const { error } = await supabaseAdmin.from("waiver_signatures").insert(row);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await supabaseAdmin.from("waiver_signatures").insert(row as any);
           if (error) return jsonResponse({ error: error.message }, 500);
         }
 
