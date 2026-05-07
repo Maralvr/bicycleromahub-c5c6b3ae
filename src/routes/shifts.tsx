@@ -16,9 +16,11 @@ import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
+import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
+import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 
 import { AttachmentList } from "@/components/attachment-picker";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
