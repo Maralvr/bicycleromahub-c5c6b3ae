@@ -147,6 +147,39 @@ function ShiftsPage() {
     });
   };
 
+  const simulateWaiverSigned = async () => {
+    // Pick a random unsigned upcoming shift and POST a fake payload to the webhook.
+    const candidates = shifts.filter((s) => s.bookingId && signaturesForShift(waiverSignatures, s).length === 0);
+    const target = candidates[Math.floor(Math.random() * candidates.length)] || shifts.find((s) => s.bookingId);
+    if (!target?.bookingId) {
+      toast.error("No shift with a booking ID to simulate against.");
+      return;
+    }
+    const fakePayload = {
+      signature_id: `wf-test-${Date.now()}`,
+      signer_name: target.customer?.name || "Test Signer",
+      signer_email: "test@example.com",
+      signed_at: new Date().toISOString(),
+      template_id: "tmpl_test",
+      custom_fields: [{ label: "Bokun Booking ID", value: target.bookingId }],
+    };
+    try {
+      const res = await fetch("/api/public/waiver-forever-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fakePayload),
+      });
+      const json = await res.json();
+      if (json.matched) {
+        toast.success(`Waiver signed for ${target.tourName}`, { description: `Booking ${target.bookingId}` });
+      } else {
+        toast.warning("Webhook stored signature but couldn't match a shift.");
+      }
+    } catch (e) {
+      toast.error("Webhook call failed", { description: String(e) });
+    }
+  };
+
   return (
     <AppShell>
       <PageHeader
