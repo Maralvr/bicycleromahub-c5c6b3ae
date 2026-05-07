@@ -69,7 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => sub.subscription.unsubscribe();
+    // Refresh roles/profile when the tab regains focus so DB-side role changes
+    // (e.g. an admin promoted the user) take effect without a hard reload.
+    const onFocus = () => {
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.user) void loadUserData(data.session.user.id);
+      });
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+
+    return () => {
+      sub.subscription.unsubscribe();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, []);
 
   const value: AuthContextValue = {
