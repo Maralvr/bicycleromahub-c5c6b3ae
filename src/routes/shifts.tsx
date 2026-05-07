@@ -316,8 +316,13 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                       {s.bookingId && <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{s.bookingId}</span>}
                     </div>
                   </div>
-                  <StatusPill status={s.status} />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <StatusPill status={s.status} />
+                    {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
+                  </div>
                 </div>
+
+                {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
 
                 {s.customer && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs">
