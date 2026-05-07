@@ -169,6 +169,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => void signOut()}
+                title="Sign out"
+                className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
           <nav className="flex overflow-x-auto px-2 gap-1 pb-1.5">
