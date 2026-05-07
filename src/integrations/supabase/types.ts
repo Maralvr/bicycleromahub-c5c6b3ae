@@ -551,7 +551,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff"
-      field_update_type: "field" | "progress" | "completed" | "blocker"
+      field_update_type:
+        | "field"
+        | "progress"
+        | "completed"
+        | "blocker"
+        | "broadcast"
       note_category: "general" | "bike_issue" | "customer" | "incident"
       notification_type:
         | "assigned"
@@ -696,7 +701,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff"],
-      field_update_type: ["field", "progress", "completed", "blocker"],
+      field_update_type: [
+        "field",
+        "progress",
+        "completed",
+        "blocker",
+        "broadcast",
+      ],
       note_category: ["general", "bike_issue", "customer", "incident"],
       notification_type: [
         "assigned",

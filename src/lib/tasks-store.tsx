@@ -109,15 +109,19 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
   const createTasks: TasksStore["createTasks"] = useCallback(
     async (input) => {
       const payload = input.assigneeIds
-        .map((staffId) => ({
-          title: input.title.trim(),
-          description: input.description?.trim() || null,
-          assigned_to: staffIdToUserId.get(staffId),
-          due: input.due,
-          priority: input.priority,
-          done: false,
-        }))
-        .filter((task) => task.assigned_to);
+        .map((staffId) => {
+          const assigned_to = staffIdToUserId.get(staffId);
+          if (!assigned_to) return null;
+          return {
+            title: input.title.trim(),
+            description: input.description?.trim() || null,
+            assigned_to,
+            due: input.due,
+            priority: input.priority,
+            done: false,
+          };
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
 
       if (payload.length === 0) return [];
 

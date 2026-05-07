@@ -141,7 +141,8 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     const payload = shiftToDbPatch(input);
     const { data, error: err } = await supabase
       .from("shifts")
-      .insert(payload)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .insert(payload as any)
       .select()
       .single();
     if (err) {
@@ -155,7 +156,8 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const updateShift: ShiftsStoreContextValue["updateShift"] = async (id, patch) => {
     const { error: err } = await supabase
       .from("shifts")
-      .update(shiftToDbPatch(patch))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(shiftToDbPatch(patch) as any)
       .eq("id", id);
     if (err) setError(err.message);
     await fetchAll();

@@ -6,17 +6,17 @@ export type LiveShift = {
   source: "manual" | "bokun";
   booking_id: string | null;
   tour_name: string;
-  date: string; // YYYY-MM-DD
-  start_time: string; // HH:MM:SS
+  date: string;
+  start_time: string;
   end_time: string;
   meeting_point: string | null;
   rental_point_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
-  participants_adults: number;
-  participants_teens: number;
-  participants_infants: number;
-  participants_trailers: number;
+  adults: number;
+  teens: number;
+  infants: number;
+  trailers: number;
   rate: number | null;
   notes: string | null;
   required_tags: string[];
@@ -35,10 +35,10 @@ export type LiveShiftInput = {
   rental_point_id?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
-  participants_adults?: number;
-  participants_teens?: number;
-  participants_infants?: number;
-  participants_trailers?: number;
+  adults?: number;
+  teens?: number;
+  infants?: number;
+  trailers?: number;
   rate?: number | null;
   notes?: string | null;
   required_tags?: string[];
@@ -64,7 +64,7 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     const { data, error } = await q;
     if (error) setError(error.message);
     else {
-      setShifts((data ?? []) as LiveShift[]);
+      setShifts((data ?? []) as unknown as LiveShift[]);
       setError(null);
     }
     setLoading(false);
@@ -83,14 +83,14 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
         date: input.date,
         start_time: input.start_time,
         end_time: input.end_time,
-        meeting_point: input.meeting_point ?? null,
+        meeting_point: input.meeting_point ?? "",
         rental_point_id: input.rental_point_id ?? null,
         customer_name: input.customer_name ?? null,
         customer_phone: input.customer_phone ?? null,
-        participants_adults: input.participants_adults ?? 0,
-        participants_teens: input.participants_teens ?? 0,
-        participants_infants: input.participants_infants ?? 0,
-        participants_trailers: input.participants_trailers ?? 0,
+        adults: input.adults ?? 0,
+        teens: input.teens ?? 0,
+        infants: input.infants ?? 0,
+        trailers: input.trailers ?? 0,
         rate: input.rate ?? null,
         notes: input.notes ?? null,
         required_tags: input.required_tags ?? [],
@@ -105,7 +105,8 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
 
   const update = useCallback(
     async (id: string, patch: Partial<LiveShiftInput>) => {
-      const { error } = await supabase.from("shifts").update(patch).eq("id", id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await supabase.from("shifts").update(patch as any).eq("id", id);
       if (error) throw error;
       await fetchAll();
     },

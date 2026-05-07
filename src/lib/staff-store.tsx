@@ -162,7 +162,8 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     if (patch.languages !== undefined) dbPatch.languages = patch.languages;
     if (patch.licenses !== undefined) dbPatch.licenses = patch.licenses;
     if (patch.phone !== undefined) dbPatch.phone = patch.phone;
-    await supabase.from("staff").update(dbPatch).eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await supabase.from("staff").update(dbPatch as any).eq("id", id);
     await fetchAll();
   };
 
