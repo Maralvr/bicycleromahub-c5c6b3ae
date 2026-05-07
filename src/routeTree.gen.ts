@@ -19,6 +19,7 @@ import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -70,6 +71,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWaiverForeverWebhookRoute =
+  ApiPublicWaiverForeverWebhookRouteImport.update({
+    id: '/api/public/waiver-forever-webhook',
+    path: '/api/public/waiver-forever-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +116,7 @@ export interface FileRoutesById {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/api/public/waiver-forever-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/api/public/waiver-forever-webhook'
   id:
     | '__root__'
     | '/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/api/public/waiver-forever-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +171,7 @@ export interface RootRouteChildren {
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
+  ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/waiver-forever-webhook': {
+      id: '/api/public/waiver-forever-webhook'
+      path: '/api/public/waiver-forever-webhook'
+      fullPath: '/api/public/waiver-forever-webhook'
+      preLoaderRoute: typeof ApiPublicWaiverForeverWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +267,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
+  ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

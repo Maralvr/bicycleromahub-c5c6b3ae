@@ -16,9 +16,11 @@ import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
+import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
+import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 
 import { AttachmentList } from "@/components/attachment-picker";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -41,6 +43,7 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
+  const { signatures: waiverSignatures } = useWaiverSignatures();
 
   const handleNoteSubmit = (note: GuideNote) => {
     const sh = shifts.find((s) => s.id === note.shiftId);
@@ -144,6 +147,39 @@ function ShiftsPage() {
     });
   };
 
+  const simulateWaiverSigned = async () => {
+    // Pick a random unsigned upcoming shift and POST a fake payload to the webhook.
+    const candidates = shifts.filter((s) => s.bookingId && signaturesForShift(waiverSignatures, s).length === 0);
+    const target = candidates[Math.floor(Math.random() * candidates.length)] || shifts.find((s) => s.bookingId);
+    if (!target?.bookingId) {
+      toast.error("No shift with a booking ID to simulate against.");
+      return;
+    }
+    const fakePayload = {
+      signature_id: `wf-test-${Date.now()}`,
+      signer_name: target.customer?.name || "Test Signer",
+      signer_email: "test@example.com",
+      signed_at: new Date().toISOString(),
+      template_id: "tmpl_test",
+      custom_fields: [{ label: "Bokun Booking ID", value: target.bookingId }],
+    };
+    try {
+      const res = await fetch("/api/public/waiver-forever-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fakePayload),
+      });
+      const json = await res.json();
+      if (json.matched) {
+        toast.success(`Waiver signed for ${target.tourName}`, { description: `Booking ${target.bookingId}` });
+      } else {
+        toast.warning("Webhook stored signature but couldn't match a shift.");
+      }
+    } catch (e) {
+      toast.error("Webhook call failed", { description: String(e) });
+    }
+  };
+
   return (
     <AppShell>
       <PageHeader
@@ -154,6 +190,9 @@ function ShiftsPage() {
             <>
               <Button variant="outline" onClick={simulateBokunBooking}>
                 <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
+              </Button>
+              <Button variant="outline" onClick={simulateWaiverSigned}>
+                <FileSignature className="h-4 w-4 mr-1" /> Simulate waiver signed
               </Button>
               <Button variant="outline" onClick={autoAssignAll}>
                 <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
@@ -238,6 +277,7 @@ function ShiftsPage() {
 function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView, pastView, notesByShift, onLeaveNote }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
+  const { signatures: waiverSignatures } = useWaiverSignatures();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
   return (
     <div className="grid gap-4">
@@ -246,6 +286,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         const suggestions: StaffSuggestion[] = !pastView && !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
         const shiftNotes = notesByShift?.[s.id] || [];
+        const shiftSignatures = signaturesForShift(waiverSignatures, s);
 
         return (
           <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${isUrgent ? "ring-1 ring-warning/20" : ""}`}>
@@ -275,8 +316,13 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                       {s.bookingId && <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{s.bookingId}</span>}
                     </div>
                   </div>
-                  <StatusPill status={s.status} />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <StatusPill status={s.status} />
+                    {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
+                  </div>
                 </div>
+
+                {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
 
                 {s.customer && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs">
