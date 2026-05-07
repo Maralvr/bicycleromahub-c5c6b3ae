@@ -32,10 +32,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
     rental_point_id: null,
     customer_name: "",
     customer_phone: "",
-    participants_adults: 0,
-    participants_teens: 0,
-    participants_infants: 0,
-    participants_trailers: 0,
+    adults: 0,
+    teens: 0,
+    infants: 0,
+    trailers: 0,
     rate: null,
     notes: "",
     required_tags: [],
@@ -60,10 +60,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         rental_point_id: initial.rental_point_id,
         customer_name: initial.customer_name ?? "",
         customer_phone: initial.customer_phone ?? "",
-        participants_adults: initial.participants_adults,
-        participants_teens: initial.participants_teens,
-        participants_infants: initial.participants_infants,
-        participants_trailers: initial.participants_trailers,
+        adults: initial.adults,
+        teens: initial.teens,
+        infants: initial.infants,
+        trailers: initial.trailers,
         rate: initial.rate,
         notes: initial.notes ?? "",
         required_tags: initial.required_tags,
@@ -188,8 +188,8 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                 <Input
                   type="number"
                   min={0}
-                  value={form[`participants_${key}` as const] ?? 0}
-                  onChange={(e) => setForm({ ...form, [`participants_${key}`]: Number(e.target.value) || 0 })}
+                  value={form[key] ?? 0}
+                  onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) || 0 })}
                 />
               </div>
             ))}
