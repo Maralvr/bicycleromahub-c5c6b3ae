@@ -1,10 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap } from "lucide-react";
+import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut } from "lucide-react";
 import logo from "@/assets/logo.jpg";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
+  const { signOut } = useAuth();
 
   const nav = role === "staff"
     ? [
@@ -136,6 +138,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-xs font-semibold truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
             </div>
+            <button
+              onClick={() => void signOut()}
+              title="Sign out"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </aside>
@@ -160,6 +169,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => void signOut()}
+                title="Sign out"
+                className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
           <nav className="flex overflow-x-auto px-2 gap-1 pb-1.5">
