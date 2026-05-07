@@ -43,6 +43,7 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
+  const { signatures: waiverSignatures } = useWaiverSignatures();
 
   const handleNoteSubmit = (note: GuideNote) => {
     const sh = shifts.find((s) => s.id === note.shiftId);
