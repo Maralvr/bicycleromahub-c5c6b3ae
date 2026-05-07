@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
 
   const loadUserData = async (userId: string) => {
-    const [{ data: profileRow }, { data: roleRows }] = await Promise.all([
+    const [{ data: profileRow }, { data: roleRows, error: roleErr }] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, display_name, avatar_initials, phone, staff_id")
@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
+    console.log("[auth] loadUserData", { userId, roleRows, roleErr });
     setProfile((profileRow as Profile) ?? null);
     setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
   };
