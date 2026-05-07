@@ -217,7 +217,7 @@ function Section({
         {shifts.map((s) => {
           const point = s.rental_point_id ? pointById.get(s.rental_point_id) : null;
           const guide = s.assigned_staff_id ? staffById.get(s.assigned_staff_id) : null;
-          const totalPax = s.participants_adults + s.participants_teens + s.participants_infants;
+          const totalPax = s.adults + s.teens + s.infants;
           return (
             <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${muted ? "opacity-70" : ""}`}>
               <div className="flex flex-col lg:flex-row">
@@ -268,7 +268,7 @@ function Section({
                         <div className="font-semibold text-foreground mt-0.5">
                           {totalPax}
                           <span className="text-muted-foreground font-normal text-[10px] ml-1">
-                            ({s.participants_adults}a{s.participants_teens > 0 ? ` ${s.participants_teens}t` : ""}{s.participants_infants > 0 ? ` ${s.participants_infants}i` : ""})
+                            ({s.adults}a{s.teens > 0 ? ` ${s.teens}t` : ""}{s.infants > 0 ? ` ${s.infants}i` : ""})
                           </span>
                         </div>
                       </div>

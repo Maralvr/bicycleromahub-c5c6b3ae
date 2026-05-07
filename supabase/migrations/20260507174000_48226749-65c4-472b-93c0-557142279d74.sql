@@ -1,0 +1,1 @@
+alter type public.field_update_type add value if not exists 'broadcast';
