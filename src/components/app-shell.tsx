@@ -1,10 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap } from "lucide-react";
+import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut } from "lucide-react";
 import logo from "@/assets/logo.jpg";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
+import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 
