@@ -14,16 +14,560 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      field_updates: {
+        Row: {
+          attachments: Json
+          author_id: string
+          created_at: string
+          id: string
+          message: string
+          time: string | null
+          type: Database["public"]["Enums"]["field_update_type"]
+        }
+        Insert: {
+          attachments?: Json
+          author_id: string
+          created_at?: string
+          id?: string
+          message: string
+          time?: string | null
+          type?: Database["public"]["Enums"]["field_update_type"]
+        }
+        Update: {
+          attachments?: Json
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          time?: string | null
+          type?: Database["public"]["Enums"]["field_update_type"]
+        }
+        Relationships: []
+      }
+      guide_notes: {
+        Row: {
+          attachments: Json
+          author_staff_id: string
+          category: Database["public"]["Enums"]["note_category"]
+          created_at: string
+          id: string
+          message: string
+          shift_id: string
+        }
+        Insert: {
+          attachments?: Json
+          author_staff_id: string
+          category?: Database["public"]["Enums"]["note_category"]
+          created_at?: string
+          id?: string
+          message: string
+          shift_id: string
+        }
+        Update: {
+          attachments?: Json
+          author_staff_id?: string
+          category?: Database["public"]["Enums"]["note_category"]
+          created_at?: string
+          id?: string
+          message?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_notes_author_staff_id_fkey"
+            columns: ["author_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guide_notes_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guide_notifications: {
+        Row: {
+          attachments: Json
+          body: string
+          created_at: string
+          id: string
+          link: string | null
+          read: boolean
+          shift_id: string | null
+          staff_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          attachments?: Json
+          body: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          shift_id?: string | null
+          staff_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          attachments?: Json
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          shift_id?: string | null
+          staff_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guide_notifications_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guide_notifications_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_initials: string
+          created_at: string
+          display_name: string
+          id: string
+          phone: string | null
+          staff_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_initials?: string
+          created_at?: string
+          display_name?: string
+          id: string
+          phone?: string | null
+          staff_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_initials?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          phone?: string | null
+          staff_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_points: {
+        Row: {
+          active: boolean
+          address: string | null
+          city: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          opening_hours: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          opening_hours?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          opening_hours?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shifts: {
+        Row: {
+          adults: number
+          assigned_staff_id: string | null
+          booking_id: string | null
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          date: string
+          end_time: string
+          id: string
+          infants: number
+          meeting_point: string
+          notes: string | null
+          rate: number | null
+          rental_point_id: string | null
+          required_tags: string[]
+          source: Database["public"]["Enums"]["shift_source"]
+          start_time: string
+          status: Database["public"]["Enums"]["shift_status"]
+          teens: number
+          tour_name: string
+          trailers: number
+          updated_at: string
+        }
+        Insert: {
+          adults?: number
+          assigned_staff_id?: string | null
+          booking_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          date: string
+          end_time: string
+          id?: string
+          infants?: number
+          meeting_point?: string
+          notes?: string | null
+          rate?: number | null
+          rental_point_id?: string | null
+          required_tags?: string[]
+          source?: Database["public"]["Enums"]["shift_source"]
+          start_time: string
+          status?: Database["public"]["Enums"]["shift_status"]
+          teens?: number
+          tour_name: string
+          trailers?: number
+          updated_at?: string
+        }
+        Update: {
+          adults?: number
+          assigned_staff_id?: string | null
+          booking_id?: string | null
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          infants?: number
+          meeting_point?: string
+          notes?: string | null
+          rate?: number | null
+          rental_point_id?: string | null
+          required_tags?: string[]
+          source?: Database["public"]["Enums"]["shift_source"]
+          start_time?: string
+          status?: Database["public"]["Enums"]["shift_status"]
+          teens?: number
+          tour_name?: string
+          trailers?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_assigned_staff_id_fkey"
+            columns: ["assigned_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_rental_point_id_fkey"
+            columns: ["rental_point_id"]
+            isOneToOne: false
+            referencedRelation: "rental_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          active: boolean
+          avatar: string
+          created_at: string
+          email: string | null
+          id: string
+          languages: string[]
+          licenses: string[]
+          name: string
+          phone: string | null
+          profile_id: string | null
+          role: Database["public"]["Enums"]["staff_role"]
+          status: Database["public"]["Enums"]["staff_status"]
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          avatar?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          languages?: string[]
+          licenses?: string[]
+          name: string
+          phone?: string | null
+          profile_id?: string | null
+          role?: Database["public"]["Enums"]["staff_role"]
+          status?: Database["public"]["Enums"]["staff_status"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          avatar?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          languages?: string[]
+          licenses?: string[]
+          name?: string
+          phone?: string | null
+          profile_id?: string | null
+          role?: Database["public"]["Enums"]["staff_role"]
+          status?: Database["public"]["Enums"]["staff_status"]
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_rental_points: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          rental_point_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          rental_point_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          rental_point_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_rental_points_rental_point_id_fkey"
+            columns: ["rental_point_id"]
+            isOneToOne: false
+            referencedRelation: "rental_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_unavailability: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          date: string
+          from_time: string | null
+          id: string
+          reason: string | null
+          staff_id: string
+          to_time: string | null
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          date: string
+          from_time?: string | null
+          id?: string
+          reason?: string | null
+          staff_id: string
+          to_time?: string | null
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          date?: string
+          from_time?: string | null
+          id?: string
+          reason?: string | null
+          staff_id?: string
+          to_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_unavailability_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_updates: {
+        Row: {
+          attachments: Json
+          author_staff_id: string
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          task_id: string
+          type: Database["public"]["Enums"]["task_update_type"]
+        }
+        Insert: {
+          attachments?: Json
+          author_staff_id: string
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          task_id: string
+          type?: Database["public"]["Enums"]["task_update_type"]
+        }
+        Update: {
+          attachments?: Json
+          author_staff_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          task_id?: string
+          type?: Database["public"]["Enums"]["task_update_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_updates_author_staff_id_fkey"
+            columns: ["author_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          description: string | null
+          done: boolean
+          due: string
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          description?: string | null
+          done?: boolean
+          due: string
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          description?: string | null
+          done?: boolean
+          due?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff"
+      field_update_type: "field" | "progress" | "completed" | "blocker"
+      note_category: "general" | "bike_issue" | "customer" | "incident"
+      notification_type:
+        | "assigned"
+        | "reassigned"
+        | "unassigned"
+        | "shift_updated"
+        | "shift_cancelled"
+        | "broadcast"
+        | "reminder"
+        | "task"
+      shift_source: "manual" | "bokun"
+      shift_status: "unassigned" | "pending" | "accepted" | "rejected"
+      staff_role: "guide" | "rental" | "mechanic" | "admin"
+      staff_status: "available" | "on_shift" | "off"
+      task_priority: "low" | "medium" | "high"
+      task_update_type: "progress" | "completed" | "blocker"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +694,26 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff"],
+      field_update_type: ["field", "progress", "completed", "blocker"],
+      note_category: ["general", "bike_issue", "customer", "incident"],
+      notification_type: [
+        "assigned",
+        "reassigned",
+        "unassigned",
+        "shift_updated",
+        "shift_cancelled",
+        "broadcast",
+        "reminder",
+        "task",
+      ],
+      shift_source: ["manual", "bokun"],
+      shift_status: ["unassigned", "pending", "accepted", "rejected"],
+      staff_role: ["guide", "rental", "mechanic", "admin"],
+      staff_status: ["available", "on_shift", "off"],
+      task_priority: ["low", "medium", "high"],
+      task_update_type: ["progress", "completed", "blocker"],
+    },
   },
 } as const
