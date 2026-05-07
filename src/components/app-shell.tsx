@@ -138,6 +138,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-xs font-semibold truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
             </div>
+            <button
+              onClick={() => void signOut()}
+              title="Sign out"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </aside>
