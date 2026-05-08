@@ -224,17 +224,17 @@ function ShiftsPage() {
         )}
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
@@ -253,6 +253,7 @@ function ShiftsPage() {
             onAccept={(id) => updateStatus(id, "accepted")}
             onReject={(id) => updateStatus(id, "rejected")}
             onDuplicate={duplicate}
+            onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
           />
         </TabsContent>
       </Tabs>
@@ -271,6 +272,12 @@ function ShiftsPage() {
         open={!!noteDialogShift}
         onClose={() => setNoteDialogShift(null)}
         onSubmit={handleNoteSubmit}
+      />
+
+      <InvoiceDialog
+        shift={invoiceDialogShift}
+        open={!!invoiceDialogShift}
+        onClose={() => setInvoiceDialogShift(null)}
       />
     </AppShell>
   );
