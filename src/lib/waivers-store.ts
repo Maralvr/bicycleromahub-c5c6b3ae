@@ -30,7 +30,7 @@ export function useWaiverSignatures() {
   useEffect(() => {
     void fetchAll();
     const channel = supabase
-      .channel("waiver-signatures-realtime")
+      .channel(`waiver-signatures-realtime-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "waiver_signatures" },
