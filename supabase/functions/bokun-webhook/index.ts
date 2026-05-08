@@ -132,6 +132,33 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
+  // Shared-secret authentication. Bokun supports custom headers on outbound
+  // webhooks; configure it to send `x-webhook-secret: <BOKUN_WEBHOOK_SECRET>`.
+  // We also accept the same value as a `?token=` query param as a fallback.
+  // @ts-ignore Deno globals
+  const expectedSecret = Deno.env.get("BOKUN_WEBHOOK_SECRET");
+  if (!expectedSecret) {
+    return new Response(JSON.stringify({ error: "Webhook secret not configured" }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const headerSecret = req.headers.get("x-webhook-secret") ?? "";
+  const url = new URL(req.url);
+  const querySecret = url.searchParams.get("token") ?? "";
+  const provided = headerSecret || querySecret;
+  // constant-time compare
+  let ok = provided.length === expectedSecret.length;
+  for (let i = 0; i < Math.max(provided.length, expectedSecret.length); i++) {
+    ok = ok && provided.charCodeAt(i) === expectedSecret.charCodeAt(i);
+  }
+  if (!ok) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
