@@ -143,6 +143,74 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer: Json
+          drive_url: string | null
+          id: string
+          invoice_date: string
+          lines: Json
+          notes: string | null
+          number: number
+          pdf_filename: string | null
+          shift_id: string | null
+          subtotal: number
+          total: number
+          updated_at: string
+          vat_amount: number
+          vat_rate: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer?: Json
+          drive_url?: string | null
+          id?: string
+          invoice_date?: string
+          lines?: Json
+          notes?: string | null
+          number: number
+          pdf_filename?: string | null
+          shift_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer?: Json
+          drive_url?: string | null
+          id?: string
+          invoice_date?: string
+          lines?: Json
+          notes?: string | null
+          number?: number
+          pdf_filename?: string | null
+          shift_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_initials: string
@@ -595,6 +663,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_invoice_number: { Args: { _year: number }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "staff"
