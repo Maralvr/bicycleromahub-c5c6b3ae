@@ -1,6 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo.jpg";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
@@ -31,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/live-shifts", label: "Live shifts", icon: Zap },
         { to: "/calendar", label: t.nav.calendar, icon: CalendarDays },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/users", label: "Users", icon: ShieldCheck },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
       ];
 
