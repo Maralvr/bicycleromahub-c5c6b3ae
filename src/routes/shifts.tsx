@@ -43,6 +43,7 @@ function ShiftsPage() {
   const isAdmin = role === "admin";
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
+  const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
