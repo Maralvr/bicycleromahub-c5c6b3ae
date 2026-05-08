@@ -459,6 +459,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
                       </Button>
                     )}
+                    {!guideView && onGenerateInvoice && (
+                      <Button size="sm" variant="outline" onClick={() => onGenerateInvoice(s)} className="border-primary/40 text-primary hover:bg-primary/5">
+                        <FileText className="h-3.5 w-3.5 mr-1" /> Generate invoice
+                      </Button>
+                    )}
                   </div>
                 </div>
 
