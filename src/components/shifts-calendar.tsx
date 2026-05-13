@@ -397,7 +397,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
                     }`}
                   >
                     {cellShifts.map((s) => (
-                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpen(iso)} hideTime />
+                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpenShift(s)} hideTime />
                     ))}
                   </div>
                 );
