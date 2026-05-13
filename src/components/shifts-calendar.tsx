@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar } from "@/components/avatar";
 import { Shift, Staff } from "@/lib/mock-data";
-import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDays, CheckCircle2, AlertTriangle, AlertCircle, XCircle, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDays, CheckCircle2, AlertTriangle, AlertCircle, XCircle, Circle, UserPlus } from "lucide-react";
+
+type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
 
