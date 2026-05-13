@@ -179,13 +179,13 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
       </div>
 
       {view === "day" && (
-        <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpen={setSelectedDay} />
+        <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpenShift={setSelectedShift} />
       )}
       {view === "week" && (
-        <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpen={setSelectedDay} todayISO={todayISO} />
+        <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
       )}
       {view === "month" && (
-        <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpen={setSelectedDay} todayISO={todayISO} />
+        <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
       )}
 
       <DayDetailsDialog
@@ -193,7 +193,9 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
         shifts={selectedDay ? shiftsByDate[selectedDay] || [] : []}
         staff={staff}
         onClose={() => setSelectedDay(null)}
+        onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} />
     </Card>
   );
 }
