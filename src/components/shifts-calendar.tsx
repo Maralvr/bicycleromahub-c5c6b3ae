@@ -230,10 +230,11 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
         dateISO={selectedDay}
         shifts={selectedDay ? shiftsByDate[selectedDay] || [] : []}
         staff={staff}
+        showRates={showRates}
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
-      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} showRates={showRates} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
     </Card>
   );
 }
