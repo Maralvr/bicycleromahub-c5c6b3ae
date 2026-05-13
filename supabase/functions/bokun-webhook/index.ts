@@ -278,13 +278,28 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!hasFullBookingDetails(v.data)) {
-    return new Response(JSON.stringify({ ok: true, action: "received", bookingId: String(v.data.bookingId) }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // If Bokun sent only an event (bookingId), call back to their API for full details.
+  let fullPayload: FullBookingPayload | null = hasFullBookingDetails(v.data) ? v.data : null;
+  if (!fullPayload) {
+    fullPayload = await fetchBokunBooking(v.data.bookingId);
+    if (!fullPayload) {
+      return new Response(JSON.stringify({
+        ok: false,
+        action: "fetch_failed",
+        bookingId: String(v.data.bookingId),
+        hint: "Set BOKUN_ACCESS_KEY and BOKUN_SECRET_KEY secrets, or check Bokun API logs.",
+      }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Re-check cancel status now that we have full details
+    if (fullPayload.status === "CANCELLED" && existing) {
+      await supabase.from("shifts").delete().eq("id", existing.id);
+      return new Response(JSON.stringify({ ok: true, action: "cancelled", id: existing.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
-  const row = mapToShiftRow(v.data);
+  const row = mapToShiftRow(fullPayload);
 
   if (existing) {
     const { error } = await supabase.from("shifts").update(row).eq("id", existing.id);
