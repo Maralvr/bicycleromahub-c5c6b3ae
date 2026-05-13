@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
+const RECOVERY_TIMEOUT_MS = 8000;
+const EXPIRED_MESSAGE = "Recovery link is missing or expired. Request a new password reset email.";
+
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [{ title: "Reset password — eBicycle Roma" }],
@@ -26,11 +29,19 @@ function ResetPasswordPage() {
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
+    let settled = false;
+
     const finish = (token = "", message = "") => {
+      if (settled) return;
+      settled = true;
       setRecoveryToken(token);
       setAuthError(message);
       setReady(true);
     };
+
+    const timeout = window.setTimeout(() => {
+      finish("", EXPIRED_MESSAGE);
+    }, RECOVERY_TIMEOUT_MS);
 
     const parseRecoverySession = async () => {
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -40,7 +51,7 @@ function ResetPasswordPage() {
       const code = search.get("code") ?? hash.get("code");
 
       try {
-        if (accessToken && refreshToken) {
+        if (accessToken) {
           window.history.replaceState(null, document.title, window.location.pathname);
           finish(accessToken);
           return;
@@ -54,7 +65,7 @@ function ResetPasswordPage() {
           return;
         }
 
-        finish("", "Recovery link is missing or expired. Request a new password reset email.");
+        finish("", EXPIRED_MESSAGE);
       } catch (err) {
         finish("", err instanceof Error ? err.message : "Recovery link expired or invalid.");
       }
@@ -69,6 +80,7 @@ function ResetPasswordPage() {
     void parseRecoverySession();
 
     return () => {
+      window.clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -119,8 +131,7 @@ function ResetPasswordPage() {
           </Button>
           {ready && !recoveryToken && (
             <p className="text-sm text-destructive">
-              {authError ||
-                "Recovery link is missing or expired. Request a new password reset email."}
+              {authError || EXPIRED_MESSAGE}
             </p>
           )}
         </form>
