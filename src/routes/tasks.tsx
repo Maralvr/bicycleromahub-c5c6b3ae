@@ -76,7 +76,7 @@ function TasksPage() {
 
   const tasks = isAdmin ? allTasks : allTasks.filter((task) => task.assigneeId === staffId);
   const adminIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
-  const guideOptions = staff.filter((s) => s.role === "guide");
+  const guideOptions = staff.filter((s) => s.role === "guide" || s.role === "admin");
 
   const createTask = async (input: {
     title: string;
