@@ -106,7 +106,7 @@ function ShiftsPage() {
         });
       }
     }
-    toast.success(`Assigned to ${staffName}`, { description: "Push notification sent — awaiting accept/reject." });
+    toast.success(`Assigned to ${staffName}`, { description: "Notified in-app — awaiting accept/reject." });
   };
 
   const autoAssignAll = async () => {
