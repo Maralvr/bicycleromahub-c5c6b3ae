@@ -45,6 +45,18 @@ export function useRentalPoints() {
 
   useEffect(() => {
     void fetchAll();
+    const channel = supabase
+      .channel("rental-points-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rental_points" }, () => {
+        void fetchAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff_rental_points" }, () => {
+        void fetchAll();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [fetchAll]);
 
   const create = useCallback(
