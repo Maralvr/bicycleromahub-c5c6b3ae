@@ -153,10 +153,41 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
     warnings.push(`Missing ${missingLicenses.join(", ")}`);
   }
 
-  // --- 7. Workload balancing — slight penalty for already-busy staff today ---
+  // --- 7. Workload balancing — penalize busy guides this week, reward lighter loads ---
+  const shiftDate = new Date(shift.date);
+  const weekStart = new Date(shiftDate);
+  weekStart.setDate(shiftDate.getDate() - shiftDate.getDay()); // Sunday
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  const weekStartStr = ymd(weekStart);
+  const weekEndStr = ymd(weekEnd);
+
+  const shiftsThisWeek = allShifts.filter(
+    (s) =>
+      s.assignedStaffId === staff.id &&
+      s.id !== shift.id &&
+      s.status !== "rejected" &&
+      s.date >= weekStartStr &&
+      s.date <= weekEndStr,
+  ).length;
+
   const shiftsToday = allShifts.filter(
     (s) => s.assignedStaffId === staff.id && s.date === shift.date && s.status !== "rejected" && s.id !== shift.id,
   ).length;
+
+  // Light load bonus, heavy load penalty
+  if (shiftsThisWeek === 0) {
+    score += 12;
+    reasons.push("No shifts this week — fresh load");
+  } else if (shiftsThisWeek <= 2) {
+    score += 6;
+    reasons.push(`Light week (${shiftsThisWeek} shifts)`);
+  } else if (shiftsThisWeek >= 5) {
+    score -= shiftsThisWeek * 3;
+    warnings.push(`Heavy week (${shiftsThisWeek} shifts)`);
+  }
+
   if (shiftsToday > 0) {
     score -= shiftsToday * 4;
     if (shiftsToday >= 2) warnings.push(`${shiftsToday} shifts already today`);

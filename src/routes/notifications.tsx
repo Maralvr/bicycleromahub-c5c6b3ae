@@ -117,7 +117,7 @@ function NotificationsPage() {
     });
     setMsg("");
     setAttachments([]);
-    toast.success(`Push notification sent to ${guideIds.length} guides`);
+    toast.success(`Notified ${guideIds.length} guides in-app`, { description: "They'll see it in their notification bell." });
   };
 
   return (
