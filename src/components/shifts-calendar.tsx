@@ -526,7 +526,7 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void }) {
+function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRates = true }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void; showRates?: boolean }) {
   const open = !!dateISO;
   const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   return (
