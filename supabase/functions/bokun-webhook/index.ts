@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Bokun-Signature, X-Webhook-Signature, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, X-Bokun-Signature, X-Webhook-Signature, X-Webhook-Secret, X-Bokun-ApiKey, X-Bokun-Hmac, X-Bokun-Topic, X-Bokun-Vendor-Id, X-Bokun-Booking-Id, Authorization",
 };
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
@@ -40,8 +40,13 @@ function computeEnd(start: string, end?: string, durationMinutes?: number) {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:00`;
 }
 
-interface Payload {
+interface BokunEventPayload {
   bookingId: string | number;
+  timestamp?: string;
+  experienceBookingId?: string;
+}
+
+interface FullBookingPayload extends BokunEventPayload {
   confirmationCode?: string;
   productTitle: string;
   startDateTime: string;
@@ -65,25 +70,32 @@ interface Payload {
   status?: "CONFIRMED" | "CANCELLED" | "PENDING";
 }
 
-function validate(input: unknown): { ok: true; data: Payload } | { ok: false; error: string } {
+function validate(input: unknown): { ok: true; data: BokunEventPayload } | { ok: false; error: string } {
   if (!input || typeof input !== "object") return { ok: false, error: "Body must be an object" };
   const p = input as Record<string, unknown>;
   if (!p.bookingId || (typeof p.bookingId !== "string" && typeof p.bookingId !== "number")) {
     return { ok: false, error: "bookingId required" };
   }
-  if (typeof p.productTitle !== "string" || p.productTitle.length < 1 || p.productTitle.length > 255) {
-    return { ok: false, error: "productTitle required" };
-  }
-  if (typeof p.startDateTime !== "string" || p.startDateTime.length < 1) {
-    return { ok: false, error: "startDateTime required" };
-  }
-  if (!p.customer || typeof p.customer !== "object") {
-    return { ok: false, error: "customer required" };
-  }
-  return { ok: true, data: input as Payload };
+  return { ok: true, data: input as BokunEventPayload };
 }
 
-function mapToShiftRow(p: Payload) {
+function hasFullBookingDetails(p: BokunEventPayload): p is FullBookingPayload {
+  const candidate = p as Partial<FullBookingPayload>;
+  return typeof candidate.productTitle === "string" && candidate.productTitle.length > 0
+    && typeof candidate.startDateTime === "string" && candidate.startDateTime.length > 0
+    && typeof candidate.customer === "object" && candidate.customer !== null;
+}
+
+function bookingKeys(p: BokunEventPayload) {
+  const raw = String(p.bookingId);
+  const keys = new Set([raw]);
+  const confirmationCode = (p as Partial<FullBookingPayload>).confirmationCode;
+  if (confirmationCode) keys.add(confirmationCode);
+  if (!raw.startsWith("BKN-")) keys.add(`BKN-${raw}`);
+  return Array.from(keys);
+}
+
+function mapToShiftRow(p: FullBookingPayload) {
   const participants = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   for (const pcb of p.pricingCategoryBookings ?? []) {
     const key = PRICING_MAP[pcb.pricingCategory.title.toLowerCase().trim()];
@@ -96,7 +108,7 @@ function mapToShiftRow(p: Payload) {
   const customerName = p.customer.fullName || [p.customer.firstName, p.customer.lastName].filter(Boolean).join(" ") || "Unknown";
   return {
     source: "bokun" as const,
-    booking_id: p.confirmationCode || `BKN-${p.bookingId}`,
+    booking_id: p.confirmationCode || String(p.bookingId),
     tour_name: p.productTitle,
     date: p.startDateTime.slice(0, 10),
     start_time: fmtTime(p.startDateTime),
@@ -104,10 +116,10 @@ function mapToShiftRow(p: Payload) {
     meeting_point: meeting,
     customer_name: customerName,
     customer_phone: p.customer.phoneNumber || null,
-    participants_adults: participants.adults,
-    participants_teens: participants.teens,
-    participants_infants: participants.infants,
-    participants_trailers: participants.trailers,
+    adults: participants.adults,
+    teens: participants.teens,
+    infants: participants.infants,
+    trailers: participants.trailers,
     rate: p.totalPrice ?? null,
     notes: p.notes ?? null,
     required_tags: inferTags(p.productTitle, p.productTags),
