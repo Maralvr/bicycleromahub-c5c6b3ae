@@ -253,6 +253,7 @@ function ShiftsPage() {
           <ShiftsCalendar
             shifts={isAdmin ? upcomingShifts : upcomingShifts.filter((s) => s.assignedStaffId === staffId)}
             staff={staff}
+            onAssign={isAdmin ? assignStaff : undefined}
           />
         </TabsContent>
         {isAdmin && (
