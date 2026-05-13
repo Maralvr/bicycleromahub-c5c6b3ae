@@ -435,10 +435,13 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
           // status counts per day
           const counts = list.reduce((acc, s) => { acc[s.status] = (acc[s.status] || 0) + 1; return acc; }, {} as Record<Shift["status"], number>);
           return (
-            <button
+            <div
               key={iso}
-              onClick={() => onOpen(iso)}
-              className={`min-h-[96px] rounded-md border p-1.5 text-left transition relative overflow-hidden hover:border-primary/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenDay(iso)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDay(iso); } }}
+              className={`min-h-[96px] rounded-md border p-1.5 text-left transition relative overflow-hidden hover:border-primary/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer ${
                 isToday ? "border-primary bg-primary/5" : "border-border"
               } ${inMonth ? "bg-card" : "bg-muted/20 opacity-60"}`}
             >
@@ -454,12 +457,13 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
                 {list.slice(0, 2).map((s) => {
                   const meta = STATUS[s.status];
                   return (
-                    <div
+                    <button
                       key={s.id}
-                      className={`text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium`}
+                      onClick={(e) => { e.stopPropagation(); onOpenShift(s); }}
+                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium hover:bg-muted transition`}
                     >
                       <span className="tabular-nums">{s.startTime}</span> {s.tourName}
-                    </div>
+                    </button>
                   );
                 })}
                 {list.length > 2 && (
@@ -475,7 +479,7 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
                   </div>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
