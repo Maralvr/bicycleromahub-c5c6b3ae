@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, FormEvent } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { updatePasswordFromRecoverySession } from "@/lib/password-reset.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,15 +18,16 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const updatePassword = useServerFn(updatePasswordFromRecoverySession);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+  const [recoveryToken, setRecoveryToken] = useState("");
   const [ready, setReady] = useState(false);
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const finish = (s: Session | null, message = "") => {
-      setSession(s);
+    const finish = (token = "", message = "") => {
+      setRecoveryToken(token);
       setAuthError(message);
       setReady(true);
     };
@@ -39,13 +41,8 @@ function ResetPasswordPage() {
 
       try {
         if (accessToken && refreshToken) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) throw error;
           window.history.replaceState(null, document.title, window.location.pathname);
-          finish(data.session);
+          finish(accessToken);
           return;
         }
 
@@ -53,21 +50,20 @@ function ResetPasswordPage() {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           window.history.replaceState(null, document.title, window.location.pathname);
-          finish(data.session);
+          finish(data.session?.access_token ?? "");
           return;
         }
 
-        const { data } = await supabase.auth.getSession();
-        finish(data.session);
+        finish("", "Recovery link is missing or expired. Request a new password reset email.");
       } catch (err) {
-        finish(null, err instanceof Error ? err.message : "Recovery link expired or invalid.");
+        finish("", err instanceof Error ? err.message : "Recovery link expired or invalid.");
       }
     };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (s) finish(s);
+      if (s?.access_token) finish(s.access_token);
     });
 
     void parseRecoverySession();
@@ -79,25 +75,22 @@ function ResetPasswordPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const activeSession = session ?? (await supabase.auth.getSession()).data.session;
-    if (!activeSession) {
+    if (!recoveryToken) {
       toast.error("Recovery link expired or invalid. Request a new reset email.");
       return;
     }
     setBusy(true);
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: activeSession.access_token,
-      refresh_token: activeSession.refresh_token,
-    });
-    const { error } = sessionError
-      ? { error: sessionError }
-      : await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await updatePassword({
+        data: { accessToken: recoveryToken, password },
+      });
+      await supabase.auth.signOut();
       toast.success("Password updated");
-      void navigate({ to: "/" });
+      void navigate({ to: "/auth", search: { redirect: "/" } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update password.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -121,10 +114,10 @@ function ResetPasswordPage() {
               autoComplete="new-password"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !ready || !session}>
+          <Button type="submit" className="w-full" disabled={busy || !ready || !recoveryToken}>
             {!ready ? "Loading…" : busy ? "Updating…" : "Update password"}
           </Button>
-          {ready && !session && (
+          {ready && !recoveryToken && (
             <p className="text-sm text-destructive">
               {authError ||
                 "Recovery link is missing or expired. Request a new password reset email."}
