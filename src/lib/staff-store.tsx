@@ -15,6 +15,18 @@ type StaffStoreContextValue = {
   clearDate: (staffId: string, date: string) => Promise<void>;
   clearMonth: (staffId: string, yearMonth: string) => Promise<void>;
   updateProfile: (staffId: string, patch: ProfilePatch) => Promise<void>;
+  addStaff: (input: NewStaffInput) => Promise<Staff | null>;
+  deleteStaff: (staffId: string) => Promise<void>;
+};
+
+export type NewStaffInput = {
+  name: string;
+  email?: string;
+  phone?: string;
+  role: Staff["role"];
+  tags?: string[];
+  languages?: string[];
+  licenses?: string[];
 };
 
 const StaffStoreContext = createContext<StaffStoreContextValue | null>(null);
@@ -167,9 +179,55 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     await fetchAll();
   };
 
+  const addStaff: StaffStoreContextValue["addStaff"] = async (input) => {
+    const initials = (input.name.trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2) || "?").toUpperCase();
+    const payload = {
+      name: input.name.trim(),
+      email: input.email?.trim() || null,
+      phone: input.phone?.trim() || null,
+      role: input.role,
+      avatar: initials,
+      tags: input.tags ?? [],
+      languages: input.languages ?? [],
+      licenses: input.licenses ?? [],
+    };
+    const { data, error: err } = await supabase
+      .from("staff")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .insert(payload as any)
+      .select()
+      .single();
+    if (err) {
+      setError(err.message);
+      return null;
+    }
+    await fetchAll();
+    const r = data as StaffRow;
+    return {
+      id: r.id,
+      profileId: r.profile_id,
+      isLive: true,
+      name: r.name,
+      avatar: r.avatar,
+      role: r.role,
+      tags: r.tags ?? [],
+      languages: r.languages ?? [],
+      licenses: r.licenses ?? [],
+      status: r.status,
+      phone: r.phone ?? "",
+      unavailability: [],
+    };
+  };
+
+  const deleteStaff: StaffStoreContextValue["deleteStaff"] = async (id) => {
+    const { error: err } = await supabase.from("staff").delete().eq("id", id);
+    if (err) setError(err.message);
+    await fetchAll();
+  };
+
   return (
     <StaffStoreContext.Provider
-      value={{ staff, loading, error, refresh: fetchAll, setUnavailability, toggleAllDay, setTimeWindow, clearDate, clearMonth, updateProfile }}
+      value={{ staff, loading, error, refresh: fetchAll, setUnavailability, toggleAllDay, setTimeWindow, clearDate, clearMonth, updateProfile, addStaff, deleteStaff }}
     >
       {children}
     </StaffStoreContext.Provider>

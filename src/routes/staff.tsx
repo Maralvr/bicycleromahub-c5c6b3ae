@@ -18,6 +18,7 @@ import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, Calenda
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
+import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { useLiveStaff } from "@/lib/live-staff";
 
 export const Route = createFileRoute("/staff")({
@@ -211,12 +212,13 @@ function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType
 
 function AdminStaffDirectory() {
   const { t } = useI18n();
-  const { staff: mockStaff } = useStaffStore();
+  const { staff: mockStaff, addStaff } = useStaffStore();
   const { staff: liveStaff } = useLiveStaff();
   const { shifts: allShifts } = useShiftsStore();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Merge: mock staff first, enriched with profileId when name matches a live row,
   // then append any live rows that didn't match a mock entry.
@@ -283,7 +285,7 @@ function AdminStaffDirectory() {
         title={t.staff.title}
         subtitle={t.staff.subtitle}
         actions={
-          <Button onClick={() => toast.success("Staff form would open here")} className="shadow-[var(--shadow-elegant)]">
+          <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
             <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
           </Button>
         }
@@ -445,6 +447,17 @@ function AdminStaffDirectory() {
           )}
         </SheetContent>
       </Sheet>
+
+      <AddStaffDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={async (input) => {
+          const created = await addStaff(input);
+          if (created) toast.success(`${created.name} added`);
+          else toast.error("Couldn't add staff");
+          return created;
+        }}
+      />
     </AppShell>
   );
 }
