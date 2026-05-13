@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/rental-points", label: "Rental points", icon: MapPin },
         { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
         { to: "/live-shifts", label: "Live shifts", icon: Zap },
-        { to: "/calendar", label: t.nav.calendar, icon: CalendarDays },
+        
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
         { to: "/users", label: "Users", icon: ShieldCheck },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
