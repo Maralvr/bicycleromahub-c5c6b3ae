@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, FormEvent } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { updatePasswordFromRecoverySession } from "@/lib/password-reset.functions";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ function ResetPasswordPage() {
   const updatePassword = useServerFn(updatePasswordFromRecoverySession);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+  const [recoveryToken, setRecoveryToken] = useState("");
   const [ready, setReady] = useState(false);
   const [authError, setAuthError] = useState("");
 
