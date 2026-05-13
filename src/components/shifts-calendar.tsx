@@ -83,6 +83,7 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   const shiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {};
