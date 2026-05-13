@@ -198,7 +198,7 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
-      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
     </Card>
   );
 }
