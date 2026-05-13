@@ -82,7 +82,7 @@ function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
-export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn }) {
+export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn; showRates?: boolean }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
