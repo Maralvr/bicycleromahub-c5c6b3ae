@@ -455,6 +455,7 @@ function AdminStaffDirectory() {
           const created = await addStaff(input);
           if (created) toast.success(`${created.name} added`);
           else toast.error("Couldn't add staff");
+          return created;
         }}
       />
     </AppShell>
