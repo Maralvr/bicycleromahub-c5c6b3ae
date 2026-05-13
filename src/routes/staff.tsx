@@ -284,7 +284,7 @@ function AdminStaffDirectory() {
         title={t.staff.title}
         subtitle={t.staff.subtitle}
         actions={
-          <Button onClick={() => toast.success("Staff form would open here")} className="shadow-[var(--shadow-elegant)]">
+          <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
             <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
           </Button>
         }
