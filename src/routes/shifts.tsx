@@ -19,6 +19,7 @@ import { useNotesStore } from "@/lib/notes-store";
 import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { InvoiceDialog } from "@/components/invoice-dialog";
+import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
