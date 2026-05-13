@@ -359,7 +359,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
             return (
               <button
                 key={iso}
-                onClick={() => onOpen(iso)}
+                onClick={() => onOpenDay(iso)}
                 className={`text-center py-2 px-1 rounded-md border transition hover:bg-muted/50 ${
                   isToday ? "border-primary bg-primary/5" : "border-transparent"
                 }`}
