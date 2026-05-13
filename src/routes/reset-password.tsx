@@ -74,9 +74,14 @@ function ResetPasswordPage() {
               autoComplete="new-password"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Updating…" : "Update password"}
+          <Button type="submit" className="w-full" disabled={busy || !ready || !session}>
+            {!ready ? "Loading…" : busy ? "Updating…" : "Update password"}
           </Button>
+          {ready && !session && (
+            <p className="text-sm text-destructive">
+              Recovery link is missing or expired. Request a new password reset email.
+            </p>
+          )}
         </form>
       </Card>
     </div>
