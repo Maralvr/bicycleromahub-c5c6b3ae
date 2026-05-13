@@ -56,47 +56,76 @@ export function useStaffRentalPoints(userId: string | null | undefined) {
   const assign = useCallback(
     async (pointId: string) => {
       if (!userId) throw new Error("No user selected");
+      // Optimistic insert with a temp id; realtime/refetch will reconcile
+      const tempId = `temp-${pointId}-${Date.now()}`;
+      const optimistic: StaffPointAssignment = {
+        id: tempId,
+        user_id: userId,
+        rental_point_id: pointId,
+        is_primary: false,
+      };
+      const prev = assignments;
+      setAssignments((curr) =>
+        curr.some((a) => a.rental_point_id === pointId) ? curr : [...curr, optimistic],
+      );
       const { error } = await supabase
         .from("staff_rental_points")
         .insert({ user_id: userId, rental_point_id: pointId });
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setAssignments(prev);
+        throw error;
+      }
+      void fetchAll();
     },
-    [userId, fetchAll],
+    [userId, fetchAll, assignments],
   );
 
   const unassign = useCallback(
     async (pointId: string) => {
       if (!userId) throw new Error("No user selected");
+      const prev = assignments;
+      setAssignments((curr) => curr.filter((a) => a.rental_point_id !== pointId));
       const { error } = await supabase
         .from("staff_rental_points")
         .delete()
         .eq("user_id", userId)
         .eq("rental_point_id", pointId);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setAssignments(prev);
+        throw error;
+      }
+      void fetchAll();
     },
-    [userId, fetchAll],
+    [userId, fetchAll, assignments],
   );
 
   const setPrimary = useCallback(
     async (pointId: string) => {
       if (!userId) throw new Error("No user selected");
-      // Clear existing primary, then set the new one
+      const prev = assignments;
+      setAssignments((curr) =>
+        curr.map((a) => ({ ...a, is_primary: a.rental_point_id === pointId })),
+      );
       const { error: clearErr } = await supabase
         .from("staff_rental_points")
         .update({ is_primary: false })
         .eq("user_id", userId);
-      if (clearErr) throw clearErr;
+      if (clearErr) {
+        setAssignments(prev);
+        throw clearErr;
+      }
       const { error } = await supabase
         .from("staff_rental_points")
         .update({ is_primary: true })
         .eq("user_id", userId)
         .eq("rental_point_id", pointId);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setAssignments(prev);
+        throw error;
+      }
+      void fetchAll();
     },
-    [userId, fetchAll],
+    [userId, fetchAll, assignments],
   );
 
   return { assignments, loading, error, refresh: fetchAll, assign, unassign, setPrimary };
