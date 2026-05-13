@@ -87,17 +87,23 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
+
+  const filteredShifts = useMemo(
+    () => (platform === "all" ? shifts : shifts.filter((s) => s.source === platform)),
+    [shifts, platform],
+  );
 
   const shiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {};
-    for (const s of shifts) {
+    for (const s of filteredShifts) {
       (map[s.date] = map[s.date] || []).push(s);
     }
     for (const k of Object.keys(map)) {
       map[k].sort((a, b) => a.startTime.localeCompare(b.startTime));
     }
     return map;
-  }, [shifts]);
+  }, [filteredShifts]);
 
   // stats for the visible range
   const visibleShifts = useMemo(() => {
