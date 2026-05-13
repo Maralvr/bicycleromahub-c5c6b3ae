@@ -258,7 +258,8 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
   );
 }
 
-function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpen: (d: string) => void }) {
+function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpenShift: (s: Shift) => void }) {
+  void dateISO;
   if (shifts.length === 0) {
     return (
       <div className="text-sm text-muted-foreground italic py-12 text-center border border-dashed border-border rounded-lg">
@@ -275,7 +276,7 @@ function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: 
         return (
           <button
             key={s.id}
-            onClick={() => onOpen(dateISO)}
+            onClick={() => onOpenShift(s)}
             className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden flex items-stretch transition focus:outline-none focus:ring-2 ${meta.ring}`}
           >
             <span className={`w-1.5 ${meta.bar}`} />
@@ -311,7 +312,7 @@ function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: 
   );
 }
 
-function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpen: (d: string) => void; todayISO: string }) {
+function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
