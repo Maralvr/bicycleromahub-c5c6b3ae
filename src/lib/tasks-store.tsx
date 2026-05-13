@@ -149,11 +149,36 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
     [staffIdToUserId, userIdToStaffId],
   );
 
-  const toggleTask: TasksStore["toggleTask"] = useCallback(async (id, done) => {
-    const { error: updateError } = await supabase.from("tasks").update({ done }).eq("id", id);
-    if (updateError) throw updateError;
-    setRows((prev) => prev.map((task) => (task.id === id ? { ...task, done } : task)));
-  }, []);
+  const toggleTask: TasksStore["toggleTask"] = useCallback(
+    async (id, done) => {
+      const { error: updateError } = await supabase.from("tasks").update({ done }).eq("id", id);
+      if (updateError) throw updateError;
+      setRows((prev) => prev.map((task) => (task.id === id ? { ...task, done } : task)));
+
+      // Notify admin when a guide completes a task
+      if (done) {
+        const task = rows.find((t) => t.id === id);
+        const { data: authData } = await supabase.auth.getUser();
+        const authorUserId = authData.user?.id;
+        const me = staff.find((s) => s.profileId === authorUserId);
+        if (me && task) {
+          const message = `${me.name} completed task: ${task.title}`;
+          void supabase.from("task_updates").insert({
+            task_id: id,
+            author_staff_id: me.id,
+            type: "completed",
+            message,
+          });
+          void supabase.from("field_updates").insert({
+            author_id: me.id,
+            type: "completed",
+            message,
+          });
+        }
+      }
+    },
+    [rows, staff],
+  );
 
   return (
     <TasksContext.Provider
