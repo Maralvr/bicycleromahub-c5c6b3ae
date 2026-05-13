@@ -19,6 +19,7 @@ import { useNotesStore } from "@/lib/notes-store";
 import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { InvoiceDialog } from "@/components/invoice-dialog";
+import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
@@ -56,6 +57,7 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [newShiftOpen, setNewShiftOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
@@ -211,7 +213,7 @@ function ShiftsPage() {
               <Button variant="outline" onClick={autoAssignAll}>
                 <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
               </Button>
-              <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
+              <Button onClick={() => setNewShiftOpen(true)} className="shadow-[var(--shadow-elegant)]">
                 <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
               </Button>
             </>
@@ -299,6 +301,20 @@ function ShiftsPage() {
         shift={invoiceDialogShift}
         open={!!invoiceDialogShift}
         onClose={() => setInvoiceDialogShift(null)}
+      />
+
+      <ManualShiftDialog
+        open={newShiftOpen}
+        onOpenChange={setNewShiftOpen}
+        onSubmit={async (input) => {
+          try {
+            const created = await addShift(input);
+            if (created) toast.success("Shift created");
+            else toast.error("Couldn't create shift");
+          } catch (e) {
+            toast.error("Couldn't create shift", { description: String(e) });
+          }
+        }}
       />
     </AppShell>
   );
