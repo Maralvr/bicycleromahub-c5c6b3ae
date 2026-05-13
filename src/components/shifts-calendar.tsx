@@ -210,9 +210,10 @@ function Stat({ label, value, accent, dot }: { label: string; value: number; acc
 }
 function Sep() { return <span className="h-6 w-px bg-border" />; }
 
-function ShiftChip({ s, staff, onClick, dense = false }: { s: Shift; staff: Staff[]; onClick: () => void; dense?: boolean }) {
+function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: Shift; staff: Staff[]; onClick: () => void; dense?: boolean; hideTime?: boolean }) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
   const meta = STATUS[s.status];
+  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
   return (
     <button
       onClick={onClick}
@@ -220,25 +221,35 @@ function ShiftChip({ s, staff, onClick, dense = false }: { s: Shift; staff: Staf
       className={`group relative w-full text-left rounded-md border overflow-hidden ${meta.chip} transition focus:outline-none focus:ring-2 ${meta.ring}`}
     >
       <span className={`absolute left-0 top-0 bottom-0 w-1 ${meta.bar}`} />
-      <div className={`pl-2 ${dense ? "py-0.5 pr-1.5" : "py-1.5 pr-2"}`}>
-        <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
-          <Clock className="h-2.5 w-2.5 opacity-70" />
-          <span className="tabular-nums">{s.startTime}</span>
-          <span className={`ml-auto h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-        </div>
-        <div className="text-[11px] text-foreground font-medium truncate leading-tight">{s.tourName}</div>
-        {!dense && (
-          <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-            {guide ? (
-              <>
-                <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-3.5 !w-3.5 text-[8px] !rounded-full" />
-                <span className="truncate">{guide.name}</span>
-              </>
-            ) : (
-              <><User className="h-2.5 w-2.5" /> <span className="italic">Unassigned</span></>
-            )}
+      <div className={`pl-2 ${dense ? "py-1 pr-1.5" : "py-1.5 pr-2"}`}>
+        {!hideTime && (
+          <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
+            <Clock className="h-2.5 w-2.5 opacity-70" />
+            <span className="tabular-nums">{s.startTime}</span>
+            <span className={`ml-auto h-1.5 w-1.5 rounded-full ${meta.dot}`} />
           </div>
         )}
+        <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">{s.tourName}</div>
+        {pax > 0 && (
+          <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
+            <Users className="h-2.5 w-2.5" /> {pax}
+          </div>
+        )}
+        {s.meetingPoint && !dense && (
+          <div className="text-[9px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+            <MapPin className="h-2.5 w-2.5 shrink-0" /> <span className="truncate">{s.meetingPoint}</span>
+          </div>
+        )}
+        <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+          {guide ? (
+            <>
+              <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-3.5 !w-3.5 text-[8px] !rounded-full" />
+              <span className="truncate">{guide.name}</span>
+            </>
+          ) : (
+            <><User className="h-2.5 w-2.5" /> <span className="italic">Unassigned</span></>
+          )}
+        </div>
       </div>
     </button>
   );
@@ -300,53 +311,97 @@ function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: 
 function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpen: (d: string) => void; todayISO: string }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+
+  // Build a sorted set of unique start times present this week
+  const timeRows = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of days) for (const s of shiftsByDate[toISO(d)] || []) set.add(s.startTime);
+    return Array.from(set).sort();
+  }, [days, shiftsByDate]);
+
+  // Index by time -> day -> shifts
+  const cellMap = useMemo(() => {
+    const m: Record<string, Record<string, Shift[]>> = {};
+    for (const t of timeRows) m[t] = {};
+    for (const d of days) {
+      const iso = toISO(d);
+      for (const s of shiftsByDate[iso] || []) {
+        (m[s.startTime][iso] = m[s.startTime][iso] || []).push(s);
+      }
+    }
+    return m;
+  }, [days, shiftsByDate, timeRows]);
+
+  if (timeRows.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground italic py-12 text-center border border-dashed border-border rounded-lg">
+        No tours scheduled this week.
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
-      {days.map((d) => {
-        const iso = toISO(d);
-        const list = shiftsByDate[iso] || [];
-        const isToday = iso === todayISO;
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-        return (
-          <div
-            key={iso}
-            className={`rounded-lg border p-2 min-h-[200px] flex flex-col transition ${
-              isToday
-                ? "border-primary bg-primary/5 shadow-[0_0_0_1px_var(--primary)]"
-                : isWeekend
-                ? "border-border bg-muted/30"
-                : "border-border bg-card"
-            }`}
-          >
-            <button onClick={() => onOpen(iso)} className="w-full text-left mb-2 hover:opacity-70 transition flex items-baseline justify-between">
-              <div>
-                <div className="text-[10px] uppercase text-muted-foreground font-semibold">{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
-                <div className={`text-xl font-bold leading-none ${isToday ? "text-primary" : "text-foreground"}`}>
+    <div className="overflow-x-auto -mx-2 px-2">
+      <div className="min-w-[900px]">
+        {/* Header row */}
+        <div className="grid grid-cols-[88px_repeat(7,minmax(0,1fr))] gap-1 sticky top-0 z-10 bg-background pb-1">
+          <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground py-2 px-2 flex items-center gap-1">
+            <Clock className="h-3 w-3" /> Start
+          </div>
+          {days.map((d) => {
+            const iso = toISO(d);
+            const isToday = iso === todayISO;
+            const list = shiftsByDate[iso] || [];
+            return (
+              <button
+                key={iso}
+                onClick={() => onOpen(iso)}
+                className={`text-center py-2 px-1 rounded-md border transition hover:bg-muted/50 ${
+                  isToday ? "border-primary bg-primary/5" : "border-transparent"
+                }`}
+              >
+                <div className="text-[10px] uppercase font-semibold text-muted-foreground">
+                  {d.toLocaleDateString(undefined, { weekday: "short" })}
+                </div>
+                <div className={`text-base font-bold leading-tight tabular-nums ${isToday ? "text-primary" : "text-foreground"}`}>
                   {d.getDate()}
                 </div>
+                {list.length > 0 && (
+                  <div className="text-[9px] text-muted-foreground tabular-nums mt-0.5">{list.length} tours</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Time rows */}
+        <div className="space-y-1 mt-1">
+          {timeRows.map((t) => (
+            <div key={t} className="grid grid-cols-[88px_repeat(7,minmax(0,1fr))] gap-1">
+              <div className="flex items-start justify-end pr-2 pt-2 text-sm font-bold tabular-nums text-foreground border-r border-border/60">
+                {t}
               </div>
-              {list.length > 0 && (
-                <span className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full ${isToday ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  {list.length}
-                </span>
-              )}
-            </button>
-            <div className="space-y-1 flex-1">
-              {list.slice(0, 5).map((s) => (
-                <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpen(iso)} />
-              ))}
-              {list.length > 5 && (
-                <button onClick={() => onOpen(iso)} className="text-[10px] font-semibold text-primary hover:underline w-full text-left px-1 py-0.5">
-                  + {list.length - 5} more
-                </button>
-              )}
-              {list.length === 0 && (
-                <div className="text-[10px] text-muted-foreground italic px-1 py-2">No tours</div>
-              )}
+              {days.map((d) => {
+                const iso = toISO(d);
+                const cellShifts = cellMap[t]?.[iso] || [];
+                const isToday = iso === todayISO;
+                return (
+                  <div
+                    key={iso}
+                    className={`min-h-[72px] rounded-md border p-1 space-y-1 transition ${
+                      isToday ? "bg-primary/[0.03] border-border" : "bg-card border-border/60"
+                    }`}
+                  >
+                    {cellShifts.map((s) => (
+                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpen(iso)} hideTime />
+                    ))}
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
