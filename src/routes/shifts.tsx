@@ -304,7 +304,7 @@ function ShiftsPage() {
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
@@ -483,6 +483,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     {!guideView && onGenerateInvoice && (
                       <Button size="sm" variant="outline" onClick={() => onGenerateInvoice(s)} className="border-primary/40 text-primary hover:bg-primary/5">
                         <FileText className="h-3.5 w-3.5 mr-1" /> Generate invoice
+                      </Button>
+                    )}
+                    {!guideView && onDelete && (
+                      <Button size="sm" variant="outline" onClick={() => onDelete(s)} className="border-destructive/40 text-destructive hover:bg-destructive/5">
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     )}
                   </div>
