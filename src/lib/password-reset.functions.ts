@@ -12,9 +12,7 @@ export const updatePasswordFromRecoverySession = createServerFn({ method: "POST"
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(
-      data.accessToken,
-    );
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(data.accessToken);
 
     if (userError || !userData.user) {
       throw new Error("Recovery session is invalid or expired. Request a new reset email.");
