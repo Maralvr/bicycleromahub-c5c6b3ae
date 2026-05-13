@@ -24,7 +24,7 @@ import { AddStaffDialog } from "@/components/add-staff-dialog";
 export const Route = createFileRoute("/staff")({
   head: () => ({
     meta: [
-      { title: "Staff — eBicycle Roma" },
+      { title: "Staff — Bicycle Roma" },
       { name: "description", content: "Manage staff profiles, tags, languages and availability." },
     ],
   }),

@@ -31,7 +31,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/shifts")({
   head: () => ({
     meta: [
-      { title: "Shifts — eBicycle Roma" },
+      { title: "Shifts — Bicycle Roma" },
       { name: "description", content: "Bokun-synced bookings and manual shift assignments." },
     ],
   }),

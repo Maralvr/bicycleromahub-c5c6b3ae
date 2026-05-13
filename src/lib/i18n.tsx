@@ -4,7 +4,7 @@ export type Lang = "en" | "it";
 
 const dict = {
   en: {
-    appName: "eBicycle Roma",
+    appName: "Bicycle Roma",
     tagline: "Operations Hub",
     nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", calendar: "Calendar", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts" },
     common: {
@@ -51,7 +51,7 @@ const dict = {
     },
   },
   it: {
-    appName: "eBicycle Roma",
+    appName: "Bicycle Roma",
     tagline: "Centro Operativo",
     nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni" },
     common: {

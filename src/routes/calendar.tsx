@@ -11,7 +11,7 @@ import { Navigate } from "@tanstack/react-router";
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Calendar — eBicycle Roma" },
+      { title: "Calendar — Bicycle Roma" },
       { name: "description", content: "Day, week and month overview of all scheduled tours." },
     ],
   }),

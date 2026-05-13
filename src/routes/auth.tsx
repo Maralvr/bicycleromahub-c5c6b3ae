@@ -17,8 +17,8 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign in — eBicycle Roma" },
-      { name: "description", content: "Sign in to the eBicycle Roma operations hub." },
+      { title: "Sign in — Bicycle Roma" },
+      { name: "description", content: "Sign in to the Bicycle Roma operations hub." },
     ],
   }),
   component: AuthPage,
@@ -84,8 +84,8 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center text-center mb-6">
-          <img src={logo} alt="eBicycle Roma" className="h-14 w-14 rounded-xl bg-white object-contain mb-3 ring-1 ring-border" />
-          <h1 className="text-2xl font-bold">eBicycle Roma</h1>
+          <img src={logo} alt="Bicycle Roma" className="h-14 w-14 rounded-xl bg-white object-contain mb-3 ring-1 ring-border" />
+          <h1 className="text-2xl font-bold">Bicycle Roma</h1>
           <p className="text-sm text-muted-foreground">{mode === "signin" ? "Sign in to continue" : "Create your account"}</p>
         </div>
 

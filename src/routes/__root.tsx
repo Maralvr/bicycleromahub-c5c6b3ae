@@ -49,20 +49,20 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "eBicycle Roma — Operations Hub" },
+      { title: "Bicycle Roma — Operations Hub" },
       {
         name: "description",
-        content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma.",
+        content: "Staff scheduling, Bokun shifts, tasks and field comms for Bicycle Roma.",
       },
-      { name: "author", content: "eBicycle Roma" },
-      { property: "og:title", content: "eBicycle Roma — Operations Hub" },
+      { name: "author", content: "Bicycle Roma" },
+      { property: "og:title", content: "Bicycle Roma — Operations Hub" },
       {
         property: "og:description",
-        content: "Staff scheduling, Bokun shifts, tasks and field comms for eBicycle Roma.",
+        content: "Staff scheduling, Bokun shifts, tasks and field comms for Bicycle Roma.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "eBicycle Roma — Operations Hub" },
+      { name: "twitter:title", content: "Bicycle Roma — Operations Hub" },
       {
         name: "description",
         content: "Shift Savvy automates tour operator staff scheduling and management.",

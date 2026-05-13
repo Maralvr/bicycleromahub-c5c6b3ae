@@ -35,7 +35,7 @@ import { useRequireAdmin } from "@/lib/require-admin";
 export const Route = createFileRoute("/rental-points")({
   head: () => ({
     meta: [
-      { title: "Rental points — eBicycle Roma" },
+      { title: "Rental points — Bicycle Roma" },
       { name: "description", content: "Manage bike rental pickup and return locations." },
     ],
   }),
