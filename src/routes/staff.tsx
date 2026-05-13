@@ -18,6 +18,7 @@ import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, Calenda
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
+import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { useLiveStaff } from "@/lib/live-staff";
 
 export const Route = createFileRoute("/staff")({
