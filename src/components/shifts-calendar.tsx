@@ -88,10 +88,16 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "pending" | "accepted" | "rejected">("all");
 
   const filteredShifts = useMemo(
-    () => (platform === "all" ? shifts : shifts.filter((s) => s.source === platform)),
-    [shifts, platform],
+    () =>
+      shifts.filter(
+        (s) =>
+          (platform === "all" || s.source === platform) &&
+          (statusFilter === "all" || s.status === statusFilter),
+      ),
+    [shifts, platform, statusFilter],
   );
 
   const shiftsByDate = useMemo(() => {
@@ -176,6 +182,20 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
           </Tabs>
         </div>
       </div>
+
+      {platform === "all" && (
+        <div className="flex justify-end mb-3">
+          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <TabsList className="bg-muted h-8">
+              <TabsTrigger value="all" className="text-xs">All statuses</TabsTrigger>
+              <TabsTrigger value="unassigned" className="text-xs">Unassigned</TabsTrigger>
+              <TabsTrigger value="pending" className="text-xs">Pending</TabsTrigger>
+              <TabsTrigger value="accepted" className="text-xs">Accepted</TabsTrigger>
+              <TabsTrigger value="rejected" className="text-xs">Rejected</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
 
       {/* Stats + Legend */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-lg border border-border bg-muted/30">
