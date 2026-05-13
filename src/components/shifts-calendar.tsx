@@ -410,7 +410,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
   );
 }
 
-function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpen: (d: string) => void; todayISO: string }) {
+function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
   const gridStart = startOfWeek(first);
