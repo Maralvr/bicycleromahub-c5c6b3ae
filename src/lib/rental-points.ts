@@ -46,7 +46,7 @@ export function useRentalPoints() {
   useEffect(() => {
     void fetchAll();
     const channel = supabase
-      .channel("rental-points-realtime")
+      .channel(`rental-points-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "rental_points" }, () => {
         void fetchAll();
       })

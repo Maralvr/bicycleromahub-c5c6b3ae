@@ -1,0 +1,1 @@
+ALTER TABLE public.rental_points REPLICA IDENTITY FULL;
