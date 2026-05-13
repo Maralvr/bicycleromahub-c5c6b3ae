@@ -82,7 +82,7 @@ function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
-export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn }) {
+export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn; showRates?: boolean }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -230,10 +230,11 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
         dateISO={selectedDay}
         shifts={selectedDay ? shiftsByDate[selectedDay] || [] : []}
         staff={staff}
+        showRates={showRates}
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
-      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} showRates={showRates} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
     </Card>
   );
 }
@@ -525,7 +526,7 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void }) {
+function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRates = true }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void; showRates?: boolean }) {
   const open = !!dateISO;
   const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   return (
@@ -579,7 +580,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { da
                           <Users className="h-3 w-3 text-muted-foreground" /> {s.participants.adults + s.participants.teens + s.participants.infants} pax
                         </div>
                       )}
-                      {s.rate !== undefined && (
+                      {showRates && s.rate !== undefined && (
                         <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
                       )}
                     </div>
@@ -600,7 +601,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { da
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn }) {
+function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn; showRates?: boolean }) {
   const open = !!shift;
   if (!shift) {
     return (
@@ -656,7 +657,7 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift 
               {pax > 0 && (
                 <div className="flex items-center gap-1.5"><Users className="h-3 w-3 text-muted-foreground" /> {pax} pax</div>
               )}
-              {s.rate !== undefined && (
+              {showRates && s.rate !== undefined && (
                 <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
               )}
             </div>
