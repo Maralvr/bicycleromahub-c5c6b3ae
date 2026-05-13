@@ -76,6 +76,16 @@ function ShiftsPage() {
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
   const updateStatus = async (id: string, status: Shift["status"]) => {
+    if (status === "rejected") {
+      // Reject = release the shift back to the unassigned pool for redispatch.
+      const { error } = await supabase.rpc("reject_shift", { _shift_id: id });
+      if (error) {
+        toast.error("Couldn't reject shift", { description: error.message });
+        return;
+      }
+      toast.success("Shift released", { description: "Back in the unassigned pool — admin will redispatch." });
+      return;
+    }
     await setStatus(id, status);
     toast.success(`Shift ${status}`);
   };
