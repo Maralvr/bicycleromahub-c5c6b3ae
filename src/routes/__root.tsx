@@ -118,26 +118,36 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const location = useLocation();
+  const isResetPassword = location.pathname.startsWith("/reset-password");
+
   return (
     <I18nProvider>
-      <AuthProvider>
-        <AuthGate>
-          <StaffStoreProvider>
-            <CurrentUserProvider>
-              <ShiftsStoreProvider>
-                <NotesStoreProvider>
-                  <TasksStoreProvider>
-                    <TaskUpdatesStoreProvider>
-                      <Outlet />
-                      <Toaster />
-                    </TaskUpdatesStoreProvider>
-                  </TasksStoreProvider>
-                </NotesStoreProvider>
-              </ShiftsStoreProvider>
-            </CurrentUserProvider>
-          </StaffStoreProvider>
-        </AuthGate>
-      </AuthProvider>
+      {isResetPassword ? (
+        <>
+          <Outlet />
+          <Toaster />
+        </>
+      ) : (
+        <AuthProvider>
+          <AuthGate>
+            <StaffStoreProvider>
+              <CurrentUserProvider>
+                <ShiftsStoreProvider>
+                  <NotesStoreProvider>
+                    <TasksStoreProvider>
+                      <TaskUpdatesStoreProvider>
+                        <Outlet />
+                        <Toaster />
+                      </TaskUpdatesStoreProvider>
+                    </TasksStoreProvider>
+                  </NotesStoreProvider>
+                </ShiftsStoreProvider>
+              </CurrentUserProvider>
+            </StaffStoreProvider>
+          </AuthGate>
+        </AuthProvider>
+      )}
     </I18nProvider>
   );
 }
