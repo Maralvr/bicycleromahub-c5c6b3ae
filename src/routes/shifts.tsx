@@ -302,6 +302,20 @@ function ShiftsPage() {
         open={!!invoiceDialogShift}
         onClose={() => setInvoiceDialogShift(null)}
       />
+
+      <ManualShiftDialog
+        open={newShiftOpen}
+        onOpenChange={setNewShiftOpen}
+        onSubmit={async (input) => {
+          try {
+            const created = await addShift(input);
+            if (created) toast.success("Shift created");
+            else toast.error("Couldn't create shift");
+          } catch (e) {
+            toast.error("Couldn't create shift", { description: String(e) });
+          }
+        }}
+      />
     </AppShell>
   );
 }
