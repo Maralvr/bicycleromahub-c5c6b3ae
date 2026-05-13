@@ -80,15 +80,14 @@ function ResetPasswordPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const activeSession = session ?? (await supabase.auth.getSession()).data.session;
-    if (!activeSession) {
+    if (!recoveryToken) {
       toast.error("Recovery link expired or invalid. Request a new reset email.");
       return;
     }
     setBusy(true);
     try {
       await updatePassword({
-        data: { accessToken: activeSession.access_token, password },
+        data: { accessToken: recoveryToken, password },
       });
       await supabase.auth.signOut();
       toast.success("Password updated");
@@ -120,10 +119,10 @@ function ResetPasswordPage() {
               autoComplete="new-password"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy || !ready || !session}>
+          <Button type="submit" className="w-full" disabled={busy || !ready || !recoveryToken}>
             {!ready ? "Loading…" : busy ? "Updating…" : "Update password"}
           </Button>
-          {ready && !session && (
+          {ready && !recoveryToken && (
             <p className="text-sm text-destructive">
               {authError ||
                 "Recovery link is missing or expired. Request a new password reset email."}
