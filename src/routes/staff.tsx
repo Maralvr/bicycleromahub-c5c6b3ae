@@ -211,12 +211,13 @@ function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType
 
 function AdminStaffDirectory() {
   const { t } = useI18n();
-  const { staff: mockStaff } = useStaffStore();
+  const { staff: mockStaff, addStaff } = useStaffStore();
   const { staff: liveStaff } = useLiveStaff();
   const { shifts: allShifts } = useShiftsStore();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Merge: mock staff first, enriched with profileId when name matches a live row,
   // then append any live rows that didn't match a mock entry.
