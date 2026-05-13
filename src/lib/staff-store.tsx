@@ -83,6 +83,18 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void fetchAll();
+    const channel = supabase
+      .channel("staff-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, () => {
+        void fetchAll();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff_unavailability" }, () => {
+        void fetchAll();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [fetchAll]);
 
   const staff = useMemo<Staff[]>(() => {
