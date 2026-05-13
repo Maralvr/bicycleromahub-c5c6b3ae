@@ -83,6 +83,7 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   const shiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {};
@@ -178,13 +179,13 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
       </div>
 
       {view === "day" && (
-        <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpen={setSelectedDay} />
+        <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpenShift={setSelectedShift} />
       )}
       {view === "week" && (
-        <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpen={setSelectedDay} todayISO={todayISO} />
+        <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
       )}
       {view === "month" && (
-        <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpen={setSelectedDay} todayISO={todayISO} />
+        <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
       )}
 
       <DayDetailsDialog
@@ -192,7 +193,9 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
         shifts={selectedDay ? shiftsByDate[selectedDay] || [] : []}
         staff={staff}
         onClose={() => setSelectedDay(null)}
+        onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} />
     </Card>
   );
 }
@@ -255,7 +258,8 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
   );
 }
 
-function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpen: (d: string) => void }) {
+function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpenShift: (s: Shift) => void }) {
+  void dateISO;
   if (shifts.length === 0) {
     return (
       <div className="text-sm text-muted-foreground italic py-12 text-center border border-dashed border-border rounded-lg">
@@ -272,7 +276,7 @@ function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: 
         return (
           <button
             key={s.id}
-            onClick={() => onOpen(dateISO)}
+            onClick={() => onOpenShift(s)}
             className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden flex items-stretch transition focus:outline-none focus:ring-2 ${meta.ring}`}
           >
             <span className={`w-1.5 ${meta.bar}`} />
@@ -308,7 +312,7 @@ function DayView({ dateISO, shifts, staff, onOpen }: { dateISO: string; shifts: 
   );
 }
 
-function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpen: (d: string) => void; todayISO: string }) {
+function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
@@ -355,7 +359,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: D
             return (
               <button
                 key={iso}
-                onClick={() => onOpen(iso)}
+                onClick={() => onOpenDay(iso)}
                 className={`text-center py-2 px-1 rounded-md border transition hover:bg-muted/50 ${
                   isToday ? "border-primary bg-primary/5" : "border-transparent"
                 }`}
@@ -393,7 +397,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: D
                     }`}
                   >
                     {cellShifts.map((s) => (
-                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpen(iso)} hideTime />
+                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpenShift(s)} hideTime />
                     ))}
                   </div>
                 );
@@ -406,7 +410,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpen, todayISO }: { cursor: D
   );
 }
 
-function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpen: (d: string) => void; todayISO: string }) {
+function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
   const gridStart = startOfWeek(first);
@@ -431,10 +435,13 @@ function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; s
           // status counts per day
           const counts = list.reduce((acc, s) => { acc[s.status] = (acc[s.status] || 0) + 1; return acc; }, {} as Record<Shift["status"], number>);
           return (
-            <button
+            <div
               key={iso}
-              onClick={() => onOpen(iso)}
-              className={`min-h-[96px] rounded-md border p-1.5 text-left transition relative overflow-hidden hover:border-primary/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpenDay(iso)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDay(iso); } }}
+              className={`min-h-[96px] rounded-md border p-1.5 text-left transition relative overflow-hidden hover:border-primary/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer ${
                 isToday ? "border-primary bg-primary/5" : "border-border"
               } ${inMonth ? "bg-card" : "bg-muted/20 opacity-60"}`}
             >
@@ -450,12 +457,13 @@ function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; s
                 {list.slice(0, 2).map((s) => {
                   const meta = STATUS[s.status];
                   return (
-                    <div
+                    <button
                       key={s.id}
-                      className={`text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium`}
+                      onClick={(e) => { e.stopPropagation(); onOpenShift(s); }}
+                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium hover:bg-muted transition`}
                     >
                       <span className="tabular-nums">{s.startTime}</span> {s.tourName}
-                    </div>
+                    </button>
                   );
                 })}
                 {list.length > 2 && (
@@ -471,7 +479,7 @@ function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; s
                   </div>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -479,7 +487,7 @@ function MonthView({ cursor, shiftsByDate, onOpen, todayISO }: { cursor: Date; s
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void }) {
+function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void }) {
   const open = !!dateISO;
   const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   return (
@@ -502,7 +510,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string
               const meta = STATUS[s.status];
               const Icon = meta.Icon;
               return (
-                <div key={s.id} className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
+                <button key={s.id} type="button" onClick={() => onOpenShift(s)} className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden transition focus:outline-none focus:ring-2 ${meta.ring} hover:brightness-105`}>
                   <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
                   <div className="p-3 pl-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -544,11 +552,76 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string
                     )}
                     {s.notes && <div className="mt-2 text-xs italic text-muted-foreground">📝 {s.notes}</div>}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; staff: Staff[]; onClose: () => void }) {
+  const open = !!shift;
+  if (!shift) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const s = shift;
+  const guide = staff.find((x) => x.id === s.assignedStaffId);
+  const meta = STATUS[s.status];
+  const Icon = meta.Icon;
+  const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
+          <DialogDescription className="capitalize">{dateLabel}</DialogDescription>
+        </DialogHeader>
+        <div className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
+          <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
+          <div className="p-4 pl-5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> <span className="tabular-nums">{s.startTime}–{s.endTime}</span>
+              </div>
+              <Badge variant="outline" className={`capitalize text-[10px] gap-1 ${meta.text} border-current/30`}>
+                <Icon className="h-2.5 w-2.5" /> {meta.label}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-foreground/85">
+              <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}</div>
+              <div className="flex items-center gap-1.5">
+                {guide ? (
+                  <>
+                    <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-5 !w-5 text-[9px] !rounded-full" />
+                    <span className="font-medium">{guide.name}</span>
+                  </>
+                ) : (
+                  <span className="italic text-destructive flex items-center gap-1"><User className="h-3 w-3" /> Unassigned</span>
+                )}
+              </div>
+              {pax > 0 && (
+                <div className="flex items-center gap-1.5"><Users className="h-3 w-3 text-muted-foreground" /> {pax} pax</div>
+              )}
+              {s.rate !== undefined && (
+                <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
+              )}
+            </div>
+            {s.customer && (
+              <div className="text-xs text-foreground/80">
+                Customer: <span className="font-medium">{s.customer.name}</span> · {s.customer.phone}
+              </div>
+            )}
+            {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
