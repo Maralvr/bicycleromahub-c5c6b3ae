@@ -19,9 +19,30 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Subscribe FIRST so we catch PASSWORD_RECOVERY / SIGNED_IN events
+    // emitted while Supabase processes the recovery token in the URL hash.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setReady(true);
+    });
+    // Then check current session (may already be hydrated from storage).
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setReady(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!session) {
+      toast.error("Recovery link expired or invalid. Request a new reset email.");
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
