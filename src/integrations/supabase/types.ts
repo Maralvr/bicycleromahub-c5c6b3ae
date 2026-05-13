@@ -664,6 +664,7 @@ export type Database = {
         Returns: boolean
       }
       next_invoice_number: { Args: { _year: number }; Returns: number }
+      reject_shift: { Args: { _shift_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "staff"

@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
+import { supabase } from "@/integrations/supabase/client";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
@@ -76,6 +77,16 @@ function ShiftsPage() {
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
   const updateStatus = async (id: string, status: Shift["status"]) => {
+    if (status === "rejected") {
+      // Reject = release the shift back to the unassigned pool for redispatch.
+      const { error } = await supabase.rpc("reject_shift", { _shift_id: id });
+      if (error) {
+        toast.error("Couldn't reject shift", { description: error.message });
+        return;
+      }
+      toast.success("Shift released", { description: "Back in the unassigned pool — admin will redispatch." });
+      return;
+    }
     await setStatus(id, status);
     toast.success(`Shift ${status}`);
   };
