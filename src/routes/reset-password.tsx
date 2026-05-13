@@ -21,21 +21,57 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    // Rely on onAuthStateChange — its first event (INITIAL_SESSION) fires
-    // AFTER Supabase consumes the recovery token from the URL hash. Calling
-    // getSession() too early returns null and races the PASSWORD_RECOVERY event.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const finish = (s: Session | null, message = "") => {
       setSession(s);
+      setAuthError(message);
       setReady(true);
+    };
+
+    const parseRecoverySession = async () => {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const search = new URLSearchParams(window.location.search);
+      const accessToken = hash.get("access_token") ?? search.get("access_token");
+      const refreshToken = hash.get("refresh_token") ?? search.get("refresh_token");
+      const code = search.get("code") ?? hash.get("code");
+
+      try {
+        if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+          window.history.replaceState(null, document.title, window.location.pathname);
+          finish(data.session);
+          return;
+        }
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          window.history.replaceState(null, document.title, window.location.pathname);
+          finish(data.session);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        finish(data.session);
+      } catch (err) {
+        finish(null, err instanceof Error ? err.message : "Recovery link expired or invalid.");
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (s) finish(s);
     });
-    // Safety net: if no event arrives within 3s (e.g. user opened the page
-    // directly without a recovery link), surface the "expired" message.
-    const t = setTimeout(() => setReady(true), 3000);
+
+    void parseRecoverySession();
+
     return () => {
       subscription.unsubscribe();
-      clearTimeout(t);
     };
   }, []);
 
@@ -81,7 +117,7 @@ function ResetPasswordPage() {
           </Button>
           {ready && !session && (
             <p className="text-sm text-destructive">
-              Recovery link is missing or expired. Request a new password reset email.
+              {authError || "Recovery link is missing or expired. Request a new password reset email."}
             </p>
           )}
         </form>
