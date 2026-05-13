@@ -37,7 +37,21 @@ export function useStaffRentalPoints(userId: string | null | undefined) {
 
   useEffect(() => {
     void fetchAll();
-  }, [fetchAll]);
+    if (!userId) return;
+    const channel = supabase
+      .channel(`staff-rental-points-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "staff_rental_points", filter: `user_id=eq.${userId}` },
+        () => {
+          void fetchAll();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchAll, userId]);
 
   const assign = useCallback(
     async (pointId: string) => {
