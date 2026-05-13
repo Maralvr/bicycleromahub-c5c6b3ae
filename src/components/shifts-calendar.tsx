@@ -601,7 +601,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn }) {
+function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn; showRates?: boolean }) {
   const open = !!shift;
   if (!shift) {
     return (
