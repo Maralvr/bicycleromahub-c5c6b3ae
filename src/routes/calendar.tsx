@@ -22,12 +22,16 @@ function CalendarPage() {
   const { t } = useI18n();
   const { role } = useCurrentUser();
   const { staff } = useStaffStore();
-  const { shifts } = useShiftsStore();
+  const { shifts, assignShift } = useShiftsStore();
 
   // Guides have their own /shifts view; the all-tours calendar is admin-only.
   if (role !== "admin") {
     return <Navigate to="/shifts" />;
   }
+
+  const handleAssign = async (shiftId: string, staffId: string) => {
+    await assignShift(shiftId, staffId);
+  };
 
   return (
     <AppShell>
@@ -35,7 +39,7 @@ function CalendarPage() {
         title={t.nav.calendar}
         subtitle="All scheduled tours across day, week and month."
       />
-      <ShiftsCalendar shifts={shifts} staff={staff} />
+      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} />
     </AppShell>
   );
 }
