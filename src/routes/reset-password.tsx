@@ -41,13 +41,8 @@ function ResetPasswordPage() {
 
       try {
         if (accessToken && refreshToken) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) throw error;
           window.history.replaceState(null, document.title, window.location.pathname);
-          finish(data.session?.access_token ?? accessToken);
+          finish(accessToken);
           return;
         }
 
