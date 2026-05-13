@@ -565,7 +565,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { da
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; staff: Staff[]; onClose: () => void }) {
+function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn }) {
   const open = !!shift;
   if (!shift) {
     return (
@@ -580,6 +580,14 @@ function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; st
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const assignableStaff = staff.filter((m) => m.active !== false && (m.role === "guide" || m.role === "admin"));
+  const handleAssign = (staffId: string) => {
+    if (!onAssign) return;
+    const member = staff.find((m) => m.id === staffId);
+    if (!member) return;
+    void onAssign(s.id, staffId, member.name);
+    onClose();
+  };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
