@@ -21,7 +21,7 @@ import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status
 import { InvoiceDialog } from "@/components/invoice-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -40,7 +40,18 @@ function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
-  const { shifts, addShift, updateShift, setStatus, assignShift } = useShiftsStore();
+  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift } = useShiftsStore();
+
+  const handleDelete = async (s: Shift) => {
+    const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
+    if (!confirm(`Delete this ${label}?\n\n${s.tourName} — ${s.date} ${s.startTime}\n\nThis cannot be undone.`)) return;
+    try {
+      await deleteShift(s.id);
+      toast.success("Shift deleted");
+    } catch (e) {
+      toast.error("Couldn't delete shift", { description: String(e) });
+    }
+  };
   const isAdmin = role === "admin";
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
