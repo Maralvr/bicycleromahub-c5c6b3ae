@@ -633,6 +633,26 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift 
             {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
           </div>
         </div>
+        {onAssign && (
+          <div className="mt-3 rounded-lg border border-border bg-card p-3">
+            <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <UserPlus className="h-3.5 w-3.5 text-primary" />
+              {guide ? "Reassign guide" : "Assign a guide"}
+            </div>
+            <Select value={s.assignedStaffId ?? undefined} onValueChange={handleAssign}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Select a guide…" />
+              </SelectTrigger>
+              <SelectContent>
+                {assignableStaff.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.name}{m.role === "admin" ? " (admin)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
