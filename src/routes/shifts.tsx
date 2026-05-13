@@ -244,17 +244,17 @@ function ShiftsPage() {
         </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
@@ -273,6 +273,7 @@ function ShiftsPage() {
             onAccept={(id) => updateStatus(id, "accepted")}
             onReject={(id) => updateStatus(id, "rejected")}
             onDuplicate={duplicate}
+            onDelete={isAdmin ? handleDelete : undefined}
             onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
           />
         </TabsContent>
