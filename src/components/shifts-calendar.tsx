@@ -580,7 +580,7 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift 
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
-  const assignableStaff = staff.filter((m) => m.active !== false && (m.role === "guide" || m.role === "admin"));
+  const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
   const handleAssign = (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
