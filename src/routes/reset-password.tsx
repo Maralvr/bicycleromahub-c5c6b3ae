@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { updatePasswordFromRecoverySession } from "@/lib/password-reset.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,7 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const updatePassword = useServerFn(updatePasswordFromRecoverySession);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -85,19 +88,17 @@ function ResetPasswordPage() {
       return;
     }
     setBusy(true);
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: activeSession.access_token,
-      refresh_token: activeSession.refresh_token,
-    });
-    const { error } = sessionError
-      ? { error: sessionError }
-      : await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await updatePassword({
+        data: { accessToken: activeSession.access_token, password },
+      });
+      await supabase.auth.signOut();
       toast.success("Password updated");
-      void navigate({ to: "/" });
+      void navigate({ to: "/auth", search: { redirect: "/" } });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update password.");
+    } finally {
+      setBusy(false);
     }
   };
 
