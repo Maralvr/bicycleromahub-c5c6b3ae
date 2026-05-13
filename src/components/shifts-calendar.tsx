@@ -87,17 +87,23 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
+
+  const filteredShifts = useMemo(
+    () => (platform === "all" ? shifts : shifts.filter((s) => s.source === platform)),
+    [shifts, platform],
+  );
 
   const shiftsByDate = useMemo(() => {
     const map: Record<string, Shift[]> = {};
-    for (const s of shifts) {
+    for (const s of filteredShifts) {
       (map[s.date] = map[s.date] || []).push(s);
     }
     for (const k of Object.keys(map)) {
       map[k].sort((a, b) => a.startTime.localeCompare(b.startTime));
     }
     return map;
-  }, [shifts]);
+  }, [filteredShifts]);
 
   // stats for the visible range
   const visibleShifts = useMemo(() => {
@@ -153,13 +159,22 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
           </Button>
           <h3 className="font-semibold text-base ml-2 capitalize">{title}</h3>
         </div>
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          <TabsList className="bg-muted">
-            <TabsTrigger value="day">Day</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="month">Month</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Tabs value={platform} onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}>
+            <TabsList className="bg-muted">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="bokun">Bokun</TabsTrigger>
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+            <TabsList className="bg-muted">
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* Stats + Legend */}
