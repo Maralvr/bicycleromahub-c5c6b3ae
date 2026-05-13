@@ -213,7 +213,7 @@ function ShiftsPage() {
               <Button variant="outline" onClick={autoAssignAll}>
                 <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
               </Button>
-              <Button onClick={() => toast.success("Manual shift form would open")} className="shadow-[var(--shadow-elegant)]">
+              <Button onClick={() => setNewShiftOpen(true)} className="shadow-[var(--shadow-elegant)]">
                 <Plus className="h-4 w-4 mr-1" /> {t.shifts.newShift}
               </Button>
             </>
