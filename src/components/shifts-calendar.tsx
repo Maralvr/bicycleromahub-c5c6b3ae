@@ -657,7 +657,7 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
               {pax > 0 && (
                 <div className="flex items-center gap-1.5"><Users className="h-3 w-3 text-muted-foreground" /> {pax} pax</div>
               )}
-              {s.rate !== undefined && (
+              {showRates && s.rate !== undefined && (
                 <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
               )}
             </div>
