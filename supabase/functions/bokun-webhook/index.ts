@@ -95,6 +95,72 @@ function bookingKeys(p: BokunEventPayload) {
   return Array.from(keys);
 }
 
+async function fetchBokunBooking(bookingId: string | number): Promise<FullBookingPayload | null> {
+  // @ts-ignore Deno globals
+  const accessKey = Deno.env.get("BOKUN_ACCESS_KEY");
+  // @ts-ignore Deno globals
+  const secretKey = Deno.env.get("BOKUN_SECRET_KEY");
+  if (!accessKey || !secretKey) {
+    console.warn("[bokun] Missing BOKUN_ACCESS_KEY / BOKUN_SECRET_KEY — cannot fetch booking", bookingId);
+    return null;
+  }
+
+  const method = "GET";
+  const path = `/booking.json/${bookingId}`;
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+
+  const stringToSign = `${date}${accessKey}${method}${path}`;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secretKey),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(stringToSign));
+  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+  const res = await fetch(`https://api.bokun.io${path}`, {
+    method,
+    headers: {
+      "X-Bokun-Date": date,
+      "X-Bokun-AccessKey": accessKey,
+      "X-Bokun-Signature": signature,
+      "Content-Type": "application/json;charset=UTF-8",
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`[bokun] API ${res.status} for booking ${bookingId}: ${text}`);
+    return null;
+  }
+
+  const raw = await res.json();
+  // Normalize Bokun API response to our FullBookingPayload shape
+  return {
+    bookingId: raw.id ?? raw.bookingId ?? bookingId,
+    confirmationCode: raw.confirmationCode,
+    productTitle: raw.product?.title ?? raw.productTitle ?? raw.activityBookings?.[0]?.activity?.title ?? "Bokun booking",
+    startDateTime: raw.startDateTime ?? raw.startDate ?? raw.activityBookings?.[0]?.startDateTime ?? new Date().toISOString(),
+    endDateTime: raw.endDateTime ?? raw.activityBookings?.[0]?.endDateTime,
+    durationMinutes: raw.durationMinutes ?? raw.activityBookings?.[0]?.activity?.durationMinutes,
+    pickupPlace: raw.pickupPlace ?? raw.activityBookings?.[0]?.pickupPlace,
+    startPoint: raw.startPoint ?? raw.activityBookings?.[0]?.startPoint,
+    customer: raw.customer ?? {},
+    pricingCategoryBookings: raw.pricingCategoryBookings ?? raw.activityBookings?.[0]?.pricingCategoryBookings,
+    extraBookings: raw.extraBookings ?? raw.activityBookings?.[0]?.extraBookings,
+    totalPrice: raw.totalPrice ?? raw.totalAsMoney?.amount,
+    currency: raw.currency ?? raw.totalAsMoney?.currency,
+    notes: raw.notes ?? raw.customer?.notes,
+    productTags: raw.productTags ?? raw.product?.tags,
+    status: raw.status,
+  } as FullBookingPayload;
+}
+
 function mapToShiftRow(p: FullBookingPayload) {
   const participants = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   for (const pcb of p.pricingCategoryBookings ?? []) {
