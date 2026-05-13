@@ -626,13 +626,6 @@ function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; st
     </Dialog>
   );
 }
-            })}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // satisfy unused import linter for icons used only conditionally
 void Circle;
