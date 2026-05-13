@@ -552,8 +552,80 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { da
                     )}
                     {s.notes && <div className="mt-2 text-xs italic text-muted-foreground">📝 {s.notes}</div>}
                   </div>
-                </div>
+                </button>
               );
+            })}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; staff: Staff[]; onClose: () => void }) {
+  const open = !!shift;
+  if (!shift) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const s = shift;
+  const guide = staff.find((x) => x.id === s.assignedStaffId);
+  const meta = STATUS[s.status];
+  const Icon = meta.Icon;
+  const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
+          <DialogDescription className="capitalize">{dateLabel}</DialogDescription>
+        </DialogHeader>
+        <div className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
+          <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
+          <div className="p-4 pl-5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> <span className="tabular-nums">{s.startTime}–{s.endTime}</span>
+              </div>
+              <Badge variant="outline" className={`capitalize text-[10px] gap-1 ${meta.text} border-current/30`}>
+                <Icon className="h-2.5 w-2.5" /> {meta.label}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-foreground/85">
+              <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}</div>
+              <div className="flex items-center gap-1.5">
+                {guide ? (
+                  <>
+                    <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-5 !w-5 text-[9px] !rounded-full" />
+                    <span className="font-medium">{guide.name}</span>
+                  </>
+                ) : (
+                  <span className="italic text-destructive flex items-center gap-1"><User className="h-3 w-3" /> Unassigned</span>
+                )}
+              </div>
+              {pax > 0 && (
+                <div className="flex items-center gap-1.5"><Users className="h-3 w-3 text-muted-foreground" /> {pax} pax</div>
+              )}
+              {s.rate !== undefined && (
+                <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
+              )}
+            </div>
+            {s.customer && (
+              <div className="text-xs text-foreground/80">
+                Customer: <span className="font-medium">{s.customer.name}</span> · {s.customer.phone}
+              </div>
+            )}
+            {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
             })}
           </div>
         )}
