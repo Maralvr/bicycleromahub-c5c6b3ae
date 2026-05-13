@@ -487,7 +487,7 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void }) {
+function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void }) {
   const open = !!dateISO;
   const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   return (
@@ -510,7 +510,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose }: { dateISO: string
               const meta = STATUS[s.status];
               const Icon = meta.Icon;
               return (
-                <div key={s.id} className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
+                <button key={s.id} type="button" onClick={() => onOpenShift(s)} className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden transition focus:outline-none focus:ring-2 ${meta.ring} hover:brightness-105`}>
                   <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
                   <div className="p-3 pl-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
