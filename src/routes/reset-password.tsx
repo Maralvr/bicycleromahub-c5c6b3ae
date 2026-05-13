@@ -26,8 +26,8 @@ function ResetPasswordPage() {
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const finish = (s: Session | null, message = "") => {
-      setSession(s);
+    const finish = (token = "", message = "") => {
+      setRecoveryToken(token);
       setAuthError(message);
       setReady(true);
     };
@@ -47,7 +47,7 @@ function ResetPasswordPage() {
           });
           if (error) throw error;
           window.history.replaceState(null, document.title, window.location.pathname);
-          finish(data.session);
+          finish(data.session?.access_token ?? accessToken);
           return;
         }
 
@@ -55,21 +55,20 @@ function ResetPasswordPage() {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           window.history.replaceState(null, document.title, window.location.pathname);
-          finish(data.session);
+          finish(data.session?.access_token ?? "");
           return;
         }
 
-        const { data } = await supabase.auth.getSession();
-        finish(data.session);
+        finish("", "Recovery link is missing or expired. Request a new password reset email.");
       } catch (err) {
-        finish(null, err instanceof Error ? err.message : "Recovery link expired or invalid.");
+        finish("", err instanceof Error ? err.message : "Recovery link expired or invalid.");
       }
     };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (s) finish(s);
+      if (s?.access_token) finish(s.access_token);
     });
 
     void parseRecoverySession();
