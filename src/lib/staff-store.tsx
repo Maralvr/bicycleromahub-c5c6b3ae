@@ -15,6 +15,18 @@ type StaffStoreContextValue = {
   clearDate: (staffId: string, date: string) => Promise<void>;
   clearMonth: (staffId: string, yearMonth: string) => Promise<void>;
   updateProfile: (staffId: string, patch: ProfilePatch) => Promise<void>;
+  addStaff: (input: NewStaffInput) => Promise<Staff | null>;
+  deleteStaff: (staffId: string) => Promise<void>;
+};
+
+export type NewStaffInput = {
+  name: string;
+  email?: string;
+  phone?: string;
+  role: Staff["role"];
+  tags?: string[];
+  languages?: string[];
+  licenses?: string[];
 };
 
 const StaffStoreContext = createContext<StaffStoreContextValue | null>(null);
