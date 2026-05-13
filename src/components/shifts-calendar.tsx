@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar } from "@/components/avatar";
 import { Shift, Staff } from "@/lib/mock-data";
-import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDays, CheckCircle2, AlertTriangle, AlertCircle, XCircle, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDays, CheckCircle2, AlertTriangle, AlertCircle, XCircle, Circle, UserPlus } from "lucide-react";
+
+type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
 
@@ -79,7 +82,7 @@ function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
-export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staff[] }) {
+export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -195,7 +198,7 @@ export function ShiftsCalendar({ shifts, staff }: { shifts: Shift[]; staff: Staf
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
       />
-      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} />
+      <ShiftDetailsDialog shift={selectedShift} staff={staff} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
     </Card>
   );
 }
@@ -562,7 +565,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift }: { da
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; staff: Staff[]; onClose: () => void }) {
+function ShiftDetailsDialog({ shift, staff, onClose, onAssign }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn }) {
   const open = !!shift;
   if (!shift) {
     return (
@@ -577,6 +580,14 @@ function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; st
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
+  const handleAssign = (staffId: string) => {
+    if (!onAssign) return;
+    const member = staff.find((m) => m.id === staffId);
+    if (!member) return;
+    void onAssign(s.id, staffId, member.name);
+    onClose();
+  };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -622,6 +633,26 @@ function ShiftDetailsDialog({ shift, staff, onClose }: { shift: Shift | null; st
             {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
           </div>
         </div>
+        {onAssign && (
+          <div className="mt-3 rounded-lg border border-border bg-card p-3">
+            <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <UserPlus className="h-3.5 w-3.5 text-primary" />
+              {guide ? "Reassign guide" : "Assign a guide"}
+            </div>
+            <Select value={s.assignedStaffId ?? undefined} onValueChange={handleAssign}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Select a guide…" />
+              </SelectTrigger>
+              <SelectContent>
+                {assignableStaff.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.name}{m.role === "admin" ? " (admin)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
