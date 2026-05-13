@@ -580,7 +580,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
                           <Users className="h-3 w-3 text-muted-foreground" /> {s.participants.adults + s.participants.teens + s.participants.infants} pax
                         </div>
                       )}
-                      {s.rate !== undefined && (
+                      {showRates && s.rate !== undefined && (
                         <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
                       )}
                     </div>
