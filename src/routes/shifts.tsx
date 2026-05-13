@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
+import { supabase } from "@/integrations/supabase/client";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
