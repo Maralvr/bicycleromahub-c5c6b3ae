@@ -161,84 +161,35 @@ function DashboardPage() {
         </Card>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-foreground">{t.dashboard.upcomingShifts}</h2>
-            <button className="text-xs text-primary font-medium hover:underline">View all →</button>
-          </div>
-          <div className="space-y-1">
-            {shifts.slice(0, 5).map((s) => {
-              const guide = staff.find((p) => p.id === s.assignedStaffId);
-              return (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
-                >
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex flex-col items-center justify-center text-primary-foreground flex-shrink-0">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80 leading-none">
-                      {s.startTime.slice(0, 2)}h
-                    </div>
-                    <div className="text-sm font-bold leading-tight">{s.startTime.slice(3, 5)}</div>
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-foreground">{t.dashboard.recentActivity}</h2>
+          <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+        </div>
+        <div className="space-y-4">
+          {feed.slice(0, 5).map((u) => {
+            const author = staff.find((s) => s.id === u.authorId);
+            return (
+              <div key={u.id} className="flex gap-3">
+                <Avatar
+                  name={author?.name || "Admin"}
+                  initials={author?.avatar || "AD"}
+                  size="sm"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="font-semibold text-foreground">
+                      {author?.name || "Admin"}
+                    </span>
+                    <span className="text-muted-foreground">· {u.time}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                      {s.tourName}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <MapPin className="h-3 w-3 flex-shrink-0" />{" "}
-                      <span className="truncate">{s.meetingPoint}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    {guide ? (
-                      <div className="flex items-center gap-1.5">
-                        <Avatar name={guide.name} initials={guide.avatar} size="sm" />
-                        <span className="text-xs font-medium hidden sm:inline">
-                          {guide.name.split(" ")[0]}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                    <StatusPill status={s.status} />
-                  </div>
+                  <p className="text-sm text-foreground/80 mt-0.5 leading-snug">{u.message}</p>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-foreground">{t.dashboard.recentActivity}</h2>
-            <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-          </div>
-          <div className="space-y-4">
-            {feed.slice(0, 5).map((u) => {
-              const author = staff.find((s) => s.id === u.authorId);
-              return (
-                <div key={u.id} className="flex gap-3">
-                  <Avatar
-                    name={author?.name || "Admin"}
-                    initials={author?.avatar || "AD"}
-                    size="sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="font-semibold text-foreground">
-                        {author?.name || "Admin"}
-                      </span>
-                      <span className="text-muted-foreground">· {u.time}</span>
-                    </div>
-                    <p className="text-sm text-foreground/80 mt-0.5 leading-snug">{u.message}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
     </AppShell>
   );
 }
