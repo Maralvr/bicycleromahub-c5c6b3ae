@@ -129,11 +129,7 @@ function ResetPasswordPage() {
           <Button type="submit" className="w-full" disabled={busy || !ready || !recoveryToken}>
             {!ready ? "Loading…" : busy ? "Updating…" : "Update password"}
           </Button>
-          {ready && !recoveryToken && (
-            <p className="text-sm text-destructive">
-              {authError || EXPIRED_MESSAGE}
-            </p>
-          )}
+          {ready && !recoveryToken && <p className="text-sm text-destructive">{authError || EXPIRED_MESSAGE}</p>}
         </form>
       </Card>
     </div>
