@@ -88,10 +88,16 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "pending" | "accepted" | "rejected">("all");
 
   const filteredShifts = useMemo(
-    () => (platform === "all" ? shifts : shifts.filter((s) => s.source === platform)),
-    [shifts, platform],
+    () =>
+      shifts.filter(
+        (s) =>
+          (platform === "all" || s.source === platform) &&
+          (statusFilter === "all" || s.status === statusFilter),
+      ),
+    [shifts, platform, statusFilter],
   );
 
   const shiftsByDate = useMemo(() => {
