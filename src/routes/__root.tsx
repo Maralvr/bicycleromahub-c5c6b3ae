@@ -63,11 +63,28 @@ export const Route = createRootRoute({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "eBicycle Roma — Operations Hub" },
-      { name: "description", content: "Shift Savvy automates tour operator staff scheduling and management." },
-      { property: "og:description", content: "Shift Savvy automates tour operator staff scheduling and management." },
-      { name: "twitter:description", content: "Shift Savvy automates tour operator staff scheduling and management." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7763325a-585a-4f76-8aca-524635142423/id-preview-51fc2747--d10b7846-1048-4145-87e5-4eabec45c97d.lovable.app-1778237671422.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7763325a-585a-4f76-8aca-524635142423/id-preview-51fc2747--d10b7846-1048-4145-87e5-4eabec45c97d.lovable.app-1778237671422.png" },
+      {
+        name: "description",
+        content: "Shift Savvy automates tour operator staff scheduling and management.",
+      },
+      {
+        property: "og:description",
+        content: "Shift Savvy automates tour operator staff scheduling and management.",
+      },
+      {
+        name: "twitter:description",
+        content: "Shift Savvy automates tour operator staff scheduling and management.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7763325a-585a-4f76-8aca-524635142423/id-preview-51fc2747--d10b7846-1048-4145-87e5-4eabec45c97d.lovable.app-1778237671422.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7763325a-585a-4f76-8aca-524635142423/id-preview-51fc2747--d10b7846-1048-4145-87e5-4eabec45c97d.lovable.app-1778237671422.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
