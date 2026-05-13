@@ -21,7 +21,8 @@ import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status
 import { InvoiceDialog } from "@/components/invoice-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon } from "lucide-react";
+import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -207,10 +208,11 @@ function ShiftsPage() {
         }
       />
 
-      <Tabs defaultValue={isAdmin ? "all" : "mine"} key={role + staffId} className="mb-6">
+      <Tabs defaultValue="calendar" key={role + staffId} className="mb-6">
         {isAdmin && (
           <TabsList className="bg-muted">
-            <TabsTrigger value="all">{t.common.all}</TabsTrigger>
+            <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>
+            <TabsTrigger value="all"><ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.common.all}</TabsTrigger>
             <TabsTrigger value="bokun">{t.shifts.fromBokun}</TabsTrigger>
             <TabsTrigger value="manual">{t.shifts.manual}</TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
@@ -218,10 +220,17 @@ function ShiftsPage() {
         )}
         {!isAdmin && (
           <TabsList className="bg-muted">
-            <TabsTrigger value="mine">{t.shifts.myShifts}</TabsTrigger>
+            <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>
+            <TabsTrigger value="mine"><ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.shifts.myShifts}</TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
           </TabsList>
         )}
+        <TabsContent value="calendar" className="mt-5">
+          <ShiftsCalendar
+            shifts={isAdmin ? upcomingShifts : upcomingShifts.filter((s) => s.assignedStaffId === staffId)}
+            staff={staff}
+          />
+        </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
             <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onGenerateInvoice={setInvoiceDialogShift} />
