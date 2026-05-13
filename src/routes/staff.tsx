@@ -447,6 +447,16 @@ function AdminStaffDirectory() {
           )}
         </SheetContent>
       </Sheet>
+
+      <AddStaffDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={async (input) => {
+          const created = await addStaff(input);
+          if (created) toast.success(`${created.name} added`);
+          else toast.error("Couldn't add staff");
+        }}
+      />
     </AppShell>
   );
 }
