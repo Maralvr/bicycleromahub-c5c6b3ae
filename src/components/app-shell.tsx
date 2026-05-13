@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="hidden md:flex w-64 flex-col border-r border-border/60 bg-card/60 backdrop-blur-sm sticky top-0 h-screen">
         <div className="flex items-center gap-3 px-5 py-5 border-b border-border/60">
           <div className="relative">
-            <img src={logo} alt="eBicycle Roma" className="h-12 w-12 rounded-xl object-contain bg-white ring-1 ring-border shadow-sm" />
+            <img src={logo} alt="Bicycle Roma" className="h-12 w-12 rounded-xl object-contain bg-white ring-1 ring-border shadow-sm" />
             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success ring-2 ring-card" />
           </div>
           <div className="min-w-0 flex-1">

@@ -31,7 +31,7 @@ const ALL = "__all";
 export const Route = createFileRoute("/live-shifts")({
   head: () => ({
     meta: [
-      { title: "Live shifts — eBicycle Roma" },
+      { title: "Live shifts — Bicycle Roma" },
       { name: "description", content: "Real-time shifts synced from the database, filtered by rental point." },
     ],
   }),

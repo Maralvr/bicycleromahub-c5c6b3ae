@@ -14,7 +14,7 @@ const EXPIRED_MESSAGE = "Recovery link is missing or expired. Request a new pass
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
-    meta: [{ title: "Reset password — eBicycle Roma" }],
+    meta: [{ title: "Reset password — Bicycle Roma" }],
   }),
   component: ResetPasswordPage,
 });

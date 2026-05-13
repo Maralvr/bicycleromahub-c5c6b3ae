@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/users")({
-  head: () => ({ meta: [{ title: "Users — eBicycle Roma" }] }),
+  head: () => ({ meta: [{ title: "Users — Bicycle Roma" }] }),
   component: UsersPage,
 });
 

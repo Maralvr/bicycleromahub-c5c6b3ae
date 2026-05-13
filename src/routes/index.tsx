@@ -25,10 +25,10 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — eBicycle Roma" },
+      { title: "Dashboard — Bicycle Roma" },
       {
         name: "description",
-        content: "Today's overview of shifts, staff and tasks at eBicycle Roma.",
+        content: "Today's overview of shifts, staff and tasks at Bicycle Roma.",
       },
     ],
   }),
