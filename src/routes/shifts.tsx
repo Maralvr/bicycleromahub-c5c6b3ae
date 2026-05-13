@@ -57,6 +57,7 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [newShiftOpen, setNewShiftOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
