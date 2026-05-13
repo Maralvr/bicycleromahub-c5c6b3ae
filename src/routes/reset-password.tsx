@@ -79,12 +79,19 @@ function ResetPasswordPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!session) {
+    const activeSession = session ?? (await supabase.auth.getSession()).data.session;
+    if (!activeSession) {
       toast.error("Recovery link expired or invalid. Request a new reset email.");
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: activeSession.access_token,
+      refresh_token: activeSession.refresh_token,
+    });
+    const { error } = sessionError
+      ? { error: sessionError }
+      : await supabase.auth.updateUser({ password });
     setBusy(false);
     if (error) {
       toast.error(error.message);
