@@ -64,7 +64,9 @@ function ResetPasswordPage() {
       }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
       if (s) finish(s);
     });
 
@@ -117,7 +119,8 @@ function ResetPasswordPage() {
           </Button>
           {ready && !session && (
             <p className="text-sm text-destructive">
-              {authError || "Recovery link is missing or expired. Request a new password reset email."}
+              {authError ||
+                "Recovery link is missing or expired. Request a new password reset email."}
             </p>
           )}
         </form>
