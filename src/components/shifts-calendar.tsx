@@ -159,13 +159,22 @@ export function ShiftsCalendar({ shifts, staff, onAssign }: { shifts: Shift[]; s
           </Button>
           <h3 className="font-semibold text-base ml-2 capitalize">{title}</h3>
         </div>
-        <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-          <TabsList className="bg-muted">
-            <TabsTrigger value="day">Day</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="month">Month</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Tabs value={platform} onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}>
+            <TabsList className="bg-muted">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="bokun">Bokun</TabsTrigger>
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+            <TabsList className="bg-muted">
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* Stats + Legend */}
