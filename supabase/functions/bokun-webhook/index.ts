@@ -184,22 +184,23 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const topic = req.headers.get("x-bokun-topic") ?? "";
+  const keys = bookingKeys(v.data);
+
   // @ts-ignore Deno globals
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   // @ts-ignore Deno globals
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  const row = mapToShiftRow(v.data);
-
   const { data: existing } = await supabase
     .from("shifts")
     .select("id")
     .eq("source", "bokun")
-    .eq("booking_id", row.booking_id)
+    .in("booking_id", keys)
     .maybeSingle();
 
-  if (v.data.status === "CANCELLED") {
+  if (topic === "bookings/cancel" || (hasFullBookingDetails(v.data) && v.data.status === "CANCELLED")) {
     if (existing) {
       await supabase.from("shifts").delete().eq("id", existing.id);
       return new Response(JSON.stringify({ ok: true, action: "cancelled", id: existing.id }), {
@@ -210,6 +211,14 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  if (!hasFullBookingDetails(v.data)) {
+    return new Response(JSON.stringify({ ok: true, action: "received", bookingId: String(v.data.bookingId) }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const row = mapToShiftRow(v.data);
 
   if (existing) {
     const { error } = await supabase.from("shifts").update(row).eq("id", existing.id);
