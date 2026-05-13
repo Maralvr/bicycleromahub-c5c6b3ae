@@ -1,1 +1,4 @@
 project_id = "clfcbkmjzcsvgylnsbvm"
+
+[functions.bokun-webhook]
+verify_jwt = false
