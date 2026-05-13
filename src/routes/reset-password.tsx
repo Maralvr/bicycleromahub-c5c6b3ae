@@ -23,18 +23,20 @@ function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Subscribe FIRST so we catch PASSWORD_RECOVERY / SIGNED_IN events
-    // emitted while Supabase processes the recovery token in the URL hash.
+    // Rely on onAuthStateChange — its first event (INITIAL_SESSION) fires
+    // AFTER Supabase consumes the recovery token from the URL hash. Calling
+    // getSession() too early returns null and races the PASSWORD_RECOVERY event.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setReady(true);
     });
-    // Then check current session (may already be hydrated from storage).
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
-    return () => subscription.unsubscribe();
+    // Safety net: if no event arrives within 3s (e.g. user opened the page
+    // directly without a recovery link), surface the "expired" message.
+    const t = setTimeout(() => setReady(true), 3000);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(t);
+    };
   }, []);
 
   const onSubmit = async (e: FormEvent) => {
