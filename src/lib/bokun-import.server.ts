@@ -134,12 +134,24 @@ interface BokunBookingFull {
   seller?: { title?: string; companyName?: string };
   sellerName?: string;
   bookingChannel?: { title?: string; systemType?: string };
+  channel?: { title?: string; systemType?: string };
   rateTitle?: string;
   rate?: { title?: string };
+  fields?: {
+    priceCategoryBookings?: Array<{
+      pricingCategory?: { title?: string; fullTitle?: string };
+      quantity?: number;
+      leadPassenger?: { firstName?: string; lastName?: string; fullName?: string };
+      passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
+    }>;
+    bookedExtras?: Array<{ extra?: { title?: string }; title?: string; quantity?: number }>;
+    totalParticipants?: number;
+  };
+  productBookings?: BokunBookingFull[];
   activityBookings?: Array<{
     activity?: { title?: string; durationMinutes?: number };
-    startDateTime?: string;
-    endDateTime?: string;
+    startDateTime?: BokunDateValue;
+    endDateTime?: BokunDateValue;
     pickupPlace?: { title?: string; address?: string };
     startPoint?: { title?: string; address?: string };
     rateTitle?: string;
@@ -162,22 +174,24 @@ function mapToShiftRow(raw: BokunBookingFull) {
   const durationMinutes = raw.durationMinutes ?? a0?.activity?.durationMinutes;
   const pickupPlace = raw.pickupPlace ?? a0?.pickupPlace;
   const startPoint = raw.startPoint ?? a0?.startPoint;
-  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? [];
-  const extras = raw.extraBookings ?? a0?.extraBookings ?? [];
+  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
+  const extras = raw.extraBookings ?? a0?.extraBookings ?? raw.fields?.bookedExtras ?? [];
 
   const counts = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   const participantList: Array<{ name: string; category: string }> = [];
   for (const pcb of pcbs) {
-    const catTitle = pcb.pricingCategory.title;
-    const key = PRICING_MAP[catTitle.toLowerCase().trim()];
-    if (key) counts[key] += pcb.quantity;
-    for (const p of pcb.passengers ?? []) {
+    const catTitle = pcb.pricingCategory?.title ?? "Adult";
+    const key = pricingCategoryKey(catTitle);
+    counts[key] += pcb.quantity ?? 1;
+    for (const p of [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter(Boolean)) {
       const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
       if (name) participantList.push({ name, category: catTitle });
     }
   }
+  if (counts.adults + counts.teens + counts.infants === 0 && raw.totalParticipants) counts.adults = raw.totalParticipants;
   for (const ex of extras) {
-    if (ex.extra.title.toLowerCase().includes("trailer")) counts.trailers += ex.quantity;
+    const extraTitle = ex.extra?.title ?? ex.title ?? "";
+    if (extraTitle.toLowerCase().includes("trailer")) counts.trailers += ex.quantity ?? 1;
   }
   const meeting = pickupPlace?.title || pickupPlace?.address || startPoint?.title || startPoint?.address || "TBD";
   const customer = raw.customer ?? {};
