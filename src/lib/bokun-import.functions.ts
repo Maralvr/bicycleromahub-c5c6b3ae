@@ -14,3 +14,6 @@ export const importBokunBookings = createServerFn({ method: "POST" })
     await assertAdmin(data.accessToken);
     return runBokunImport(data.fromDate, data.toDate);
   });
+
+export const syncBokunCronImport = createServerFn({ method: "POST" })
+  .handler(async () => runBokunImport("2026-03-01", undefined, "cron"));
