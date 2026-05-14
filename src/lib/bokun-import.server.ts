@@ -180,7 +180,8 @@ function mapToShiftRow(raw: BokunBookingFull) {
     const catTitle = pcb.pricingCategory?.title ?? "Adult";
     const key = pricingCategoryKey(catTitle);
     counts[key] += pcb.quantity ?? 1;
-    for (const p of [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter(Boolean)) {
+    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p));
+    for (const p of passengers) {
       const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
       if (name) participantList.push({ name, category: catTitle });
     }
