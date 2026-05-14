@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      bokun_import_runs: {
+        Row: {
+          created: number
+          created_at: string
+          error_message: string | null
+          errors: Json
+          finished_at: string | null
+          from_date: string
+          id: string
+          skipped: number
+          started_at: string
+          success: boolean
+          to_date: string
+          total_seen: number
+          trigger: string
+          updated: number
+        }
+        Insert: {
+          created?: number
+          created_at?: string
+          error_message?: string | null
+          errors?: Json
+          finished_at?: string | null
+          from_date: string
+          id?: string
+          skipped?: number
+          started_at?: string
+          success?: boolean
+          to_date: string
+          total_seen?: number
+          trigger?: string
+          updated?: number
+        }
+        Update: {
+          created?: number
+          created_at?: string
+          error_message?: string | null
+          errors?: Json
+          finished_at?: string | null
+          from_date?: string
+          id?: string
+          skipped?: number
+          started_at?: string
+          success?: boolean
+          to_date?: string
+          total_seen?: number
+          trigger?: string
+          updated?: number
+        }
+        Relationships: []
+      }
       field_updates: {
         Row: {
           attachments: Json
