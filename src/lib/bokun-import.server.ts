@@ -234,6 +234,18 @@ function mapToShiftRow(raw: BokunBookingFull) {
   };
 }
 
+type BokunSearchResponse = {
+  results?: BokunBookingFull[];
+  items?: Array<BokunBookingFull & { productBookings?: BokunBookingFull[] }>;
+  totalHits?: number;
+};
+
+function extractSearchBookings(searchRes: BokunSearchResponse | null) {
+  const directResults = searchRes?.results ?? [];
+  const productBookings = (searchRes?.items ?? []).flatMap((item) => item.productBookings ?? []);
+  return productBookings.length ? productBookings : directResults;
+}
+
 export async function runBokunImport(
   fromDate: string,
   toDate = "2099-12-31",
@@ -243,7 +255,7 @@ export async function runBokunImport(
   const pageSize = 50;
   let totalSeen = 0;
   let created = 0;
-  const updated = 0;
+  let updated = 0;
   let skipped = 0;
   const errors: string[] = [];
 
@@ -258,7 +270,7 @@ export async function runBokunImport(
 
   try {
     while (true) {
-      let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
+      let searchRes: BokunSearchResponse | null = null;
       try {
         const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
         const toMs = Date.parse(`${toDate}T23:59:59Z`);
@@ -275,26 +287,14 @@ export async function runBokunImport(
         break;
       }
 
-      const results = searchRes?.results ?? [];
+      const results = extractSearchBookings(searchRes);
       if (results.length === 0) break;
 
       for (const summary of results) {
         totalSeen++;
-        const bid = summary.id ?? summary.bookingId;
-        if (!bid) { skipped++; continue; }
+        if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
 
-        let full: BokunBookingFull;
-        try {
-          full = await bokunFetch("GET", `/booking.json/${bid}`);
-        } catch (e) {
-          errors.push(`Fetch ${bid}: ${(e as Error).message}`);
-          skipped++;
-          continue;
-        }
-
-        if ((full.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
-
-        const row = mapToShiftRow(full);
+        const row = mapToShiftRow(summary);
         if (!row || !row.booking_id) { skipped++; continue; }
 
         const { data: existing } = await supabaseAdmin
@@ -305,7 +305,12 @@ export async function runBokunImport(
           .maybeSingle();
 
         if (existing) {
-          skipped++;
+          const { error } = await supabaseAdmin
+            .from("shifts")
+            .update(row)
+            .eq("id", existing.id);
+          if (error) errors.push(`Update ${row.booking_id}: ${error.message}`);
+          else updated++;
         } else {
           const { error } = await supabaseAdmin
             .from("shifts")
