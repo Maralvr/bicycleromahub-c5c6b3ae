@@ -292,23 +292,33 @@ export type Database = {
         Row: {
           adults: number
           assigned_staff_id: string | null
+          bokun_created_at: string | null
+          booking_channel: string | null
           booking_id: string | null
+          channel_booking_ref: string | null
           created_at: string
+          customer_email: string | null
           customer_name: string | null
           customer_phone: string | null
           date: string
           end_time: string
+          external_booking_ref: string | null
           id: string
           infants: number
           meeting_point: string
           notes: string | null
+          operations_notes: string | null
+          participants: Json
           rate: number | null
+          rate_title: string | null
           rental_point_id: string | null
           required_tags: string[]
+          seller: string | null
           source: Database["public"]["Enums"]["shift_source"]
           start_time: string
           status: Database["public"]["Enums"]["shift_status"]
           teens: number
+          ticket_sent: boolean
           tour_name: string
           trailers: number
           updated_at: string
@@ -316,23 +326,33 @@ export type Database = {
         Insert: {
           adults?: number
           assigned_staff_id?: string | null
+          bokun_created_at?: string | null
+          booking_channel?: string | null
           booking_id?: string | null
+          channel_booking_ref?: string | null
           created_at?: string
+          customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           date: string
           end_time: string
+          external_booking_ref?: string | null
           id?: string
           infants?: number
           meeting_point?: string
           notes?: string | null
+          operations_notes?: string | null
+          participants?: Json
           rate?: number | null
+          rate_title?: string | null
           rental_point_id?: string | null
           required_tags?: string[]
+          seller?: string | null
           source?: Database["public"]["Enums"]["shift_source"]
           start_time: string
           status?: Database["public"]["Enums"]["shift_status"]
           teens?: number
+          ticket_sent?: boolean
           tour_name: string
           trailers?: number
           updated_at?: string
@@ -340,23 +360,33 @@ export type Database = {
         Update: {
           adults?: number
           assigned_staff_id?: string | null
+          bokun_created_at?: string | null
+          booking_channel?: string | null
           booking_id?: string | null
+          channel_booking_ref?: string | null
           created_at?: string
+          customer_email?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           date?: string
           end_time?: string
+          external_booking_ref?: string | null
           id?: string
           infants?: number
           meeting_point?: string
           notes?: string | null
+          operations_notes?: string | null
+          participants?: Json
           rate?: number | null
+          rate_title?: string | null
           rental_point_id?: string | null
           required_tags?: string[]
+          seller?: string | null
           source?: Database["public"]["Enums"]["shift_source"]
           start_time?: string
           status?: Database["public"]["Enums"]["shift_status"]
           teens?: number
+          ticket_sent?: boolean
           tour_name?: string
           trailers?: number
           updated_at?: string
