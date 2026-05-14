@@ -44,7 +44,7 @@ function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
-  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift } = useShiftsStore();
+  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
 
   const handleDelete = async (s: Shift) => {
     const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
