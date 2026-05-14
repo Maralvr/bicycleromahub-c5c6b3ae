@@ -106,7 +106,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         meeting_point: form.meeting_point?.toString().trim() || null,
         customer_name: form.customer_name?.toString().trim() || null,
         customer_phone: form.customer_phone?.toString().trim() || null,
+        customer_email: form.customer_email?.toString().trim() || null,
+        rate_title: form.rate_title?.toString().trim() || null,
         notes: form.notes?.toString().trim() || null,
+        operations_notes: form.operations_notes?.toString().trim() || null,
         required_tags: tagsText.split(",").map((t) => t.trim()).filter(Boolean),
       });
       onClose();
