@@ -241,20 +241,43 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="sh-rate">Rate (€)</Label>
               <Input id="sh-rate" type="number" step="0.01" value={form.rate ?? ""} onChange={(e) => setForm({ ...form, rate: e.target.value === "" ? null : Number(e.target.value) })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="sh-tags">Required tags (comma-separated)</Label>
+              <Label htmlFor="sh-rate-title">Rate name</Label>
+              <Input id="sh-rate-title" value={form.rate_title ?? ""} onChange={(e) => setForm({ ...form, rate_title: e.target.value })} placeholder="e.g. Public tour in Spanish" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-tags">Required tags</Label>
               <Input id="sh-tags" value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="e-bike, Vatican tour" />
             </div>
           </div>
 
+          {(form.participants?.length ?? 0) > 0 && (
+            <div className="space-y-1.5">
+              <Label>Participants</Label>
+              <div className="rounded-md border divide-y text-sm">
+                {form.participants!.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                    <span>{p.name}</span>
+                    <span className="text-muted-foreground text-xs">{p.category}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label htmlFor="sh-notes">Notes</Label>
-            <Textarea id="sh-notes" rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
+            <Label htmlFor="sh-notes">Note for booking</Label>
+            <Textarea id="sh-notes" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="sh-ops-notes">Note to appear on operations reports</Label>
+            <Textarea id="sh-ops-notes" rows={2} value={form.operations_notes ?? ""} onChange={(e) => setForm({ ...form, operations_notes: e.target.value })} placeholder="Internal operations note" />
           </div>
 
           <DialogFooter>
