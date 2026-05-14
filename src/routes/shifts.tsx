@@ -62,7 +62,7 @@ function ShiftsPage() {
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const [importing, setImporting] = useState(false);
   const importBokun = useServerFn(importBokunBookings);
-  const { refresh: refreshShifts } = useShiftsStore();
+  
   const handleImportBokun = async () => {
     if (!confirm("Import all Bokun bookings from March 1, 2026 onwards? Existing bookings will be updated.")) return;
     setImporting(true);
