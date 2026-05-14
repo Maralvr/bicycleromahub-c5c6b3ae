@@ -12,6 +12,8 @@ import { useStaffStore } from "@/lib/staff-store";
 import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { importBokunBookings } from "@/lib/bokun-import.functions";
 import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
@@ -42,7 +44,7 @@ function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
-  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift } = useShiftsStore();
+  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
 
   const handleDelete = async (s: Shift) => {
     const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
@@ -58,6 +60,30 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importBokun = useServerFn(importBokunBookings);
+  
+  const handleImportBokun = async () => {
+    if (!confirm("Import all Bokun bookings from March 1, 2026 onwards? Existing bookings will be updated.")) return;
+    setImporting(true);
+    const tid = toast.loading("Importing from Bokun…", { description: "This may take a minute." });
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+      const res = await importBokun({ data: { accessToken: token, fromDate: "2026-03-01" } });
+      toast.success(`Imported ${res.created} new, updated ${res.updated}`, {
+        id: tid,
+        description: `${res.totalSeen} bookings seen, ${res.skipped} skipped${res.errors.length ? `, ${res.errors.length} errors` : ""}`,
+      });
+      if (res.errors.length) console.warn("Bokun import errors:", res.errors);
+      await refreshShifts?.();
+    } catch (e) {
+      toast.error("Import failed", { id: tid, description: (e as Error).message });
+    } finally {
+      setImporting(false);
+    }
+  };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
@@ -215,6 +241,9 @@ function ShiftsPage() {
         actions={
           isAdmin ? (
             <>
+              <Button variant="outline" onClick={handleImportBokun} disabled={importing}>
+                <Webhook className="h-4 w-4 mr-1" /> {importing ? "Importing…" : "Import from Bokun"}
+              </Button>
               <Button variant="outline" onClick={simulateBokunBooking}>
                 <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
               </Button>
