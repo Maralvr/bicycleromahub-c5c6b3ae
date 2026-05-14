@@ -60,6 +60,30 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importBokun = useServerFn(importBokunBookings);
+  const { refresh: refreshShifts } = useShiftsStore();
+  const handleImportBokun = async () => {
+    if (!confirm("Import all Bokun bookings from March 1, 2026 onwards? Existing bookings will be updated.")) return;
+    setImporting(true);
+    const tid = toast.loading("Importing from Bokun…", { description: "This may take a minute." });
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Not signed in");
+      const res = await importBokun({ data: { accessToken: token, fromDate: "2026-03-01" } });
+      toast.success(`Imported ${res.created} new, updated ${res.updated}`, {
+        id: tid,
+        description: `${res.totalSeen} bookings seen, ${res.skipped} skipped${res.errors.length ? `, ${res.errors.length} errors` : ""}`,
+      });
+      if (res.errors.length) console.warn("Bokun import errors:", res.errors);
+      await refreshShifts?.();
+    } catch (e) {
+      toast.error("Import failed", { id: tid, description: (e as Error).message });
+    } finally {
+      setImporting(false);
+    }
+  };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
