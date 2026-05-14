@@ -228,9 +228,11 @@ export async function runBokunImport(
     while (true) {
       let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
       try {
+        const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
+        const toMs = Date.parse(`${toDate}T23:59:59Z`);
         searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
           bookingRole: "SELLER",
-          startDateRange: { from: fromDate, to: toDate },
+          startDateRange: { from: fromMs, to: toMs },
           pageSize,
           page,
           sortField: "startDate",
