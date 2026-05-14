@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { runBokunImport } from "@/lib/bokun-import.functions";
+import { runBokunImport } from "@/lib/bokun-import.server";
 
 export const Route = createFileRoute("/api/public/hooks/sync-bokun")({
   server: {
