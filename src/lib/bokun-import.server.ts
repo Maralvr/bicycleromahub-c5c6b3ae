@@ -1,10 +1,19 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
-  adult: "adults", adults: "adults",
+  adult: "adults", adults: "adults", person: "adults", people: "adults", participant: "adults", participants: "adults", pax: "adults",
   teen: "teens", teenager: "teens", teens: "teens", child: "teens", children: "teens",
   infant: "infants", infants: "infants", baby: "infants",
 };
+
+type BokunDateValue = string | number;
+
+function pricingCategoryKey(title: string) {
+  const normalized = title.toLowerCase().trim();
+  if (normalized.includes("infant") || normalized.includes("baby")) return "infants";
+  if (normalized.includes("teen") || normalized.includes("child") || normalized.includes("kid")) return "teens";
+  return PRICING_MAP[normalized] ?? "adults";
+}
 
 function inferTags(title: string, productTags?: string[]) {
   const tags = new Set<string>(productTags?.map((t) => t.toLowerCase()) ?? []);
@@ -19,12 +28,23 @@ function inferTags(title: string, productTags?: string[]) {
   return Array.from(tags);
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
+function fmtTime(value: BokunDateValue) {
+  const d = new Date(value);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:00`;
 }
 
-function computeEnd(start: string, end?: string, durationMinutes?: number) {
+function dateOnly(value: BokunDateValue) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function textValue(value: unknown) {
+  if (typeof value === "string") return value || null;
+  if (!value || typeof value !== "object") return null;
+  const entries = Object.entries(value).filter(([, v]) => typeof v === "string" && v);
+  return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join("\n") : null;
+}
+
+function computeEnd(start: BokunDateValue, end?: BokunDateValue, durationMinutes?: number) {
   if (end) return fmtTime(end);
   const mins = durationMinutes ?? 180;
   const d = new Date(new Date(start).getTime() + mins * 60_000);
