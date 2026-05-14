@@ -1,0 +1,1 @@
+DELETE FROM public.shifts WHERE source = 'bokun' AND (channel_booking_ref IS NULL OR channel_booking_ref = '');
