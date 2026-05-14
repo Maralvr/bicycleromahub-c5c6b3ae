@@ -31,6 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/live-shifts", label: "Live shifts", icon: Zap },
         
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+        { to: "/bokun-runs", label: "Bokun runs", icon: RefreshCw },
         { to: "/users", label: "Users", icon: ShieldCheck },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
       ];
