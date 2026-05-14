@@ -128,6 +128,33 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
           <DialogDescription>Manual booking — assigned to a rental point and optionally a guide.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
+          {initial?.source === "bokun" && (
+            <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-sm">
+              <div className="font-medium text-foreground">Bokun references</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                {initial.channel_booking_ref && (
+                  <div><span className="text-muted-foreground">Booking ref. </span><span className="font-mono">{initial.channel_booking_ref}</span></div>
+                )}
+                {initial.booking_id && (
+                  <div><span className="text-muted-foreground">Product booking ref. </span><span className="font-mono">{initial.booking_id}</span></div>
+                )}
+                {initial.external_booking_ref && (
+                  <div><span className="text-muted-foreground">Ext. booking ref </span><span className="font-mono">{initial.external_booking_ref}</span></div>
+                )}
+                {initial.bokun_created_at && (
+                  <div><span className="text-muted-foreground">Created </span>{new Date(initial.bokun_created_at).toLocaleString()}</div>
+                )}
+                {initial.seller && (
+                  <div><span className="text-muted-foreground">Seller </span>{initial.seller}</div>
+                )}
+                {initial.booking_channel && (
+                  <div><span className="text-muted-foreground">Channel </span>{initial.booking_channel}</div>
+                )}
+                <div><span className="text-muted-foreground">Ticket sent </span>{initial.ticket_sent ? "Yes" : "No"}</div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="sh-tour">Tour / activity *</Label>
             <Input id="sh-tour" value={form.tour_name} onChange={(e) => setForm({ ...form, tour_name: e.target.value })} placeholder="e.g. Colosseum E-Bike Tour" required />
