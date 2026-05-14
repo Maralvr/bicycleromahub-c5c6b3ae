@@ -241,6 +241,9 @@ function ShiftsPage() {
         actions={
           isAdmin ? (
             <>
+              <Button variant="outline" onClick={handleImportBokun} disabled={importing}>
+                <Webhook className="h-4 w-4 mr-1" /> {importing ? "Importing…" : "Import from Bokun"}
+              </Button>
               <Button variant="outline" onClick={simulateBokunBooking}>
                 <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
               </Button>
