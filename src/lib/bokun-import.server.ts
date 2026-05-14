@@ -1,10 +1,19 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
-  adult: "adults", adults: "adults",
+  adult: "adults", adults: "adults", person: "adults", people: "adults", participant: "adults", participants: "adults", pax: "adults",
   teen: "teens", teenager: "teens", teens: "teens", child: "teens", children: "teens",
   infant: "infants", infants: "infants", baby: "infants",
 };
+
+type BokunDateValue = string | number;
+
+function pricingCategoryKey(title: string) {
+  const normalized = title.toLowerCase().trim();
+  if (normalized.includes("infant") || normalized.includes("baby")) return "infants";
+  if (normalized.includes("teen") || normalized.includes("child") || normalized.includes("kid")) return "teens";
+  return PRICING_MAP[normalized] ?? "adults";
+}
 
 function inferTags(title: string, productTags?: string[]) {
   const tags = new Set<string>(productTags?.map((t) => t.toLowerCase()) ?? []);
@@ -19,12 +28,23 @@ function inferTags(title: string, productTags?: string[]) {
   return Array.from(tags);
 }
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
+function fmtTime(value: BokunDateValue) {
+  const d = new Date(value);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}:00`;
 }
 
-function computeEnd(start: string, end?: string, durationMinutes?: number) {
+function dateOnly(value: BokunDateValue) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function textValue(value: unknown) {
+  if (typeof value === "string") return value || null;
+  if (!value || typeof value !== "object") return null;
+  const entries = Object.entries(value).filter(([, v]) => typeof v === "string" && v);
+  return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join("\n") : null;
+}
+
+function computeEnd(start: BokunDateValue, end?: BokunDateValue, durationMinutes?: number) {
   if (end) return fmtTime(end);
   const mins = durationMinutes ?? 180;
   const d = new Date(new Date(start).getTime() + mins * 60_000);
@@ -72,6 +92,15 @@ async function bokunFetch(method: "GET" | "POST", path: string, body?: unknown) 
   return res.json();
 }
 
+type BokunPassenger = { firstName?: string; lastName?: string; fullName?: string };
+type BokunPricingCategoryBooking = {
+  pricingCategory?: { title?: string; fullTitle?: string };
+  quantity?: number;
+  leadPassenger?: BokunPassenger;
+  passengers?: BokunPassenger[];
+};
+type BokunExtraBooking = { extra?: { title?: string }; title?: string; quantity?: number };
+
 interface BokunBookingFull {
   id?: number | string;
   bookingId?: number | string;
@@ -81,9 +110,9 @@ interface BokunBookingFull {
   externalBookingReference?: string;
   productTitle?: string;
   product?: { title?: string; tags?: string[] };
-  startDateTime?: string;
-  startDate?: string;
-  endDateTime?: string;
+  startDateTime?: BokunDateValue;
+  startDate?: BokunDateValue;
+  endDateTime?: BokunDateValue;
   durationMinutes?: number;
   pickupPlace?: { title?: string; address?: string };
   startPoint?: { title?: string; address?: string };
@@ -95,13 +124,11 @@ interface BokunBookingFull {
     email?: string;
     notes?: string;
   };
-  pricingCategoryBookings?: Array<{
-    pricingCategory: { title: string };
-    quantity: number;
-    passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
-  }>;
-  extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
+  pricingCategoryBookings?: BokunPricingCategoryBooking[];
+  extraBookings?: BokunExtraBooking[];
+  totalParticipants?: number;
   totalPrice?: number;
+  totalPriceAmount?: number;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
   notes?: string;
@@ -114,22 +141,25 @@ interface BokunBookingFull {
   seller?: { title?: string; companyName?: string };
   sellerName?: string;
   bookingChannel?: { title?: string; systemType?: string };
+  channel?: { title?: string; systemType?: string };
   rateTitle?: string;
   rate?: { title?: string };
+  fields?: {
+    priceCategoryBookings?: BokunPricingCategoryBooking[];
+    bookedExtras?: BokunExtraBooking[];
+    totalParticipants?: number;
+  };
+  productBookings?: BokunBookingFull[];
   activityBookings?: Array<{
     activity?: { title?: string; durationMinutes?: number };
-    startDateTime?: string;
-    endDateTime?: string;
+    startDateTime?: BokunDateValue;
+    endDateTime?: BokunDateValue;
     pickupPlace?: { title?: string; address?: string };
     startPoint?: { title?: string; address?: string };
     rateTitle?: string;
     rate?: { title?: string };
-    pricingCategoryBookings?: Array<{
-      pricingCategory: { title: string };
-      quantity: number;
-      passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
-    }>;
-    extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
+    pricingCategoryBookings?: BokunPricingCategoryBooking[];
+    extraBookings?: BokunExtraBooking[];
   }>;
 }
 
@@ -142,22 +172,25 @@ function mapToShiftRow(raw: BokunBookingFull) {
   const durationMinutes = raw.durationMinutes ?? a0?.activity?.durationMinutes;
   const pickupPlace = raw.pickupPlace ?? a0?.pickupPlace;
   const startPoint = raw.startPoint ?? a0?.startPoint;
-  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? [];
-  const extras = raw.extraBookings ?? a0?.extraBookings ?? [];
+  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
+  const extras = raw.extraBookings ?? a0?.extraBookings ?? raw.fields?.bookedExtras ?? [];
 
   const counts = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   const participantList: Array<{ name: string; category: string }> = [];
   for (const pcb of pcbs) {
-    const catTitle = pcb.pricingCategory.title;
-    const key = PRICING_MAP[catTitle.toLowerCase().trim()];
-    if (key) counts[key] += pcb.quantity;
-    for (const p of pcb.passengers ?? []) {
+    const catTitle = pcb.pricingCategory?.title ?? "Adult";
+    const key = pricingCategoryKey(catTitle);
+    counts[key] += pcb.quantity ?? 1;
+    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p));
+    for (const p of passengers) {
       const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
       if (name) participantList.push({ name, category: catTitle });
     }
   }
+  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
   for (const ex of extras) {
-    if (ex.extra.title.toLowerCase().includes("trailer")) counts.trailers += ex.quantity;
+    const extraTitle = ex.extra?.title ?? ex.title ?? "";
+    if (extraTitle.toLowerCase().includes("trailer")) counts.trailers += ex.quantity ?? 1;
   }
   const meeting = pickupPlace?.title || pickupPlace?.address || startPoint?.title || startPoint?.address || "TBD";
   const customer = raw.customer ?? {};
@@ -169,7 +202,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
 
   const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
   const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
-  const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || null;
+  const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
   const created = raw.creationDate || raw.createdDate || null;
 
   return {
@@ -178,7 +211,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
     channel_booking_ref: channelRef,
     external_booking_ref: externalRef,
     tour_name: productTitle,
-    date: startDateTime.slice(0, 10),
+    date: dateOnly(startDateTime),
     start_time: fmtTime(startDateTime),
     end_time: computeEnd(startDateTime, endDateTime, durationMinutes),
     meeting_point: meeting,
@@ -190,16 +223,28 @@ function mapToShiftRow(raw: BokunBookingFull) {
     infants: counts.infants,
     trailers: counts.trailers,
     participants: participantList,
-    rate: raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
+    rate: raw.totalPriceAmount ?? raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
     rate_title: rateTitle,
     seller,
     booking_channel: channel,
     bokun_created_at: created,
     ticket_sent: !!raw.ticketSent,
-    notes: raw.notes ?? customer.notes ?? null,
-    operations_notes: raw.internalNotes ?? null,
+    notes: textValue(raw.notes) ?? customer.notes ?? null,
+    operations_notes: textValue(raw.internalNotes),
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
+}
+
+type BokunSearchResponse = {
+  results?: BokunBookingFull[];
+  items?: Array<BokunBookingFull & { productBookings?: BokunBookingFull[] }>;
+  totalHits?: number;
+};
+
+function extractSearchBookings(searchRes: BokunSearchResponse | null) {
+  const directResults = searchRes?.results ?? [];
+  const productBookings = (searchRes?.items ?? []).flatMap((item) => item.productBookings ?? []);
+  return productBookings.length ? productBookings : directResults;
 }
 
 export async function runBokunImport(
@@ -211,7 +256,7 @@ export async function runBokunImport(
   const pageSize = 50;
   let totalSeen = 0;
   let created = 0;
-  const updated = 0;
+  let updated = 0;
   let skipped = 0;
   const errors: string[] = [];
 
@@ -226,7 +271,7 @@ export async function runBokunImport(
 
   try {
     while (true) {
-      let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
+      let searchRes: BokunSearchResponse | null = null;
       try {
         const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
         const toMs = Date.parse(`${toDate}T23:59:59Z`);
@@ -243,26 +288,14 @@ export async function runBokunImport(
         break;
       }
 
-      const results = searchRes?.results ?? [];
+      const results = extractSearchBookings(searchRes);
       if (results.length === 0) break;
 
       for (const summary of results) {
         totalSeen++;
-        const bid = summary.id ?? summary.bookingId;
-        if (!bid) { skipped++; continue; }
+        if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
 
-        let full: BokunBookingFull;
-        try {
-          full = await bokunFetch("GET", `/booking.json/${bid}`);
-        } catch (e) {
-          errors.push(`Fetch ${bid}: ${(e as Error).message}`);
-          skipped++;
-          continue;
-        }
-
-        if ((full.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
-
-        const row = mapToShiftRow(full);
+        const row = mapToShiftRow(summary);
         if (!row || !row.booking_id) { skipped++; continue; }
 
         const { data: existing } = await supabaseAdmin
@@ -273,7 +306,12 @@ export async function runBokunImport(
           .maybeSingle();
 
         if (existing) {
-          skipped++;
+          const { error } = await supabaseAdmin
+            .from("shifts")
+            .update(row)
+            .eq("id", existing.id);
+          if (error) errors.push(`Update ${row.booking_id}: ${error.message}`);
+          else updated++;
         } else {
           const { error } = await supabaseAdmin
             .from("shifts")
