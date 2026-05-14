@@ -128,6 +128,7 @@ interface BokunBookingFull {
   extraBookings?: BokunExtraBooking[];
   totalParticipants?: number;
   totalPrice?: number;
+  totalPriceAmount?: number;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
   notes?: string;
@@ -222,7 +223,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
     infants: counts.infants,
     trailers: counts.trailers,
     participants: participantList,
-    rate: raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
+    rate: raw.totalPriceAmount ?? raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
     rate_title: rateTitle,
     seller,
     booking_channel: channel,
