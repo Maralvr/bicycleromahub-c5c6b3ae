@@ -202,7 +202,11 @@ function mapToShiftRow(raw: BokunBookingFull) {
   };
 }
 
-export async function runBokunImport(fromDate: string, toDate = "2099-12-31") {
+export async function runBokunImport(
+  fromDate: string,
+  toDate = "2099-12-31",
+  trigger: "manual" | "cron" = "manual",
+) {
   let page = 1;
   const pageSize = 50;
   let totalSeen = 0;
@@ -210,6 +214,15 @@ export async function runBokunImport(fromDate: string, toDate = "2099-12-31") {
   const updated = 0;
   let skipped = 0;
   const errors: string[] = [];
+
+  const { data: runRow } = await supabaseAdmin
+    .from("bokun_import_runs")
+    .insert({ from_date: fromDate, to_date: toDate, trigger })
+    .select("id")
+    .single();
+  const runId = runRow?.id as string | undefined;
+
+  let fatal: string | null = null;
 
   while (true) {
     let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
