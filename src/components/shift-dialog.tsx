@@ -207,7 +207,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             <Input id="sh-meet" value={form.meeting_point ?? ""} onChange={(e) => setForm({ ...form, meeting_point: e.target.value })} placeholder="Override or extra details" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="sh-cname">Customer name</Label>
               <Input id="sh-cname" value={form.customer_name ?? ""} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
@@ -215,6 +215,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             <div className="space-y-1.5">
               <Label htmlFor="sh-cphone">Customer phone</Label>
               <Input id="sh-cphone" value={form.customer_phone ?? ""} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} placeholder="+39 …" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-cmail">Customer email</Label>
+              <Input id="sh-cmail" type="email" value={form.customer_email ?? ""} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} />
             </div>
           </div>
 
