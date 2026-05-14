@@ -21,6 +21,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
+import { Route as ApiPublicHooksSyncBokunRouteImport } from './routes/api/public/hooks/sync-bokun'
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -83,6 +84,11 @@ const ApiPublicWaiverForeverWebhookRoute =
     path: '/api/public/waiver-forever-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncBokunRoute = ApiPublicHooksSyncBokunRouteImport.update({
+  id: '/api/public/hooks/sync-bokun',
+  path: '/api/public/hooks/sync-bokun',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
+  '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
+  '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
+  '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/users'
     | '/api/public/waiver-forever-webhook'
+    | '/api/public/hooks/sync-bokun'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/users'
     | '/api/public/waiver-forever-webhook'
+    | '/api/public/hooks/sync-bokun'
   id:
     | '__root__'
     | '/'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/users'
     | '/api/public/waiver-forever-webhook'
+    | '/api/public/hooks/sync-bokun'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   UsersRoute: typeof UsersRoute
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
+  ApiPublicHooksSyncBokunRoute: typeof ApiPublicHooksSyncBokunRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWaiverForeverWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-bokun': {
+      id: '/api/public/hooks/sync-bokun'
+      path: '/api/public/hooks/sync-bokun'
+      fullPath: '/api/public/hooks/sync-bokun'
+      preLoaderRoute: typeof ApiPublicHooksSyncBokunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -289,6 +309,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   UsersRoute: UsersRoute,
   ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
+  ApiPublicHooksSyncBokunRoute: ApiPublicHooksSyncBokunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
