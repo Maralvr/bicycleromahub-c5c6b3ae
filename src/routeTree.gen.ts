@@ -18,6 +18,7 @@ import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as BokunRunsRouteImport } from './routes/bokun-runs'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
@@ -68,6 +69,11 @@ const CalendarRoute = CalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BokunRunsRoute = BokunRunsRouteImport.update({
+  id: '/bokun-runs',
+  path: '/bokun-runs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -93,6 +99,7 @@ const ApiPublicHooksSyncBokunRoute = ApiPublicHooksSyncBokunRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/bokun-runs'
     | '/calendar'
     | '/live-shifts'
     | '/notifications'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/bokun-runs'
     | '/calendar'
     | '/live-shifts'
     | '/notifications'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/bokun-runs'
     | '/calendar'
     | '/live-shifts'
     | '/notifications'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  BokunRunsRoute: typeof BokunRunsRoute
   CalendarRoute: typeof CalendarRoute
   LiveShiftsRoute: typeof LiveShiftsRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bokun-runs': {
+      id: '/bokun-runs'
+      path: '/bokun-runs'
+      fullPath: '/bokun-runs'
+      preLoaderRoute: typeof BokunRunsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -299,6 +319,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  BokunRunsRoute: BokunRunsRoute,
   CalendarRoute: CalendarRoute,
   LiveShiftsRoute: LiveShiftsRoute,
   NotificationsRoute: NotificationsRoute,
