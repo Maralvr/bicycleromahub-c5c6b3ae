@@ -32,12 +32,16 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
     rental_point_id: null,
     customer_name: "",
     customer_phone: "",
+    customer_email: "",
     adults: 0,
     teens: 0,
     infants: 0,
     trailers: 0,
+    participants: [],
     rate: null,
+    rate_title: "",
     notes: "",
+    operations_notes: "",
     required_tags: [],
     assigned_staff_id: null,
     status: "unassigned",
@@ -60,17 +64,25 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         rental_point_id: initial.rental_point_id,
         customer_name: initial.customer_name ?? "",
         customer_phone: initial.customer_phone ?? "",
+        customer_email: initial.customer_email ?? "",
         adults: initial.adults,
         teens: initial.teens,
         infants: initial.infants,
         trailers: initial.trailers,
+        participants: initial.participants ?? [],
         rate: initial.rate,
+        rate_title: initial.rate_title ?? "",
+        seller: initial.seller,
+        booking_channel: initial.booking_channel,
         notes: initial.notes ?? "",
+        operations_notes: initial.operations_notes ?? "",
         required_tags: initial.required_tags,
         assigned_staff_id: initial.assigned_staff_id,
         status: initial.status,
         source: initial.source,
         booking_id: initial.booking_id,
+        channel_booking_ref: initial.channel_booking_ref,
+        external_booking_ref: initial.external_booking_ref,
       });
       setTagsText((initial.required_tags ?? []).join(", "));
     } else {
@@ -94,7 +106,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         meeting_point: form.meeting_point?.toString().trim() || null,
         customer_name: form.customer_name?.toString().trim() || null,
         customer_phone: form.customer_phone?.toString().trim() || null,
+        customer_email: form.customer_email?.toString().trim() || null,
+        rate_title: form.rate_title?.toString().trim() || null,
         notes: form.notes?.toString().trim() || null,
+        operations_notes: form.operations_notes?.toString().trim() || null,
         required_tags: tagsText.split(",").map((t) => t.trim()).filter(Boolean),
       });
       onClose();
@@ -113,6 +128,33 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
           <DialogDescription>Manual booking — assigned to a rental point and optionally a guide.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
+          {initial?.source === "bokun" && (
+            <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-sm">
+              <div className="font-medium text-foreground">Bokun references</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                {initial.channel_booking_ref && (
+                  <div><span className="text-muted-foreground">Booking ref. </span><span className="font-mono">{initial.channel_booking_ref}</span></div>
+                )}
+                {initial.booking_id && (
+                  <div><span className="text-muted-foreground">Product booking ref. </span><span className="font-mono">{initial.booking_id}</span></div>
+                )}
+                {initial.external_booking_ref && (
+                  <div><span className="text-muted-foreground">Ext. booking ref </span><span className="font-mono">{initial.external_booking_ref}</span></div>
+                )}
+                {initial.bokun_created_at && (
+                  <div><span className="text-muted-foreground">Created </span>{new Date(initial.bokun_created_at).toLocaleString()}</div>
+                )}
+                {initial.seller && (
+                  <div><span className="text-muted-foreground">Seller </span>{initial.seller}</div>
+                )}
+                {initial.booking_channel && (
+                  <div><span className="text-muted-foreground">Channel </span>{initial.booking_channel}</div>
+                )}
+                <div><span className="text-muted-foreground">Ticket sent </span>{initial.ticket_sent ? "Yes" : "No"}</div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="sh-tour">Tour / activity *</Label>
             <Input id="sh-tour" value={form.tour_name} onChange={(e) => setForm({ ...form, tour_name: e.target.value })} placeholder="e.g. Colosseum E-Bike Tour" required />
@@ -165,7 +207,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             <Input id="sh-meet" value={form.meeting_point ?? ""} onChange={(e) => setForm({ ...form, meeting_point: e.target.value })} placeholder="Override or extra details" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="sh-cname">Customer name</Label>
               <Input id="sh-cname" value={form.customer_name ?? ""} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
@@ -173,6 +215,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             <div className="space-y-1.5">
               <Label htmlFor="sh-cphone">Customer phone</Label>
               <Input id="sh-cphone" value={form.customer_phone ?? ""} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} placeholder="+39 …" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-cmail">Customer email</Label>
+              <Input id="sh-cmail" type="email" value={form.customer_email ?? ""} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} />
             </div>
           </div>
 
@@ -195,20 +241,43 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="sh-rate">Rate (€)</Label>
               <Input id="sh-rate" type="number" step="0.01" value={form.rate ?? ""} onChange={(e) => setForm({ ...form, rate: e.target.value === "" ? null : Number(e.target.value) })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="sh-tags">Required tags (comma-separated)</Label>
+              <Label htmlFor="sh-rate-title">Rate name</Label>
+              <Input id="sh-rate-title" value={form.rate_title ?? ""} onChange={(e) => setForm({ ...form, rate_title: e.target.value })} placeholder="e.g. Public tour in Spanish" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-tags">Required tags</Label>
               <Input id="sh-tags" value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="e-bike, Vatican tour" />
             </div>
           </div>
 
+          {(form.participants?.length ?? 0) > 0 && (
+            <div className="space-y-1.5">
+              <Label>Participants</Label>
+              <div className="rounded-md border divide-y text-sm">
+                {form.participants!.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                    <span>{p.name}</span>
+                    <span className="text-muted-foreground text-xs">{p.category}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label htmlFor="sh-notes">Notes</Label>
-            <Textarea id="sh-notes" rows={3} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
+            <Label htmlFor="sh-notes">Note for booking</Label>
+            <Textarea id="sh-notes" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="sh-ops-notes">Note to appear on operations reports</Label>
+            <Textarea id="sh-ops-notes" rows={2} value={form.operations_notes ?? ""} onChange={(e) => setForm({ ...form, operations_notes: e.target.value })} placeholder="Internal operations note" />
           </div>
 
           <DialogFooter>

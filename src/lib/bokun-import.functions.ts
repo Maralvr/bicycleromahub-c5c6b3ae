@@ -78,6 +78,9 @@ interface BokunBookingFull {
   id?: number | string;
   bookingId?: number | string;
   confirmationCode?: string;
+  productConfirmationCode?: string;
+  parentBookingId?: number | string;
+  externalBookingReference?: string;
   productTitle?: string;
   product?: { title?: string; tags?: string[] };
   startDateTime?: string;
@@ -94,21 +97,40 @@ interface BokunBookingFull {
     email?: string;
     notes?: string;
   };
-  pricingCategoryBookings?: Array<{ pricingCategory: { title: string }; quantity: number }>;
+  pricingCategoryBookings?: Array<{
+    pricingCategory: { title: string };
+    quantity: number;
+    passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
+  }>;
   extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
   totalPrice?: number;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
   notes?: string;
+  internalNotes?: string;
   productTags?: string[];
   status?: string;
+  creationDate?: string;
+  createdDate?: string;
+  ticketSent?: boolean;
+  seller?: { title?: string; companyName?: string };
+  sellerName?: string;
+  bookingChannel?: { title?: string; systemType?: string };
+  rateTitle?: string;
+  rate?: { title?: string };
   activityBookings?: Array<{
     activity?: { title?: string; durationMinutes?: number };
     startDateTime?: string;
     endDateTime?: string;
     pickupPlace?: { title?: string; address?: string };
     startPoint?: { title?: string; address?: string };
-    pricingCategoryBookings?: Array<{ pricingCategory: { title: string }; quantity: number }>;
+    rateTitle?: string;
+    rate?: { title?: string };
+    pricingCategoryBookings?: Array<{
+      pricingCategory: { title: string };
+      quantity: number;
+      passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
+    }>;
     extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
   }>;
 }
@@ -125,22 +147,41 @@ function mapToShiftRow(raw: BokunBookingFull) {
   const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? [];
   const extras = raw.extraBookings ?? a0?.extraBookings ?? [];
 
-  const participants = { adults: 0, teens: 0, infants: 0, trailers: 0 };
+  const counts = { adults: 0, teens: 0, infants: 0, trailers: 0 };
+  const participantList: Array<{ name: string; category: string }> = [];
   for (const pcb of pcbs) {
-    const key = PRICING_MAP[pcb.pricingCategory.title.toLowerCase().trim()];
-    if (key) participants[key] += pcb.quantity;
+    const catTitle = pcb.pricingCategory.title;
+    const key = PRICING_MAP[catTitle.toLowerCase().trim()];
+    if (key) counts[key] += pcb.quantity;
+    for (const p of pcb.passengers ?? []) {
+      const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
+      if (name) participantList.push({ name, category: catTitle });
+    }
   }
   for (const ex of extras) {
-    if (ex.extra.title.toLowerCase().includes("trailer")) participants.trailers += ex.quantity;
+    if (ex.extra.title.toLowerCase().includes("trailer")) counts.trailers += ex.quantity;
   }
   const meeting = pickupPlace?.title || pickupPlace?.address || startPoint?.title || startPoint?.address || "TBD";
   const customer = raw.customer ?? {};
   const customerName = customer.fullName || [customer.firstName, customer.lastName].filter(Boolean).join(" ") || "Unknown";
-  const bookingIdStr = String(raw.confirmationCode || raw.id || raw.bookingId || "");
+
+  // Bokun's own booking ref (e.g. BIC-T129981388) — stable unique key
+  const bookingIdStr = String(raw.confirmationCode || raw.productConfirmationCode || raw.id || raw.bookingId || "");
+  // Channel ref (e.g. CIV-91102353) shown as "Booking ref."
+  const channelRef = raw.externalBookingReference || null;
+  // Parent / external numeric ref
+  const externalRef = raw.parentBookingId ? String(raw.parentBookingId) : null;
+
+  const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
+  const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
+  const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || null;
+  const created = raw.creationDate || raw.createdDate || null;
 
   return {
     source: "bokun" as const,
     booking_id: bookingIdStr,
+    channel_booking_ref: channelRef,
+    external_booking_ref: externalRef,
     tour_name: productTitle,
     date: startDateTime.slice(0, 10),
     start_time: fmtTime(startDateTime),
@@ -148,12 +189,20 @@ function mapToShiftRow(raw: BokunBookingFull) {
     meeting_point: meeting,
     customer_name: customerName,
     customer_phone: customer.phoneNumber || null,
-    adults: participants.adults,
-    teens: participants.teens,
-    infants: participants.infants,
-    trailers: participants.trailers,
+    customer_email: customer.email || null,
+    adults: counts.adults,
+    teens: counts.teens,
+    infants: counts.infants,
+    trailers: counts.trailers,
+    participants: participantList,
     rate: raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
+    rate_title: rateTitle,
+    seller,
+    booking_channel: channel,
+    bokun_created_at: created,
+    ticket_sent: !!raw.ticketSent,
     notes: raw.notes ?? customer.notes ?? null,
+    operations_notes: raw.internalNotes ?? null,
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
