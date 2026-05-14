@@ -214,9 +214,7 @@ export async function runBokunImport(fromDate: string, toDate = "2099-12-31") {
           .maybeSingle();
 
         if (existing) {
-          const { error } = await supabaseAdmin.from("shifts").update(row).eq("id", existing.id);
-          if (error) errors.push(`Update ${row.booking_id}: ${error.message}`);
-          else updated++;
+          skipped++;
         } else {
           const { error } = await supabaseAdmin
             .from("shifts")
