@@ -224,68 +224,88 @@ export async function runBokunImport(
 
   let fatal: string | null = null;
 
-  while (true) {
-    let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
-    try {
-      searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
-        bookingRole: "SELLER",
-        startDateRange: { from: fromDate, to: toDate },
-        pageSize,
-        page,
-        sortField: "startDate",
-        sortOrder: "ASC",
-      });
-    } catch (e) {
-      errors.push(`Search page ${page}: ${(e as Error).message}`);
-      break;
-    }
-
-    const results = searchRes?.results ?? [];
-    if (results.length === 0) break;
-
-    for (const summary of results) {
-      totalSeen++;
-      const bid = summary.id ?? summary.bookingId;
-      if (!bid) { skipped++; continue; }
-
-      let full: BokunBookingFull;
+  try {
+    while (true) {
+      let searchRes: { results?: BokunBookingFull[]; totalHits?: number } | null = null;
       try {
-        full = await bokunFetch("GET", `/booking.json/${bid}`);
+        searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
+          bookingRole: "SELLER",
+          startDateRange: { from: fromDate, to: toDate },
+          pageSize,
+          page,
+          sortField: "startDate",
+          sortOrder: "ASC",
+        });
       } catch (e) {
-        errors.push(`Fetch ${bid}: ${(e as Error).message}`);
-        skipped++;
-        continue;
+        errors.push(`Search page ${page}: ${(e as Error).message}`);
+        break;
       }
 
-      if ((full.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
+      const results = searchRes?.results ?? [];
+      if (results.length === 0) break;
 
-      const row = mapToShiftRow(full);
-      if (!row || !row.booking_id) { skipped++; continue; }
+      for (const summary of results) {
+        totalSeen++;
+        const bid = summary.id ?? summary.bookingId;
+        if (!bid) { skipped++; continue; }
 
-      const { data: existing } = await supabaseAdmin
-        .from("shifts")
-        .select("id")
-        .eq("source", "bokun")
-        .eq("booking_id", row.booking_id)
-        .maybeSingle();
+        let full: BokunBookingFull;
+        try {
+          full = await bokunFetch("GET", `/booking.json/${bid}`);
+        } catch (e) {
+          errors.push(`Fetch ${bid}: ${(e as Error).message}`);
+          skipped++;
+          continue;
+        }
 
-      if (existing) {
-        skipped++;
-      } else {
-        const { error } = await supabaseAdmin
+        if ((full.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
+
+        const row = mapToShiftRow(full);
+        if (!row || !row.booking_id) { skipped++; continue; }
+
+        const { data: existing } = await supabaseAdmin
           .from("shifts")
-          .insert({ ...row, status: "unassigned" });
-        if (error) errors.push(`Insert ${row.booking_id}: ${error.message}`);
-        else created++;
-      }
-    }
+          .select("id")
+          .eq("source", "bokun")
+          .eq("booking_id", row.booking_id)
+          .maybeSingle();
 
-    if (results.length < pageSize) break;
-    page++;
-    if (page > 200) break;
+        if (existing) {
+          skipped++;
+        } else {
+          const { error } = await supabaseAdmin
+            .from("shifts")
+            .insert({ ...row, status: "unassigned" });
+          if (error) errors.push(`Insert ${row.booking_id}: ${error.message}`);
+          else created++;
+        }
+      }
+
+      if (results.length < pageSize) break;
+      page++;
+      if (page > 200) break;
+    }
+  } catch (e) {
+    fatal = (e as Error).message;
   }
 
-  return { totalSeen, created, updated, skipped, errors: errors.slice(0, 20) };
+  if (runId) {
+    await supabaseAdmin
+      .from("bokun_import_runs")
+      .update({
+        finished_at: new Date().toISOString(),
+        total_seen: totalSeen,
+        created,
+        updated,
+        skipped,
+        errors: errors.slice(0, 50),
+        success: !fatal && errors.length === 0,
+        error_message: fatal,
+      })
+      .eq("id", runId);
+  }
+
+  return { totalSeen, created, updated, skipped, errors: errors.slice(0, 20), runId };
 }
 
 export async function assertAdmin(accessToken: string) {
