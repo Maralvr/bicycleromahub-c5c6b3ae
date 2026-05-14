@@ -158,27 +158,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
   };
 }
 
-export const importBokunBookings = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
-    z.object({
-      accessToken: z.string().min(20),
-      fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    }).parse(input),
-  )
-  .handler(async ({ data }) => {
-    // Verify caller is admin
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(data.accessToken);
-    if (userErr || !userData.user) throw new Error("Not authenticated");
-    const { data: roles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-    if (!roles?.some((r) => r.role === "admin")) throw new Error("Admin only");
-
-    const fromDate = data.fromDate;
-    const toDate = data.toDate ?? "2099-12-31";
-
+export async function runBokunImport(fromDate: string, toDate = "2099-12-31") {
     let page = 1;
     const pageSize = 50;
     let totalSeen = 0;
