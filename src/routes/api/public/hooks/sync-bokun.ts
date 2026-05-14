@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/public/hooks/sync-bokun")({
     handlers: {
       POST: async () => {
         try {
-          const result = await runBokunImport("2026-03-01");
+          const result = await runBokunImport("2026-03-01", undefined, "cron");
           console.log("[sync-bokun]", result);
           return new Response(JSON.stringify({ success: true, ...result }), {
             headers: { "Content-Type": "application/json" },
