@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type Participant = { name: string; category: string };
+
 export type LiveShift = {
   id: string;
   source: "manual" | "bokun";
   booking_id: string | null;
+  channel_booking_ref: string | null;
+  external_booking_ref: string | null;
   tour_name: string;
   date: string;
   start_time: string;
@@ -13,12 +17,20 @@ export type LiveShift = {
   rental_point_id: string | null;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_email: string | null;
   adults: number;
   teens: number;
   infants: number;
   trailers: number;
+  participants: Participant[];
   rate: number | null;
+  rate_title: string | null;
+  seller: string | null;
+  booking_channel: string | null;
+  bokun_created_at: string | null;
+  ticket_sent: boolean;
   notes: string | null;
+  operations_notes: string | null;
   required_tags: string[];
   assigned_staff_id: string | null;
   status: "unassigned" | "pending" | "accepted" | "rejected";
@@ -35,17 +47,25 @@ export type LiveShiftInput = {
   rental_point_id?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_email?: string | null;
   adults?: number;
   teens?: number;
   infants?: number;
   trailers?: number;
+  participants?: Participant[];
   rate?: number | null;
+  rate_title?: string | null;
+  seller?: string | null;
+  booking_channel?: string | null;
   notes?: string | null;
+  operations_notes?: string | null;
   required_tags?: string[];
   assigned_staff_id?: string | null;
   status?: LiveShift["status"];
   source?: LiveShift["source"];
   booking_id?: string | null;
+  channel_booking_ref?: string | null;
+  external_booking_ref?: string | null;
 };
 
 export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
