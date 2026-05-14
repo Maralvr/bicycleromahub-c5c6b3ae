@@ -92,6 +92,15 @@ async function bokunFetch(method: "GET" | "POST", path: string, body?: unknown) 
   return res.json();
 }
 
+type BokunPassenger = { firstName?: string; lastName?: string; fullName?: string };
+type BokunPricingCategoryBooking = {
+  pricingCategory?: { title?: string; fullTitle?: string };
+  quantity?: number;
+  leadPassenger?: BokunPassenger;
+  passengers?: BokunPassenger[];
+};
+type BokunExtraBooking = { extra?: { title?: string }; title?: string; quantity?: number };
+
 interface BokunBookingFull {
   id?: number | string;
   bookingId?: number | string;
@@ -101,9 +110,9 @@ interface BokunBookingFull {
   externalBookingReference?: string;
   productTitle?: string;
   product?: { title?: string; tags?: string[] };
-  startDateTime?: string;
-  startDate?: string;
-  endDateTime?: string;
+  startDateTime?: BokunDateValue;
+  startDate?: BokunDateValue;
+  endDateTime?: BokunDateValue;
   durationMinutes?: number;
   pickupPlace?: { title?: string; address?: string };
   startPoint?: { title?: string; address?: string };
@@ -115,12 +124,9 @@ interface BokunBookingFull {
     email?: string;
     notes?: string;
   };
-  pricingCategoryBookings?: Array<{
-    pricingCategory: { title: string };
-    quantity: number;
-    passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
-  }>;
-  extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
+  pricingCategoryBookings?: BokunPricingCategoryBooking[];
+  extraBookings?: BokunExtraBooking[];
+  totalParticipants?: number;
   totalPrice?: number;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
@@ -138,13 +144,8 @@ interface BokunBookingFull {
   rateTitle?: string;
   rate?: { title?: string };
   fields?: {
-    priceCategoryBookings?: Array<{
-      pricingCategory?: { title?: string; fullTitle?: string };
-      quantity?: number;
-      leadPassenger?: { firstName?: string; lastName?: string; fullName?: string };
-      passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
-    }>;
-    bookedExtras?: Array<{ extra?: { title?: string }; title?: string; quantity?: number }>;
+    priceCategoryBookings?: BokunPricingCategoryBooking[];
+    bookedExtras?: BokunExtraBooking[];
     totalParticipants?: number;
   };
   productBookings?: BokunBookingFull[];
@@ -156,12 +157,8 @@ interface BokunBookingFull {
     startPoint?: { title?: string; address?: string };
     rateTitle?: string;
     rate?: { title?: string };
-    pricingCategoryBookings?: Array<{
-      pricingCategory: { title: string };
-      quantity: number;
-      passengers?: Array<{ firstName?: string; lastName?: string; fullName?: string }>;
-    }>;
-    extraBookings?: Array<{ extra: { title: string }; quantity: number }>;
+    pricingCategoryBookings?: BokunPricingCategoryBooking[];
+    extraBookings?: BokunExtraBooking[];
   }>;
 }
 
@@ -188,7 +185,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
       if (name) participantList.push({ name, category: catTitle });
     }
   }
-  if (counts.adults + counts.teens + counts.infants === 0 && raw.totalParticipants) counts.adults = raw.totalParticipants;
+  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
   for (const ex of extras) {
     const extraTitle = ex.extra?.title ?? ex.title ?? "";
     if (extraTitle.toLowerCase().includes("trailer")) counts.trailers += ex.quantity ?? 1;
@@ -203,7 +200,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
 
   const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
   const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
-  const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || null;
+  const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
   const created = raw.creationDate || raw.createdDate || null;
 
   return {
@@ -212,7 +209,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
     channel_booking_ref: channelRef,
     external_booking_ref: externalRef,
     tour_name: productTitle,
-    date: startDateTime.slice(0, 10),
+    date: dateOnly(startDateTime),
     start_time: fmtTime(startDateTime),
     end_time: computeEnd(startDateTime, endDateTime, durationMinutes),
     meeting_point: meeting,
@@ -230,8 +227,8 @@ function mapToShiftRow(raw: BokunBookingFull) {
     booking_channel: channel,
     bokun_created_at: created,
     ticket_sent: !!raw.ticketSent,
-    notes: raw.notes ?? customer.notes ?? null,
-    operations_notes: raw.internalNotes ?? null,
+    notes: textValue(raw.notes) ?? customer.notes ?? null,
+    operations_notes: textValue(raw.internalNotes),
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
