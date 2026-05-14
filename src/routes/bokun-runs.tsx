@@ -1,0 +1,171 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useRequireAdmin } from "@/lib/require-admin";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+
+export const Route = createFileRoute("/bokun-runs")({
+  component: BokunRunsPage,
+});
+
+interface RunRow {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  from_date: string;
+  to_date: string;
+  trigger: string;
+  total_seen: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
+  success: boolean;
+  error_message: string | null;
+}
+
+function fmt(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString();
+}
+
+function duration(start: string, end: string | null) {
+  if (!end) return "running…";
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+}
+
+function BokunRunsPage() {
+  const { ready } = useRequireAdmin();
+  const [runs, setRuns] = useState<RunRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("bokun_import_runs")
+      .select("*")
+      .order("started_at", { ascending: false })
+      .limit(50);
+    setRuns((data as unknown as RunRow[]) ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (ready) void load();
+  }, [ready, load]);
+
+  if (!ready) return null;
+
+  return (
+    <AppShell>
+      <PageHeader
+        title="Bokun import runs"
+        subtitle="History of scheduled and manual Bokun syncs"
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
+
+      <div className="space-y-3">
+        {runs.length === 0 && !loading && (
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No import runs yet.
+          </Card>
+        )}
+
+        {runs.map((r) => (
+          <Card key={r.id} className="p-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  {r.success ? (
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  )}
+                  <div className="font-semibold text-sm">{fmt(r.started_at)}</div>
+                  <Badge variant="outline" className="text-[10px] uppercase">
+                    {r.trigger}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Range: <span className="font-mono">{r.from_date}</span> →{" "}
+                  <span className="font-mono">{r.to_date}</span> · Duration:{" "}
+                  {duration(r.started_at, r.finished_at)}
+                </div>
+              </div>
+
+              <div className="flex gap-4 text-sm">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Seen
+                  </div>
+                  <div className="font-semibold">{r.total_seen}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Created
+                  </div>
+                  <div className="font-semibold text-success">{r.created}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Skipped
+                  </div>
+                  <div className="font-semibold text-muted-foreground">{r.skipped}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Errors
+                  </div>
+                  <div
+                    className={`font-semibold ${
+                      r.errors?.length ? "text-destructive" : "text-muted-foreground"
+                    }`}
+                  >
+                    {r.errors?.length ?? 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {r.error_message && (
+              <div className="mt-3 p-2 rounded bg-destructive/10 text-destructive text-xs font-mono">
+                {r.error_message}
+              </div>
+            )}
+
+            {r.errors && r.errors.length > 0 && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                  Show {r.errors.length} error log{r.errors.length === 1 ? "" : "s"}
+                </summary>
+                <div className="mt-2 space-y-1 max-h-64 overflow-auto">
+                  {r.errors.map((e, i) => (
+                    <div
+                      key={i}
+                      className="p-2 rounded bg-muted text-xs font-mono break-all"
+                    >
+                      {e}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </Card>
+        ))}
+      </div>
+    </AppShell>
+  );
+}
