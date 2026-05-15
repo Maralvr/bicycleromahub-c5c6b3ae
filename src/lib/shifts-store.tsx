@@ -103,18 +103,30 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("shifts")
-      .select(
-        "id, source, booking_id, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, notes, assigned_staff_id, status, required_tags",
-      )
-      .order("date", { ascending: true })
-      .order("start_time", { ascending: true });
-    if (err) setError(err.message);
-    else {
-      setRows((data ?? []) as ShiftRow[]);
-      setError(null);
+    const pageSize = 1000;
+    const all: ShiftRow[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error: err } = await supabase
+        .from("shifts")
+        .select(
+          "id, source, booking_id, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, notes, assigned_staff_id, status, required_tags",
+        )
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (err) {
+        setError(err.message);
+        setLoading(false);
+        return;
+      }
+      const batch = (data ?? []) as ShiftRow[];
+      all.push(...batch);
+      if (batch.length < pageSize) break;
+      from += pageSize;
     }
+    setRows(all);
+    setError(null);
     setLoading(false);
   }, []);
 
