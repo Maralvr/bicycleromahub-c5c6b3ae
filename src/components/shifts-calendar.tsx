@@ -152,41 +152,48 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
   const todayISO = toISO(new Date());
 
   return (
-    <Card className="p-5">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCursor(new Date())}>Today</Button>
-          <Button variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h3 className="font-semibold text-base ml-2 capitalize">{title}</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tabs value={platform} onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}>
-            <TabsList className="bg-muted">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="bokun">Bokun</TabsTrigger>
-              <TabsTrigger value="manual">Manual</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Tabs value={view} onValueChange={(v) => setView(v as View)}>
-            <TabsList className="bg-muted">
-              <TabsTrigger value="day">Day</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
+    <Card className="overflow-hidden border-border/70 bg-card p-0 shadow-sm">
+      <div className="border-b border-border/70 bg-muted/20 p-4 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <div className="flex items-center rounded-lg border border-border bg-background p-1 shadow-sm">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous" className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setCursor(new Date())} className="h-8 px-3 text-xs font-semibold">
+                Today
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next" className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-bold capitalize tracking-tight text-foreground">{title}</h3>
+              <p className="text-xs text-muted-foreground">{stats.total} tours in this {view}</p>
+            </div>
+          </div>
 
-      {platform === "all" && (
-        <div className="flex justify-end mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Tabs value={platform} onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}>
+              <TabsList className="h-9 bg-background shadow-sm">
+                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                <TabsTrigger value="bokun" className="text-xs">Bokun</TabsTrigger>
+                <TabsTrigger value="manual" className="text-xs">Manual</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+              <TabsList className="h-9 bg-background shadow-sm">
+                <TabsTrigger value="day" className="text-xs">Day</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-            <TabsList className="bg-muted h-8">
+            <TabsList className="h-auto flex-wrap justify-start bg-background p-1 shadow-sm">
               <TabsTrigger value="all" className="text-xs">All statuses</TabsTrigger>
               <TabsTrigger value="unassigned" className="text-xs">Unassigned</TabsTrigger>
               <TabsTrigger value="pending" className="text-xs">Pending</TabsTrigger>
@@ -194,37 +201,34 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
               <TabsTrigger value="rejected" className="text-xs">Rejected</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
-      )}
-
-      {/* Stats + Legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-lg border border-border bg-muted/30">
-        <div className="flex items-center gap-4 flex-wrap">
-          <Stat label="Tours" value={stats.total} accent="text-foreground" />
-          <Sep />
-          <Stat label="Accepted" value={stats.accepted} accent={STATUS.accepted.text} dot={STATUS.accepted.dot} />
-          <Stat label="Pending" value={stats.pending} accent={STATUS.pending.text} dot={STATUS.pending.dot} />
-          <Stat label="Unassigned" value={stats.unassigned} accent={STATUS.unassigned.text} dot={STATUS.unassigned.dot} />
-          {stats.rejected > 0 && <Stat label="Rejected" value={stats.rejected} accent={STATUS.rejected.text} dot={STATUS.rejected.dot} />}
-        </div>
-        <div className="hidden md:flex items-center gap-3 text-[11px] text-muted-foreground">
-          {(Object.keys(STATUS) as (keyof typeof STATUS)[]).map((k) => (
-            <span key={k} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${STATUS[k].dot}`} /> {STATUS[k].label}
-            </span>
-          ))}
+          <div className="hidden items-center gap-3 rounded-lg border border-border/70 bg-background px-3 py-2 text-[11px] text-muted-foreground shadow-sm md:flex">
+            {(Object.keys(STATUS) as (keyof typeof STATUS)[]).map((k) => (
+              <span key={k} className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${STATUS[k].dot}`} /> {STATUS[k].label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      {view === "day" && (
-        <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpenShift={setSelectedShift} />
-      )}
-      {view === "week" && (
-        <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
-      )}
-      {view === "month" && (
-        <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
-      )}
+      <div className="grid gap-3 border-b border-border/70 bg-background p-4 sm:grid-cols-2 lg:grid-cols-4 lg:p-5">
+        <Stat label="Tours" value={stats.total} accent="text-foreground" helper="Total scheduled" />
+        <Stat label="Accepted" value={stats.accepted} accent={STATUS.accepted.text} dot={STATUS.accepted.dot} helper="Confirmed ops" />
+        <Stat label="Pending" value={stats.pending} accent={STATUS.pending.text} dot={STATUS.pending.dot} helper="Awaiting guide" />
+        <Stat label="Unassigned" value={stats.unassigned} accent={STATUS.unassigned.text} dot={STATUS.unassigned.dot} helper="Needs attention" />
+      </div>
+
+      <div className="p-4 sm:p-5">
+        {view === "day" && (
+          <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpenShift={setSelectedShift} />
+        )}
+        {view === "week" && (
+          <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
+        )}
+        {view === "month" && (
+          <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
+        )}
+      </div>
 
       <DayDetailsDialog
         dateISO={selectedDay}
