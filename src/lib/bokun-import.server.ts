@@ -203,7 +203,8 @@ function mapToShiftRow(raw: BokunBookingFull) {
   const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
   const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
-  const created = raw.creationDate || raw.createdDate || null;
+  const createdRaw = raw.creationDate || raw.createdDate || null;
+  const created = createdRaw != null ? new Date(createdRaw as BokunDateValue).toISOString() : null;
 
   return {
     source: "bokun" as const,
