@@ -257,8 +257,6 @@ function Stat({ label, value, accent, dot, helper }: { label: string; value: num
     </div>
   );
 }
-function Sep() { return <span className="h-6 w-px bg-border" />; }
-
 function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: Shift; staff: Staff[]; onClick: () => void; dense?: boolean; hideTime?: boolean }) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
   const meta = STATUS[s.status];
