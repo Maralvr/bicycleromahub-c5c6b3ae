@@ -135,8 +135,8 @@ interface BokunBookingFull {
   internalNotes?: string;
   productTags?: string[];
   status?: string;
-  creationDate?: string;
-  createdDate?: string;
+  creationDate?: BokunDateValue;
+  createdDate?: BokunDateValue;
   ticketSent?: boolean;
   seller?: { title?: string; companyName?: string };
   sellerName?: string;
