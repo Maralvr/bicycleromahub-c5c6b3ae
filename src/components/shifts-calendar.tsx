@@ -243,14 +243,17 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
   );
 }
 
-function Stat({ label, value, accent, dot }: { label: string; value: number; accent: string; dot?: string }) {
+function Stat({ label, value, accent, dot, helper }: { label: string; value: number; accent: string; dot?: string; helper?: string }) {
   return (
-    <div className="flex items-center gap-2">
-      {dot && <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />}
-      <div>
-        <div className={`text-base font-bold tabular-nums leading-none ${accent}`}>{value}</div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mt-0.5">{label}</div>
+    <div className="rounded-lg border border-border/70 bg-muted/20 p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+          {helper && <div className="mt-0.5 text-xs text-muted-foreground">{helper}</div>}
+        </div>
+        {dot && <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot}`} />}
       </div>
+      <div className={`mt-3 text-2xl font-bold tabular-nums leading-none ${accent}`}>{value}</div>
     </div>
   );
 }
