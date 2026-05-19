@@ -24,7 +24,8 @@ import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
 import { useRequireAdmin } from "@/lib/require-admin";
 
-const BOKUN_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bokun-webhook`;
+
+
 
 const ALL = "__all";
 
