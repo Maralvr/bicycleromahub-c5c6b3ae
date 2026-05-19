@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck, Webhook } from "lucide-react";
+import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
