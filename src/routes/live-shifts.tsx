@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck, Webhook } from "lucide-react";
+import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
@@ -24,7 +24,8 @@ import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
 import { useRequireAdmin } from "@/lib/require-admin";
 
-const BOKUN_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bokun-webhook`;
+
+
 
 const ALL = "__all";
 
@@ -67,37 +68,8 @@ function LiveShiftsPage() {
         subtitle="Real-time bookings from the database. Manual + Bokun-synced."
         actions={
           <>
-            <Button
-              variant="outline"
-              onClick={async () => {
-                try {
-                  const startISO = new Date(Date.now() + 86400000).toISOString().replace(/T.*/, "T10:00:00.000Z");
-                  const res = await fetch(BOKUN_WEBHOOK_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      bookingId: Math.floor(Math.random() * 100000),
-                      confirmationCode: `BKN-${Date.now()}`,
-                      productTitle: "Colosseum & Roman Forum E-Bike Tour",
-                      startDateTime: startISO,
-                      durationMinutes: 180,
-                      pickupPlace: { title: "Piazza Venezia, Rome" },
-                      customer: { fullName: "Test Booking", phoneNumber: "+39 000 000 0000" },
-                      pricingCategoryBookings: [{ pricingCategory: { title: "Adult" }, quantity: 4 }],
-                      totalPrice: 240,
-                    }),
-                  });
-                  const json = await res.json();
-                  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-                  toast.success(`Bokun booking ${json.action}`, { description: "Live shifts refreshed." });
-                  await refresh();
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Webhook failed");
-                }
-              }}
-            >
-              <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun
-            </Button>
+
+
             <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
               <Plus className="h-4 w-4 mr-1" /> New shift
             </Button>

@@ -14,7 +14,7 @@ import { useShiftsStore } from "@/lib/shifts-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { importBokunBookings } from "@/lib/bokun-import.functions";
-import { mapBokunBookingToShift, sampleBokunPayloads } from "@/lib/bokun-mapper";
+
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
@@ -186,19 +186,8 @@ function ShiftsPage() {
     toast.success("Shift duplicated");
   };
 
-  const simulateBokunBooking = async () => {
-    const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
-    const newShiftDraft = mapBokunBookingToShift(payload);
-    const { id: _omit, ...rest } = newShiftDraft;
-    void _omit;
-    const created = await addShift(rest);
-    const suggestions = created ? suggestStaffForShift(created, staff, shifts, 1) : [];
-    toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
-      description: suggestions[0]
-        ? `${payload.productTitle} — AI suggests ${suggestions[0].staff.name}.`
-        : `${payload.productTitle} — no matching guide found.`,
-    });
-  };
+
+
 
   const simulateWaiverSigned = async () => {
     // Pick a random unsigned upcoming shift and POST a fake payload to the webhook.
@@ -244,9 +233,8 @@ function ShiftsPage() {
               <Button variant="outline" onClick={handleImportBokun} disabled={importing}>
                 <Webhook className="h-4 w-4 mr-1" /> {importing ? "Importing…" : "Import from Bokun"}
               </Button>
-              <Button variant="outline" onClick={simulateBokunBooking}>
-                <Webhook className="h-4 w-4 mr-1" /> Simulate Bokun booking
-              </Button>
+
+
               <Button variant="outline" onClick={simulateWaiverSigned}>
                 <FileSignature className="h-4 w-4 mr-1" /> Simulate waiver signed
               </Button>
