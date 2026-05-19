@@ -296,7 +296,17 @@ export async function runBokunImport(
         totalSeen++;
         if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
 
-        const row = mapToShiftRow(summary);
+        const detailId = summary.id ?? summary.bookingId;
+        let full: BokunBookingFull = summary;
+        if (detailId != null) {
+          try {
+            full = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
+          } catch (e) {
+            errors.push(`Detail ${detailId}: ${(e as Error).message}`);
+          }
+        }
+
+        const row = mapToShiftRow(full);
         if (!row || !row.booking_id) { skipped++; continue; }
 
         const { data: existing } = await supabaseAdmin
@@ -321,6 +331,7 @@ export async function runBokunImport(
           else created++;
         }
       }
+
 
       if (results.length < pageSize) break;
       page++;
