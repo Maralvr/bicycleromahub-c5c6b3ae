@@ -186,19 +186,8 @@ function ShiftsPage() {
     toast.success("Shift duplicated");
   };
 
-  const simulateBokunBooking = async () => {
-    const payload = sampleBokunPayloads[Math.floor(Math.random() * sampleBokunPayloads.length)];
-    const newShiftDraft = mapBokunBookingToShift(payload);
-    const { id: _omit, ...rest } = newShiftDraft;
-    void _omit;
-    const created = await addShift(rest);
-    const suggestions = created ? suggestStaffForShift(created, staff, shifts, 1) : [];
-    toast.success(`Bokun booking received: ${payload.confirmationCode}`, {
-      description: suggestions[0]
-        ? `${payload.productTitle} — AI suggests ${suggestions[0].staff.name}.`
-        : `${payload.productTitle} — no matching guide found.`,
-    });
-  };
+
+
 
   const simulateWaiverSigned = async () => {
     // Pick a random unsigned upcoming shift and POST a fake payload to the webhook.
