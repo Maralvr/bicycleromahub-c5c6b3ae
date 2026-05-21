@@ -139,11 +139,15 @@ function groupDepartures(shifts: Shift[]): CalendarShift[] {
   const singles: CalendarShift[] = [];
 
   for (const shift of shifts) {
-    if (shift.source !== "bokun") {
+    const rate = (shift.rateTitle ?? "").trim();
+    const isPrivate = /private/i.test(rate);
+    if (shift.source !== "bokun" || isPrivate) {
+      // Private tours and manual shifts never merge with other bookings.
       singles.push(shift);
       continue;
     }
-    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}`;
+    // Group only when the tour, date, start time AND rate (language) all match.
+    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}|${rate.toLowerCase()}`;
     groups.set(key, [...(groups.get(key) ?? []), shift]);
   }
 
@@ -156,7 +160,7 @@ function groupDepartures(shifts: Shift[]): CalendarShift[] {
 
     return {
       ...first,
-      id: `departure:${first.date}:${first.startTime}:${first.tourName}`,
+      id: `departure:${first.date}:${first.startTime}:${first.tourName}:${(first.rateTitle ?? "").toLowerCase()}`,
       bookingId: items.length === 1 ? first.bookingId : `${items.length} bookings`,
       assignedStaffId: assigned.length === 1 ? assigned[0] : null,
       status: groupedStatus(items),
