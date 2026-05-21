@@ -272,6 +272,14 @@ function ShiftsPage() {
             staff={staff}
             showRates={isAdmin}
             onAssign={isAdmin ? assignStaff : undefined}
+            onUpdateTime={
+              isAdmin
+                ? async (id, startTime, endTime) => {
+                    await updateShift(id, { startTime, endTime });
+                    toast.success("Tour time updated");
+                  }
+                : undefined
+            }
           />
         </TabsContent>
         {isAdmin && (

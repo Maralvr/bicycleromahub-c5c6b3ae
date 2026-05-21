@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,7 @@ import {
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
+type UpdateTimeFn = (shiftId: string, startTime: string, endTime: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
 type CalendarShift = Shift & { groupedShifts?: Shift[] };
@@ -174,11 +177,13 @@ export function ShiftsCalendar({
   shifts,
   staff,
   onAssign,
+  onUpdateTime,
   showRates = true,
 }: {
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
+  onUpdateTime?: UpdateTimeFn;
   showRates?: boolean;
 }) {
   const [view, setView] = useState<View>("week");
@@ -438,6 +443,7 @@ export function ShiftsCalendar({
         showRates={showRates}
         onClose={() => setSelectedShift(null)}
         onAssign={onAssign}
+        onUpdateTime={onUpdateTime}
       />
     </Card>
   );
@@ -983,15 +989,25 @@ function ShiftDetailsDialog({
   staff,
   onClose,
   onAssign,
+  onUpdateTime,
   showRates = true,
 }: {
   shift: CalendarShift | null;
   staff: Staff[];
   onClose: () => void;
   onAssign?: AssignFn;
+  onUpdateTime?: UpdateTimeFn;
   showRates?: boolean;
 }) {
   const open = !!shift;
+  const [startTime, setStartTime] = useState(shift?.startTime ?? "");
+  const [endTime, setEndTime] = useState(shift?.endTime ?? "");
+  const [savingTime, setSavingTime] = useState(false);
+  useEffect(() => {
+    setStartTime(shift?.startTime ?? "");
+    setEndTime(shift?.endTime ?? "");
+  }, [shift?.id, shift?.startTime, shift?.endTime]);
+
   if (!shift) {
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1012,10 +1028,27 @@ function ShiftDetailsDialog({
   const pax = paxOf(s);
   const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
+  const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
+  const persistTimeIfChanged = async () => {
+    if (!onUpdateTime || !timeChanged) return;
+    for (const row of bookingRows) {
+      await onUpdateTime(row.id, startTime, endTime);
+    }
+  };
+  const handleSaveTime = async () => {
+    if (!onUpdateTime || !timeChanged) return;
+    setSavingTime(true);
+    try {
+      await persistTimeIfChanged();
+    } finally {
+      setSavingTime(false);
+    }
+  };
   const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
+    await persistTimeIfChanged();
     for (const row of bookingRows) {
       await onAssign(row.id, staffId, member.name);
     }
@@ -1128,6 +1161,43 @@ function ShiftDetailsDialog({
                 );
               })}
             </div>
+          </div>
+        )}
+        {onUpdateTime && (
+          <div className="mt-3 rounded-lg border border-border bg-card p-3">
+            <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-primary" />
+              Override tour time
+              {bookingRows.length > 1 && (
+                <span className="font-normal text-muted-foreground">
+                  (applies to all {bookingRows.length} bookings)
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="ov-start" className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
+                <Input id="ov-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9 w-28 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ov-end" className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
+                <Input id="ov-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 text-xs"
+                disabled={!timeChanged || savingTime}
+                onClick={handleSaveTime}
+              >
+                {savingTime ? "Saving…" : "Save time"}
+              </Button>
+            </div>
+            {timeChanged && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Time will also be saved automatically when you assign a guide.
+              </p>
+            )}
           </div>
         )}
         {onAssign && (
