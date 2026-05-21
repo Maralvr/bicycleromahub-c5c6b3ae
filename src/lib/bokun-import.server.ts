@@ -128,7 +128,7 @@ type BokunPassenger = { firstName?: string; lastName?: string; fullName?: string
 type BokunPricingCategoryBooking = {
   pricingCategory?: { title?: string; fullTitle?: string };
   quantity?: number;
-  leadPassenger?: BokunPassenger;
+  leadPassenger?: BokunPassenger | boolean;
   passengers?: BokunPassenger[];
 };
 type BokunExtraBooking = { extra?: { title?: string }; title?: string; quantity?: number };
@@ -141,13 +141,14 @@ interface BokunBookingFull {
   parentBookingId?: number | string;
   externalBookingReference?: string;
   productTitle?: string;
-  product?: { title?: string; tags?: string[] };
+  product?: { title?: string; tags?: string[]; id?: number | string };
+  title?: string;
   startDateTime?: BokunDateValue;
   startDate?: BokunDateValue;
   endDateTime?: BokunDateValue;
   durationMinutes?: number;
-  pickupPlace?: { title?: string; address?: string };
-  startPoint?: { title?: string; address?: string };
+  pickupPlace?: { title?: string; address?: string | BokunAddress };
+  startPoint?: { title?: string; address?: string | BokunAddress };
   customer?: {
     firstName?: string;
     lastName?: string;
@@ -159,8 +160,12 @@ interface BokunBookingFull {
   pricingCategoryBookings?: BokunPricingCategoryBooking[];
   extraBookings?: BokunExtraBooking[];
   totalParticipants?: number;
-  totalPrice?: number;
+  totalPrice?: number | { amount?: number; currency?: string };
   totalPriceAmount?: number;
+  totalPaid?: number | { amount?: number; currency?: string };
+  paidAmountAsMoney?: { amount?: number; currency?: string };
+  paymentStatus?: string;
+  paidType?: string;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
   notes?: string;
@@ -183,15 +188,28 @@ interface BokunBookingFull {
   };
   productBookings?: BokunBookingFull[];
   activityBookings?: Array<{
-    activity?: { title?: string; durationMinutes?: number };
+    bookingId?: number | string;
+    parentBookingId?: number | string;
+    confirmationCode?: string;
+    productConfirmationCode?: string;
+    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }> };
+    product?: { title?: string; tags?: string[]; id?: number | string };
+    title?: string;
     startDateTime?: BokunDateValue;
     endDateTime?: BokunDateValue;
-    pickupPlace?: { title?: string; address?: string };
-    startPoint?: { title?: string; address?: string };
+    pickupPlace?: { title?: string; address?: string | BokunAddress };
+    startPoint?: { title?: string; address?: string | BokunAddress };
+    pickup?: false | { title?: string; address?: string | BokunAddress };
     rateTitle?: string;
     rate?: { title?: string };
     pricingCategoryBookings?: BokunPricingCategoryBooking[];
     extraBookings?: BokunExtraBooking[];
+    extras?: BokunExtraBooking[];
+    totalParticipants?: number;
+    totalPrice?: number | { amount?: number; currency?: string };
+    totalPriceAmount?: number;
+    paidType?: string;
+    notes?: unknown;
   }>;
 }
 
