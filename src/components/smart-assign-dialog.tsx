@@ -63,7 +63,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
 
   const handleAssign = (c: StaffCandidate) => {
     if (!shift) return;
-    onAssign(shift.id, c.staff.id, c.staff.name);
+    onAssign(shift.id, c.staff.id, c.staff.name, note.trim() || undefined);
     onClose();
   };
 
