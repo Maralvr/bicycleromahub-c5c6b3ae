@@ -139,11 +139,15 @@ function groupDepartures(shifts: Shift[]): CalendarShift[] {
   const singles: CalendarShift[] = [];
 
   for (const shift of shifts) {
-    if (shift.source !== "bokun") {
+    const rate = (shift.rateTitle ?? "").trim();
+    const isPrivate = /private/i.test(rate);
+    if (shift.source !== "bokun" || isPrivate) {
+      // Private tours and manual shifts never merge with other bookings.
       singles.push(shift);
       continue;
     }
-    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}`;
+    // Group only when the tour, date, start time AND rate (language) all match.
+    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}|${rate.toLowerCase()}`;
     groups.set(key, [...(groups.get(key) ?? []), shift]);
   }
 
@@ -156,7 +160,7 @@ function groupDepartures(shifts: Shift[]): CalendarShift[] {
 
     return {
       ...first,
-      id: `departure:${first.date}:${first.startTime}:${first.tourName}`,
+      id: `departure:${first.date}:${first.startTime}:${first.tourName}:${(first.rateTitle ?? "").toLowerCase()}`,
       bookingId: items.length === 1 ? first.bookingId : `${items.length} bookings`,
       assignedStaffId: assigned.length === 1 ? assigned[0] : null,
       status: groupedStatus(items),
@@ -513,6 +517,11 @@ function ShiftChip({
         <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">
           {s.tourName}
         </div>
+        {s.rateTitle && (
+          <div className="mt-0.5 inline-flex items-center rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
+            {s.rateTitle}
+          </div>
+        )}
         {pax > 0 && (
           <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
             <Users className="h-2.5 w-2.5" /> {capacity ? `${pax} / ${capacity}` : `${pax} pax`}
@@ -1058,7 +1067,14 @@ function ShiftDetailsDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>{s.tourName}</span>
+            {s.rateTitle && (
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                {s.rateTitle}
+              </Badge>
+            )}
+          </DialogTitle>
           <DialogDescription className="capitalize">
             {dateLabel}
             {bookingRows.length > 1 ? ` · ${bookingRows.length} Bokun bookings grouped` : ""}
