@@ -1249,19 +1249,34 @@ function ShiftDetailsDialog({
               <UserPlus className="h-3.5 w-3.5 text-primary" />
               {guide ? "Reassign guide" : "Assign a guide"}
             </div>
-            <Select value={s.assignedStaffId ?? undefined} onValueChange={handleAssign}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Select a guide…" />
-              </SelectTrigger>
-              <SelectContent>
-                {assignableStaff.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.name}
-                    {m.role === "admin" ? " (admin)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="max-h-64 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/60">
+              {assignableStaff.length === 0 ? (
+                <div className="p-3 text-xs text-muted-foreground italic">No guides available</div>
+              ) : (
+                assignableStaff.map((m) => {
+                  const isCurrent = m.id === s.assignedStaffId;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleAssign(m.id)}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-accent active:bg-accent ${
+                        isCurrent ? "bg-accent/50" : ""
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Avatar name={m.name} initials={m.avatar} size="sm" className="!h-6 !w-6 text-[10px] !rounded-full" />
+                        <span className="font-medium">
+                          {m.name}
+                          {m.role === "admin" ? " (admin)" : ""}
+                        </span>
+                      </span>
+                      {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
         )}
       </DialogContent>
