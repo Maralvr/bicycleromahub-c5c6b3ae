@@ -68,7 +68,7 @@ function TasksPage() {
   const { role, staffId } = useCurrentUser();
   const isAdmin = role === "admin";
   const { staff } = useStaffStore();
-  const { tasks: allTasks, createTasks, toggleTask } = useTasksStore();
+  const { tasks: allTasks, createTasks, toggleTask, deleteTask } = useTasksStore();
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
