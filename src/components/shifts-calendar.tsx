@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDa
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
+type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 /**
  * Status color system: solid bar + tinted bg + strong foreground contrast.
@@ -80,6 +81,52 @@ function startOfMonth(d: Date) {
 }
 function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+function paxOf(s: Shift) {
+  return s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+}
+
+function groupedStatus(items: Shift[]): Shift["status"] {
+  if (items.some((s) => s.status === "unassigned")) return "unassigned";
+  if (items.some((s) => s.status === "pending")) return "pending";
+  if (items.every((s) => s.status === "accepted")) return "accepted";
+  return "rejected";
+}
+
+function groupDepartures(shifts: Shift[]): CalendarShift[] {
+  const groups = new Map<string, Shift[]>();
+  const singles: CalendarShift[] = [];
+
+  for (const shift of shifts) {
+    if (shift.source !== "bokun") {
+      singles.push(shift);
+      continue;
+    }
+    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}`;
+    groups.set(key, [...(groups.get(key) ?? []), shift]);
+  }
+
+  const departures = Array.from(groups.values()).map((items) => {
+    const first = items[0];
+    const assigned = Array.from(new Set(items.map((s) => s.assignedStaffId).filter(Boolean)));
+    const total = items.reduce((sum, s) => sum + paxOf(s), 0);
+    const trailers = items.reduce((sum, s) => sum + (s.participants?.trailers ?? 0), 0);
+    const rate = items.reduce((sum, s) => sum + (s.rate ?? 0), 0);
+
+    return {
+      ...first,
+      id: `departure:${first.date}:${first.startTime}:${first.tourName}`,
+      bookingId: items.length === 1 ? first.bookingId : `${items.length} bookings`,
+      assignedStaffId: assigned.length === 1 ? assigned[0] : null,
+      status: groupedStatus(items),
+      participants: { adults: total, teens: 0, infants: 0, trailers },
+      rate: rate || undefined,
+      groupedShifts: items.sort((a, b) => (a.customer?.name ?? "").localeCompare(b.customer?.name ?? "")),
+    } satisfies CalendarShift;
+  });
+
+  return [...singles, ...departures].sort((a, b) => (a.startTime + a.tourName).localeCompare(b.startTime + b.tourName));
 }
 
 export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn; showRates?: boolean }) {
