@@ -443,6 +443,7 @@ export function ShiftsCalendar({
         showRates={showRates}
         onClose={() => setSelectedShift(null)}
         onAssign={onAssign}
+        onUpdateTime={onUpdateTime}
       />
     </Card>
   );
