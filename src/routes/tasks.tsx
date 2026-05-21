@@ -162,6 +162,18 @@ function TasksPage() {
     }
   };
 
+  const handleDelete = async (task: Task) => {
+    if (typeof window !== "undefined" && !window.confirm(`Delete task "${task.title}"?`)) return;
+    try {
+      await deleteTask(task.id);
+      toast.success("Task deleted");
+    } catch (error) {
+      toast.error("Could not delete task", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
+
   const submitUpdate = (
     task: Task,
     message: string,
