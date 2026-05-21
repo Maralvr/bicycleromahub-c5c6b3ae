@@ -76,6 +76,15 @@ function placeText(place?: { title?: string; address?: string | BokunAddress } |
   return [place.title, address].filter(Boolean).join(" — ") || null;
 }
 
+function moneyAmount(value?: number | { amount?: number } | null) {
+  if (typeof value === "number") return value;
+  return value?.amount ?? null;
+}
+
+function hasCustomer(customer: BokunBookingFull["customer"] | undefined) {
+  return Boolean(customer?.fullName || customer?.firstName || customer?.lastName || customer?.email || customer?.phoneNumber);
+}
+
 function computeEnd(start: BokunDateValue, end?: BokunDateValue, durationMinutes?: number) {
   if (end) return fmtTime(end);
   const mins = durationMinutes ?? 180;
