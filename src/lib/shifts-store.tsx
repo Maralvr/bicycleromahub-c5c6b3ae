@@ -6,6 +6,8 @@ type ShiftRow = {
   id: string;
   source: Shift["source"];
   booking_id: string | null;
+  channel_booking_ref: string | null;
+  external_booking_ref: string | null;
   tour_name: string;
   date: string;
   start_time: string;
@@ -13,12 +15,18 @@ type ShiftRow = {
   meeting_point: string;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_email: string | null;
   adults: number;
   teens: number;
   infants: number;
   trailers: number;
+  participants: { name: string; category: string }[] | null;
   rate: number | string | null;
+  rate_title: string | null;
+  seller: string | null;
+  booking_channel: string | null;
   notes: string | null;
+  operations_notes: string | null;
   assigned_staff_id: string | null;
   status: Shift["status"];
   required_tags: string[] | null;
@@ -46,14 +54,16 @@ function rowToShift(r: ShiftRow): Shift {
     id: r.id,
     source: r.source,
     bookingId: r.booking_id ?? undefined,
+    channelBookingRef: r.channel_booking_ref,
+    externalBookingRef: r.external_booking_ref,
     tourName: r.tour_name,
     date: r.date,
     startTime: r.start_time.slice(0, 5),
     endTime: r.end_time.slice(0, 5),
     meetingPoint: r.meeting_point,
     customer:
-      r.customer_name || r.customer_phone
-        ? { name: r.customer_name ?? "—", phone: r.customer_phone ?? "—" }
+      r.customer_name || r.customer_phone || r.customer_email
+        ? { name: r.customer_name ?? "—", phone: r.customer_phone ?? "—", email: r.customer_email }
         : undefined,
     participants: {
       adults: r.adults,
@@ -61,8 +71,13 @@ function rowToShift(r: ShiftRow): Shift {
       infants: r.infants,
       trailers: r.trailers,
     },
+    participantList: r.participants ?? [],
     rate: r.rate != null ? Number(r.rate) : undefined,
+    rateTitle: r.rate_title,
+    seller: r.seller,
+    bookingChannel: r.booking_channel,
     notes: r.notes ?? undefined,
+    operationsNotes: r.operations_notes,
     assignedStaffId: r.assigned_staff_id,
     status: r.status,
     requiredTags: r.required_tags ?? [],
@@ -110,7 +125,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, notes, assigned_staff_id, status, required_tags",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags",
         )
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
