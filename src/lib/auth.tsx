@@ -79,11 +79,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
 
+    // Live-subscribe to role changes for the current user so promotions/demotions
+    // are reflected in the UI immediately.
+    let rolesChannel: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      rolesChannel = supabase
+        .channel(`user_roles:${uid}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${uid}` },
+          () => {
+            void loadUserData(uid);
+          },
+        )
+        .subscribe();
+    });
+
     return () => {
       sub.subscription.unsubscribe();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
+      if (rolesChannel) void supabase.removeChannel(rolesChannel);
     };
+
   }, []);
 
   const value: AuthContextValue = {
