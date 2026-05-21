@@ -18,7 +18,7 @@ type Props = {
   allShifts: Shift[];
   open: boolean;
   onClose: () => void;
-  onAssign: (shiftId: string, staffId: string, staffName: string) => void;
+  onAssign: (shiftId: string, staffId: string, staffName: string, note?: string) => void;
 };
 
 export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }: Props) {
