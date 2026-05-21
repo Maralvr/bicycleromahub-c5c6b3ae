@@ -137,18 +137,13 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "pending" | "accepted" | "rejected">("all");
 
-  const filteredShifts = useMemo(
-    () =>
-      shifts.filter(
-        (s) =>
-          (platform === "all" || s.source === platform) &&
-          (statusFilter === "all" || s.status === statusFilter),
-      ),
-    [shifts, platform, statusFilter],
-  );
+  const filteredShifts = useMemo(() => {
+    const byPlatform = shifts.filter((s) => platform === "all" || s.source === platform);
+    return groupDepartures(byPlatform).filter((s) => statusFilter === "all" || s.status === statusFilter);
+  }, [shifts, platform, statusFilter]);
 
   const shiftsByDate = useMemo(() => {
-    const map: Record<string, Shift[]> = {};
+    const map: Record<string, CalendarShift[]> = {};
     for (const s of filteredShifts) {
       (map[s.date] = map[s.date] || []).push(s);
     }
@@ -167,7 +162,7 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
     }
     const start = startOfMonth(cursor);
     const end = endOfMonth(cursor);
-    const out: Shift[] = [];
+    const out: CalendarShift[] = [];
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
       out.push(...(shiftsByDate[toISO(d)] || []));
     }
