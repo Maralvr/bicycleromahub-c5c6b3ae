@@ -999,24 +999,26 @@ function ShiftDetailsDialog({
   staff,
   onClose,
   onAssign,
-  onUpdateTime,
+  onUpdateDeparture,
   showRates = true,
 }: {
   shift: CalendarShift | null;
   staff: Staff[];
   onClose: () => void;
   onAssign?: AssignFn;
-  onUpdateTime?: UpdateTimeFn;
+  onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
 }) {
   const open = !!shift;
   const [startTime, setStartTime] = useState(shift?.startTime ?? "");
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
-  const [savingTime, setSavingTime] = useState(false);
+  const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
+  const [savingDeparture, setSavingDeparture] = useState(false);
   useEffect(() => {
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
-  }, [shift?.id, shift?.startTime, shift?.endTime]);
+    setMeetingPoint(shift?.meetingPoint ?? "");
+  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint]);
 
   if (!shift) {
     return (
@@ -1039,26 +1041,38 @@ function ShiftDetailsDialog({
   const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
-  const persistTimeIfChanged = async () => {
-    if (!onUpdateTime || !timeChanged) return;
+  const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
+  const departureChanged = timeChanged || meetingChanged;
+  const buildPatch = (): DeparturePatch => {
+    const patch: DeparturePatch = {};
+    if (timeChanged) {
+      patch.startTime = startTime;
+      patch.endTime = endTime;
+    }
+    if (meetingChanged) patch.meetingPoint = meetingPoint;
+    return patch;
+  };
+  const persistDepartureIfChanged = async () => {
+    if (!onUpdateDeparture || !departureChanged) return;
+    const patch = buildPatch();
     for (const row of bookingRows) {
-      await onUpdateTime(row.id, startTime, endTime);
+      await onUpdateDeparture(row.id, patch);
     }
   };
-  const handleSaveTime = async () => {
-    if (!onUpdateTime || !timeChanged) return;
-    setSavingTime(true);
+  const handleSaveDeparture = async () => {
+    if (!onUpdateDeparture || !departureChanged) return;
+    setSavingDeparture(true);
     try {
-      await persistTimeIfChanged();
+      await persistDepartureIfChanged();
     } finally {
-      setSavingTime(false);
+      setSavingDeparture(false);
     }
   };
   const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
-    await persistTimeIfChanged();
+    await persistDepartureIfChanged();
     for (const row of bookingRows) {
       await onAssign(row.id, staffId, member.name);
     }
