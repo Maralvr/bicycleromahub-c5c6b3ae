@@ -117,22 +117,25 @@ function ShiftsPage() {
     toast.success(`Shift ${status}`);
   };
 
-  const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string) => {
+  const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string, note?: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
     await assignShift(shiftId, assignedStaffId);
     if (prevShift) {
       const updated = { ...prevShift, assignedStaffId };
+      const reassigning = !!prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId;
+      const baseBody = shiftSummary(updated);
+      const body = note ? `${baseBody}\n\n📝 Note: ${note}` : baseBody;
       // Notify the newly assigned guide
       notifyGuide({
         staffId: assignedStaffId,
-        type: prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId ? "reassigned" : "assigned",
-        title: prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId ? "Shift reassigned to you" : "New shift assigned",
-        body: shiftSummary(updated),
+        type: reassigning ? "reassigned" : "assigned",
+        title: reassigning ? "Shift reassigned to you" : "New shift assigned",
+        body,
         shiftId,
         link: "/shifts",
       });
       // If reassigned away from previous guide, notify them too
-      if (prevShift.assignedStaffId && prevShift.assignedStaffId !== assignedStaffId) {
+      if (reassigning && prevShift.assignedStaffId) {
         notifyGuide({
           staffId: prevShift.assignedStaffId,
           type: "unassigned",
@@ -143,7 +146,9 @@ function ShiftsPage() {
         });
       }
     }
-    toast.success(`Assigned to ${staffName}`, { description: "Notified in-app — awaiting accept/reject." });
+    toast.success(`Assigned to ${staffName}`, {
+      description: note ? "Note sent to guide — awaiting accept/reject." : "Notified in-app — awaiting accept/reject.",
+    });
   };
 
   const autoAssignAll = async () => {
