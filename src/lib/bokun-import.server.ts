@@ -300,7 +300,7 @@ export async function runBokunImport(
         let full: BokunBookingFull = summary;
         if (detailId != null) {
           try {
-            full = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
+            full = await bokunFetch("GET", `/booking.json/${detailId}`) as BokunBookingFull;
           } catch (e) {
             errors.push(`Detail ${detailId}: ${(e as Error).message}`);
           }
