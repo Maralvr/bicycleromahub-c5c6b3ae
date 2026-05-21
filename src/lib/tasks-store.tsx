@@ -21,6 +21,7 @@ type TasksStore = {
   error: string | null;
   createTasks: (input: TaskInput) => Promise<Task[]>;
   toggleTask: (id: string, done: boolean) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
