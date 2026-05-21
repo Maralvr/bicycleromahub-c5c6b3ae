@@ -177,11 +177,13 @@ export function ShiftsCalendar({
   shifts,
   staff,
   onAssign,
+  onUpdateTime,
   showRates = true,
 }: {
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
+  onUpdateTime?: UpdateTimeFn;
   showRates?: boolean;
 }) {
   const [view, setView] = useState<View>("week");
