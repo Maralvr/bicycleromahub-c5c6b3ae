@@ -57,24 +57,28 @@ function DashboardPage() {
       sub: "+2 vs yesterday",
       icon: CalendarRange,
       accent: true,
+      to: "/shifts" as const,
     },
     {
       label: t.dashboard.pendingAccept,
       value: pending.length,
       sub: "Awaiting response",
       icon: Clock,
+      to: "/shifts" as const,
     },
     {
       label: t.dashboard.activeStaff,
       value: `${activeStaff}/${staff.length}`,
       sub: "On the clock",
       icon: Users2,
+      to: "/staff" as const,
     },
     {
       label: t.dashboard.openTasks,
       value: openTasks.length,
       sub: `${tasks.length - openTasks.length} done today`,
       icon: ClipboardCheck,
+      to: "/tasks" as const,
     },
   ];
 
