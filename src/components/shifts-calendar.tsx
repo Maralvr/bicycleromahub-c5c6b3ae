@@ -133,7 +133,7 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "pending" | "accepted" | "rejected">("all");
 
@@ -299,10 +299,11 @@ function Stat({ label, value, accent, dot, helper }: { label: string; value: num
     </div>
   );
 }
-function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: Shift; staff: Staff[]; onClick: () => void; dense?: boolean; hideTime?: boolean }) {
+function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: CalendarShift; staff: Staff[]; onClick: () => void; dense?: boolean; hideTime?: boolean }) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
   const meta = STATUS[s.status];
-  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const pax = paxOf(s);
+  const bookings = s.groupedShifts?.length ?? 1;
   return (
     <button
       onClick={onClick}
@@ -321,7 +322,7 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
         <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">{s.tourName}</div>
         {pax > 0 && (
           <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
-            <Users className="h-2.5 w-2.5" /> {pax}
+            <Users className="h-2.5 w-2.5" /> {pax} pax{bookings > 1 ? ` · ${bookings} bookings` : ""}
           </div>
         )}
         {s.meetingPoint && !dense && (
