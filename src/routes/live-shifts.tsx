@@ -97,19 +97,18 @@ function LiveShiftsPage() {
 
       {loading ? (
         <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
-      ) : shifts.length === 0 ? (
+      ) : todays.length === 0 ? (
         <Card className="p-10 text-center border-dashed">
           <Clock className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
-          <h3 className="font-semibold text-foreground">No shifts yet</h3>
-          <p className="text-sm text-muted-foreground mt-1">Create one manually or wait for a Bokun booking to land.</p>
+          <h3 className="font-semibold text-foreground">No tours today</h3>
+          <p className="text-sm text-muted-foreground mt-1">Live shifts only show today's tours. Check back tomorrow or create a manual one.</p>
           <Button onClick={() => setCreating(true)} className="mt-4">
             <Plus className="h-4 w-4 mr-1" /> New shift
           </Button>
         </Card>
       ) : (
         <div className="space-y-6">
-          <Section title="Upcoming" shifts={upcoming} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} />
-          {past.length > 0 && <Section title="Past" shifts={past} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} muted />}
+          <Section title="Today" shifts={todays} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} />
         </div>
       )}
 
