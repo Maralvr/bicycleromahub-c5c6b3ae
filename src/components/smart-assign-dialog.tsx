@@ -44,8 +44,11 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
       return b.score - a.score;
     });
-    return showIneligible ? sorted : sorted.filter((c) => c.eligible);
-  }, [shift, staff, allShifts, sortMode, showIneligible]);
+    const filtered = showIneligible ? sorted : sorted.filter((c) => c.eligible);
+    const q = search.trim().toLowerCase();
+    if (!q) return filtered;
+    return filtered.filter((c) => c.staff.name.toLowerCase().includes(q));
+  }, [shift, staff, allShifts, sortMode, showIneligible, search]);
 
   const eligibleCount = useMemo(
     () => (shift ? rankAllCandidates(shift, staff, allShifts).filter((c) => c.eligible).length : 0),
