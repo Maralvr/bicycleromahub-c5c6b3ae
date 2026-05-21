@@ -87,6 +87,15 @@ function paxOf(s: Shift) {
   return s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
 }
 
+function capacityForTitle(title: string) {
+  const t = title.toLowerCase();
+  if (t.includes("rome by e-bike")) return 15;
+  if (t.includes("appian way bike rental")) return 15;
+  if (t.includes("electric bike rental at appia") || t.includes("noleggio biciclette elettriche")) return 70;
+  if (t.includes("regular bikes at appia")) return 50;
+  return null;
+}
+
 function groupedStatus(items: Shift[]): Shift["status"] {
   if (items.some((s) => s.status === "unassigned")) return "unassigned";
   if (items.some((s) => s.status === "pending")) return "pending";
@@ -304,6 +313,7 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
   const meta = STATUS[s.status];
   const pax = paxOf(s);
   const bookings = s.groupedShifts?.length ?? 1;
+  const capacity = capacityForTitle(s.tourName);
   return (
     <button
       onClick={onClick}
@@ -322,7 +332,8 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
         <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">{s.tourName}</div>
         {pax > 0 && (
           <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
-            <Users className="h-2.5 w-2.5" /> {pax} pax{bookings > 1 ? ` · ${bookings} bookings` : ""}
+            <Users className="h-2.5 w-2.5" /> {capacity ? `${pax} / ${capacity}` : `${pax} pax`}
+            {bookings > 1 ? ` · ${bookings} bookings` : ""}
           </div>
         )}
         {s.meetingPoint && !dense && (
