@@ -224,15 +224,17 @@ interface BokunBookingFull {
 
 function mapToShiftRow(raw: BokunBookingFull) {
   const a0 = raw.activityBookings?.[0];
-  const productTitle = raw.product?.title ?? raw.productTitle ?? a0?.activity?.title ?? "Bokun booking";
-  const startDateTime = raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
+  const detailActivity = raw.activityBookings?.find((a) => String(a.bookingId ?? a.productConfirmationCode ?? "") === String(raw.id ?? raw.bookingId ?? raw.productConfirmationCode ?? "")) ?? a0;
+  const activity = detailActivity ?? a0;
+  const productTitle = activity?.product?.title ?? activity?.activity?.title ?? activity?.title ?? raw.product?.title ?? raw.productTitle ?? raw.title ?? "Bokun booking";
+  const startDateTime = activity?.startDateTime ?? raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
   if (!startDateTime) return null;
-  const endDateTime = raw.endDateTime ?? a0?.endDateTime;
-  const durationMinutes = raw.durationMinutes ?? a0?.activity?.durationMinutes;
-  const pickupPlace = raw.pickupPlace ?? a0?.pickupPlace;
-  const startPoint = raw.startPoint ?? a0?.startPoint;
-  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
-  const extras = raw.extraBookings ?? a0?.extraBookings ?? raw.fields?.bookedExtras ?? [];
+  const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
+  const durationMinutes = raw.durationMinutes ?? activity?.activity?.durationMinutes ?? (activity?.activity?.durationHours ? activity.activity.durationHours * 60 : undefined) ?? a0?.activity?.durationMinutes;
+  const pickup = activity?.pickup && typeof activity.pickup === "object" ? activity.pickup : null;
+  const meeting = placeText(raw.pickupPlace) ?? placeText(activity?.pickupPlace) ?? placeText(pickup) ?? placeText(raw.startPoint) ?? placeText(activity?.startPoint) ?? placeText(activity?.activity?.startPoints?.[0]) ?? "TBD";
+  const pcbs = raw.pricingCategoryBookings ?? activity?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
+  const extras = raw.extraBookings ?? activity?.extraBookings ?? activity?.extras ?? raw.fields?.bookedExtras ?? [];
 
   const counts = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   const participantList: Array<{ name: string; category: string }> = [];
@@ -240,27 +242,26 @@ function mapToShiftRow(raw: BokunBookingFull) {
     const catTitle = pcb.pricingCategory?.title ?? "Adult";
     const key = pricingCategoryKey(catTitle);
     counts[key] += pcb.quantity ?? 1;
-    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p));
+    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p) && typeof p === "object");
     for (const p of passengers) {
       const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
       if (name) participantList.push({ name, category: catTitle });
     }
   }
-  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
+  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? activity?.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
   for (const ex of extras) {
     const extraTitle = ex.extra?.title ?? ex.title ?? "";
     if (extraTitle.toLowerCase().includes("trailer")) counts.trailers += ex.quantity ?? 1;
   }
-  const meeting = pickupPlace?.title || pickupPlace?.address || startPoint?.title || startPoint?.address || "TBD";
-  const customer = raw.customer ?? {};
+  const customer = hasCustomer(raw.customer) ? raw.customer! : {};
   const customerName = customer.fullName || [customer.firstName, customer.lastName].filter(Boolean).join(" ") || "Unknown";
 
-  const bookingIdStr = String(raw.confirmationCode || raw.productConfirmationCode || raw.id || raw.bookingId || "");
+  const bookingIdStr = String(activity?.productConfirmationCode || raw.productConfirmationCode || raw.confirmationCode || raw.id || raw.bookingId || activity?.bookingId || "");
   const channelRef = raw.externalBookingReference || null;
-  const externalRef = raw.parentBookingId ? String(raw.parentBookingId) : null;
+  const externalRef = (raw.parentBookingId ?? activity?.parentBookingId) ? String(raw.parentBookingId ?? activity?.parentBookingId) : null;
 
-  const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
-  const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
+  const rateTitle = activity?.rateTitle || activity?.rate?.title || raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
+  const seller = activity?.seller?.title || raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
   const createdRaw = raw.creationDate || raw.createdDate || null;
   const created = createdRaw != null ? new Date(createdRaw as BokunDateValue).toISOString() : null;
@@ -283,14 +284,14 @@ function mapToShiftRow(raw: BokunBookingFull) {
     infants: counts.infants,
     trailers: counts.trailers,
     participants: participantList,
-    rate: raw.totalPriceAmount ?? raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
+    rate: raw.totalPriceAmount ?? moneyAmount(activity?.totalPrice) ?? activity?.totalPriceAmount ?? moneyAmount(raw.totalPrice) ?? moneyAmount(raw.totalPaid) ?? raw.totalAsMoney?.amount ?? raw.paidAmountAsMoney?.amount ?? null,
     rate_title: rateTitle,
     seller,
     booking_channel: channel,
     bokun_created_at: created,
     ticket_sent: !!raw.ticketSent,
-    notes: textValue(raw.notes) ?? customer.notes ?? null,
-    operations_notes: textValue(raw.internalNotes),
+    notes: textValue(activity?.notes) ?? textValue(raw.notes) ?? customer.notes ?? null,
+    operations_notes: textValue(raw.internalNotes) ?? (raw.paymentStatus || activity?.paidType ? `Payment: ${raw.paymentStatus ?? activity?.paidType}` : null),
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
