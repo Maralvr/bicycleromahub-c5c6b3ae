@@ -114,14 +114,14 @@ function DashboardPage() {
       </div>
 
       {unassigned.length > 0 && (
-        <Card className="p-5 mb-8 border-warning/40 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent relative overflow-hidden">
+        <Card className="p-4 sm:p-5 mb-8 border-warning/40 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent relative overflow-hidden">
           <div className="absolute top-0 right-0 h-32 w-32 bg-warning/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="flex items-start gap-4 relative">
-            <div className="h-11 w-11 rounded-xl bg-warning/20 flex items-center justify-center ring-1 ring-warning/30">
+          <div className="flex items-start gap-3 sm:gap-4 relative">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl bg-warning/20 flex items-center justify-center ring-1 ring-warning/30">
               <AlertTriangle className="h-5 w-5 text-warning-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-foreground flex items-center gap-2">
+              <div className="font-semibold text-foreground flex flex-wrap items-center gap-2">
                 {t.dashboard.coverageRisk}
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary-foreground px-1.5 py-0.5 rounded">
                   <Sparkles className="h-3 w-3" /> AI
@@ -135,19 +135,22 @@ function DashboardPage() {
                 {unassigned.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between bg-card rounded-lg p-3 border border-border/60 hover:border-primary/40 transition-colors"
+                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-card rounded-lg p-3 border border-border/60 hover:border-primary/40 transition-colors"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="font-medium text-sm truncate">{s.tourName}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span>{s.date}</span>
-                        <span>·</span>
-                        <Clock className="h-3 w-3" /> {s.startTime}
-                        <span>·</span>
-                        <MapPin className="h-3 w-3" /> {s.meetingPoint}
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {s.startTime}
+                        </span>
+                        <span className="inline-flex items-center gap-1 min-w-0">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{s.meetingPoint}</span>
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center justify-between gap-2 sm:justify-end sm:flex-shrink-0">
                       <StatusPill status={s.status} />
                       <Button size="sm" variant="outline" className="h-7 text-xs">
                         Assign
