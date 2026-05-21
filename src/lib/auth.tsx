@@ -47,6 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Safety net: never let the app hang on the loading screen.
+    // If session retrieval stalls (flaky network on installed PWA,
+    // Supabase slow to respond), force-resolve loading after 6s so the
+    // user can at least reach the auth screen.
+    const safetyTimer = setTimeout(() => {
+      setLoading((prev) => {
+        if (prev) console.warn("[auth] safety timeout — forcing loading=false");
+        return false;
+      });
+    }, 6000);
+
     // Set up listener BEFORE getting initial session
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -59,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setRoles([]);
       }
+      // The listener fires immediately with INITIAL_SESSION — use that
+      // to release the loading gate even if getSession() is slow.
+      setLoading(false);
     });
 
     void supabase.auth.getSession().then(async ({ data }) => {
@@ -98,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      clearTimeout(safetyTimer);
       sub.subscription.unsubscribe();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
