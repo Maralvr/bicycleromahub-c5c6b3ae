@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search, StickyNote } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,7 @@ type Props = {
   allShifts: Shift[];
   open: boolean;
   onClose: () => void;
-  onAssign: (shiftId: string, staffId: string, staffName: string) => void;
+  onAssign: (shiftId: string, staffId: string, staffName: string, note?: string) => void;
 };
 
 export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }: Props) {
@@ -25,9 +26,13 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
   const [sortMode, setSortMode] = useState<SortMode>("score");
   const [showIneligible, setShowIneligible] = useState(false);
   const [search, setSearch] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      setNote("");
+    }
   }, [open, shift?.id]);
 
   const candidates = useMemo<StaffCandidate[]>(() => {
@@ -58,7 +63,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
 
   const handleAssign = (c: StaffCandidate) => {
     if (!shift) return;
-    onAssign(shift.id, c.staff.id, c.staff.name);
+    onAssign(shift.id, c.staff.id, c.staff.name, note.trim() || undefined);
     onClose();
   };
 
@@ -80,6 +85,20 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
           <DialogDescription className="text-left">
             {eligibleCount} of {staff.length} guides match this shift's requirements and are free.
           </DialogDescription>
+
+          {/* Note to guide */}
+          <div className="mt-3">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1 mb-1">
+              <StickyNote className="h-3 w-3" /> Note to guide <span className="text-muted-foreground/60 normal-case font-normal tracking-normal">(optional)</span>
+            </label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note the guide will receive with this assignment…"
+              rows={2}
+              className="text-sm resize-none"
+            />
+          </div>
 
           {/* Shift recap */}
           <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5">
