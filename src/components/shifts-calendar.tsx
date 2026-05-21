@@ -989,15 +989,25 @@ function ShiftDetailsDialog({
   staff,
   onClose,
   onAssign,
+  onUpdateTime,
   showRates = true,
 }: {
   shift: CalendarShift | null;
   staff: Staff[];
   onClose: () => void;
   onAssign?: AssignFn;
+  onUpdateTime?: UpdateTimeFn;
   showRates?: boolean;
 }) {
   const open = !!shift;
+  const [startTime, setStartTime] = useState(shift?.startTime ?? "");
+  const [endTime, setEndTime] = useState(shift?.endTime ?? "");
+  const [savingTime, setSavingTime] = useState(false);
+  useEffect(() => {
+    setStartTime(shift?.startTime ?? "");
+    setEndTime(shift?.endTime ?? "");
+  }, [shift?.id, shift?.startTime, shift?.endTime]);
+
   if (!shift) {
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1018,10 +1028,27 @@ function ShiftDetailsDialog({
   const pax = paxOf(s);
   const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
+  const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
+  const persistTimeIfChanged = async () => {
+    if (!onUpdateTime || !timeChanged) return;
+    for (const row of bookingRows) {
+      await onUpdateTime(row.id, startTime, endTime);
+    }
+  };
+  const handleSaveTime = async () => {
+    if (!onUpdateTime || !timeChanged) return;
+    setSavingTime(true);
+    try {
+      await persistTimeIfChanged();
+    } finally {
+      setSavingTime(false);
+    }
+  };
   const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
+    await persistTimeIfChanged();
     for (const row of bookingRows) {
       await onAssign(row.id, staffId, member.name);
     }
