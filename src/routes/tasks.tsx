@@ -370,6 +370,7 @@ function TaskRow({
   isMine,
   updates,
   onPostUpdate,
+  onDelete,
 }: {
   task: Task;
   staff: Staff[];
@@ -378,6 +379,7 @@ function TaskRow({
   isMine: boolean;
   updates: TaskUpdate[];
   onPostUpdate: () => void;
+  onDelete?: () => void;
 }) {
   const { t } = useI18n();
   const assignee = staff.find((s) => s.id === task.assigneeId);
