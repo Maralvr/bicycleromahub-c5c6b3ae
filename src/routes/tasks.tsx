@@ -443,11 +443,23 @@ function TaskRow({
             )}
           </div>
 
-          {canPostUpdate && (
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onPostUpdate}>
-                <MessageSquarePlus className="h-3 w-3 mr-1" /> Post update
-              </Button>
+          {(canPostUpdate || onDelete) && (
+            <div className="mt-2 flex gap-2 flex-wrap">
+              {canPostUpdate && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onPostUpdate}>
+                  <MessageSquarePlus className="h-3 w-3 mr-1" /> Post update
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              )}
             </div>
           )}
 
