@@ -43,6 +43,7 @@ import {
   MessageSquare,
   BellDot,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -68,7 +69,7 @@ function TasksPage() {
   const { role, staffId } = useCurrentUser();
   const isAdmin = role === "admin";
   const { staff } = useStaffStore();
-  const { tasks: allTasks, createTasks, toggleTask } = useTasksStore();
+  const { tasks: allTasks, createTasks, toggleTask, deleteTask } = useTasksStore();
   const { updatesForTask, addUpdate, unreadCount, markAllRead } = useTaskUpdates();
   const { notifyGuides } = useNotesStore();
   const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
@@ -159,6 +160,18 @@ function TasksPage() {
         });
       }
       toast.success("Task completed", { description: "Admins notified." });
+    }
+  };
+
+  const handleDelete = async (task: Task) => {
+    if (typeof window !== "undefined" && !window.confirm(`Delete task "${task.title}"?`)) return;
+    try {
+      await deleteTask(task.id);
+      toast.success("Task deleted");
+    } catch (error) {
+      toast.error("Could not delete task", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   };
 
@@ -268,6 +281,7 @@ function TasksPage() {
                 isMine={task.assigneeId === staffId}
                 updates={updatesForTask(task.id)}
                 onPostUpdate={() => setUpdateDialogTask(task)}
+                onDelete={isAdmin ? () => handleDelete(task) : undefined}
               />
             ))}
             {open.length === 0 && (
@@ -297,6 +311,7 @@ function TasksPage() {
                 isMine={task.assigneeId === staffId}
                 updates={updatesForTask(task.id)}
                 onPostUpdate={() => setUpdateDialogTask(task)}
+                onDelete={isAdmin ? () => handleDelete(task) : undefined}
               />
             ))}
             {done.length === 0 && (
@@ -355,6 +370,7 @@ function TaskRow({
   isMine,
   updates,
   onPostUpdate,
+  onDelete,
 }: {
   task: Task;
   staff: Staff[];
@@ -363,6 +379,7 @@ function TaskRow({
   isMine: boolean;
   updates: TaskUpdate[];
   onPostUpdate: () => void;
+  onDelete?: () => void;
 }) {
   const { t } = useI18n();
   const assignee = staff.find((s) => s.id === task.assigneeId);
@@ -426,11 +443,23 @@ function TaskRow({
             )}
           </div>
 
-          {canPostUpdate && (
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onPostUpdate}>
-                <MessageSquarePlus className="h-3 w-3 mr-1" /> Post update
-              </Button>
+          {(canPostUpdate || onDelete) && (
+            <div className="mt-2 flex gap-2 flex-wrap">
+              {canPostUpdate && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onPostUpdate}>
+                  <MessageSquarePlus className="h-3 w-3 mr-1" /> Post update
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
+              )}
             </div>
           )}
 

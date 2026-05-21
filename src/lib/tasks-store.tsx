@@ -21,6 +21,7 @@ type TasksStore = {
   error: string | null;
   createTasks: (input: TaskInput) => Promise<Task[]>;
   toggleTask: (id: string, done: boolean) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -180,9 +181,15 @@ export function TasksStoreProvider({ children }: { children: ReactNode }) {
     [rows, staff],
   );
 
+  const deleteTask: TasksStore["deleteTask"] = useCallback(async (id) => {
+    const { error: deleteError } = await supabase.from("tasks").delete().eq("id", id);
+    if (deleteError) throw deleteError;
+    setRows((prev) => prev.filter((task) => task.id !== id));
+  }, []);
+
   return (
     <TasksContext.Provider
-      value={{ tasks, loading, error, createTasks, toggleTask, refresh: fetchTasks }}
+      value={{ tasks, loading, error, createTasks, toggleTask, deleteTask, refresh: fetchTasks }}
     >
       {children}
     </TasksContext.Provider>
