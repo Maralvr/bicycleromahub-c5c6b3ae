@@ -1256,11 +1256,24 @@ function ShiftDetailsDialog({
               <UserPlus className="h-3.5 w-3.5 text-primary" />
               {guide ? "Reassign guide" : "Assign a guide"}
             </div>
+            {assignableStaff.length > 5 && (
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={guideSearch}
+                  onChange={(e) => setGuideSearch(e.target.value)}
+                  placeholder="Search guides…"
+                  className="h-9 pl-8 text-xs"
+                />
+              </div>
+            )}
             <div className="max-h-64 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/60">
               {assignableStaff.length === 0 ? (
                 <div className="p-3 text-xs text-muted-foreground italic">No guides available</div>
+              ) : filteredStaff.length === 0 ? (
+                <div className="p-3 text-xs text-muted-foreground italic">No matches</div>
               ) : (
-                assignableStaff.map((m) => {
+                filteredStaff.map((m) => {
                   const isCurrent = m.id === s.assignedStaffId;
                   return (
                     <button
