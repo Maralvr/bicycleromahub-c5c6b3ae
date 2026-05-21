@@ -3,15 +3,43 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar } from "@/components/avatar";
 import { Shift, Staff } from "@/lib/mock-data";
-import { ChevronLeft, ChevronRight, MapPin, Users, Clock, Euro, User, CalendarDays, CheckCircle2, AlertTriangle, AlertCircle, XCircle, Circle, UserPlus } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Users,
+  Clock,
+  Euro,
+  User,
+  CalendarDays,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  XCircle,
+  Circle,
+  UserPlus,
+} from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
+type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 /**
  * Status color system: solid bar + tinted bg + strong foreground contrast.
@@ -82,26 +110,95 @@ function endOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
-export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { shifts: Shift[]; staff: Staff[]; onAssign?: AssignFn; showRates?: boolean }) {
+function paxOf(s: Shift) {
+  return s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+}
+
+function capacityForTitle(title: string) {
+  const t = title.toLowerCase();
+  if (t.includes("rome by e-bike")) return 15;
+  if (t.includes("appian way bike rental")) return 15;
+  if (t.includes("electric bike rental at appia") || t.includes("noleggio biciclette elettriche"))
+    return 70;
+  if (t.includes("regular bikes at appia")) return 50;
+  return null;
+}
+
+function groupedStatus(items: Shift[]): Shift["status"] {
+  if (items.some((s) => s.status === "unassigned")) return "unassigned";
+  if (items.some((s) => s.status === "pending")) return "pending";
+  if (items.every((s) => s.status === "accepted")) return "accepted";
+  return "rejected";
+}
+
+function groupDepartures(shifts: Shift[]): CalendarShift[] {
+  const groups = new Map<string, Shift[]>();
+  const singles: CalendarShift[] = [];
+
+  for (const shift of shifts) {
+    if (shift.source !== "bokun") {
+      singles.push(shift);
+      continue;
+    }
+    const key = `${shift.date}|${shift.startTime}|${shift.tourName.trim().toLowerCase()}`;
+    groups.set(key, [...(groups.get(key) ?? []), shift]);
+  }
+
+  const departures = Array.from(groups.values()).map((items) => {
+    const first = items[0];
+    const assigned = Array.from(new Set(items.map((s) => s.assignedStaffId).filter(Boolean)));
+    const total = items.reduce((sum, s) => sum + paxOf(s), 0);
+    const trailers = items.reduce((sum, s) => sum + (s.participants?.trailers ?? 0), 0);
+    const rate = items.reduce((sum, s) => sum + (s.rate ?? 0), 0);
+
+    return {
+      ...first,
+      id: `departure:${first.date}:${first.startTime}:${first.tourName}`,
+      bookingId: items.length === 1 ? first.bookingId : `${items.length} bookings`,
+      assignedStaffId: assigned.length === 1 ? assigned[0] : null,
+      status: groupedStatus(items),
+      participants: { adults: total, teens: 0, infants: 0, trailers },
+      rate: rate || undefined,
+      groupedShifts: items.sort((a, b) =>
+        (a.customer?.name ?? "").localeCompare(b.customer?.name ?? ""),
+      ),
+    } satisfies CalendarShift;
+  });
+
+  return [...singles, ...departures].sort((a, b) =>
+    (a.startTime + a.tourName).localeCompare(b.startTime + b.tourName),
+  );
+}
+
+export function ShiftsCalendar({
+  shifts,
+  staff,
+  onAssign,
+  showRates = true,
+}: {
+  shifts: Shift[];
+  staff: Staff[];
+  onAssign?: AssignFn;
+  showRates?: boolean;
+}) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "pending" | "accepted" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "unassigned" | "pending" | "accepted" | "rejected"
+  >("all");
 
-  const filteredShifts = useMemo(
-    () =>
-      shifts.filter(
-        (s) =>
-          (platform === "all" || s.source === platform) &&
-          (statusFilter === "all" || s.status === statusFilter),
-      ),
-    [shifts, platform, statusFilter],
-  );
+  const filteredShifts = useMemo(() => {
+    const byPlatform = shifts.filter((s) => platform === "all" || s.source === platform);
+    return groupDepartures(byPlatform).filter(
+      (s) => statusFilter === "all" || s.status === statusFilter,
+    );
+  }, [shifts, platform, statusFilter]);
 
   const shiftsByDate = useMemo(() => {
-    const map: Record<string, Shift[]> = {};
+    const map: Record<string, CalendarShift[]> = {};
     for (const s of filteredShifts) {
       (map[s.date] = map[s.date] || []).push(s);
     }
@@ -116,11 +213,14 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
     if (view === "day") return shiftsByDate[toISO(cursor)] || [];
     if (view === "week") {
       const start = startOfWeek(cursor);
-      return Array.from({ length: 7 }, (_, i) => shiftsByDate[toISO(addDays(start, i))] || []).flat();
+      return Array.from(
+        { length: 7 },
+        (_, i) => shiftsByDate[toISO(addDays(start, i))] || [],
+      ).flat();
     }
     const start = startOfMonth(cursor);
     const end = endOfMonth(cursor);
-    const out: Shift[] = [];
+    const out: CalendarShift[] = [];
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
       out.push(...(shiftsByDate[toISO(d)] || []));
     }
@@ -140,7 +240,13 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
   };
 
   const title = useMemo(() => {
-    if (view === "day") return cursor.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (view === "day")
+      return cursor.toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
     if (view === "week") {
       const s = startOfWeek(cursor);
       const e = addDays(s, 6);
@@ -157,48 +263,97 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="flex items-center rounded-lg border border-border bg-background p-1 shadow-sm">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Previous" className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                aria-label="Previous"
+                className="h-8 w-8"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setCursor(new Date())} className="h-8 px-3 text-xs font-semibold">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCursor(new Date())}
+                className="h-8 px-3 text-xs font-semibold"
+              >
                 Today
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate(1)} aria-label="Next" className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(1)}
+                aria-label="Next"
+                className="h-8 w-8"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             <div className="min-w-0">
-              <h3 className="truncate text-lg font-bold capitalize tracking-tight text-foreground">{title}</h3>
-              <p className="text-xs text-muted-foreground">{stats.total} tours in this {view}</p>
+              <h3 className="truncate text-lg font-bold capitalize tracking-tight text-foreground">
+                {title}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {stats.total} tours in this {view}
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={platform} onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}>
+            <Tabs
+              value={platform}
+              onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}
+            >
               <TabsList className="h-9 bg-background shadow-sm">
-                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                <TabsTrigger value="bokun" className="text-xs">Bokun</TabsTrigger>
-                <TabsTrigger value="manual" className="text-xs">Manual</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs">
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="bokun" className="text-xs">
+                  Bokun
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="text-xs">
+                  Manual
+                </TabsTrigger>
               </TabsList>
             </Tabs>
             <Tabs value={view} onValueChange={(v) => setView(v as View)}>
               <TabsList className="h-9 bg-background shadow-sm">
-                <TabsTrigger value="day" className="text-xs">Day</TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
-                <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
+                <TabsTrigger value="day" className="text-xs">
+                  Day
+                </TabsTrigger>
+                <TabsTrigger value="week" className="text-xs">
+                  Week
+                </TabsTrigger>
+                <TabsTrigger value="month" className="text-xs">
+                  Month
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <Tabs
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+          >
             <TabsList className="h-auto flex-wrap justify-start bg-background p-1 shadow-sm">
-              <TabsTrigger value="all" className="text-xs">All statuses</TabsTrigger>
-              <TabsTrigger value="unassigned" className="text-xs">Unassigned</TabsTrigger>
-              <TabsTrigger value="pending" className="text-xs">Pending</TabsTrigger>
-              <TabsTrigger value="accepted" className="text-xs">Accepted</TabsTrigger>
-              <TabsTrigger value="rejected" className="text-xs">Rejected</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">
+                All statuses
+              </TabsTrigger>
+              <TabsTrigger value="unassigned" className="text-xs">
+                Unassigned
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="text-xs">
+                Pending
+              </TabsTrigger>
+              <TabsTrigger value="accepted" className="text-xs">
+                Accepted
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="text-xs">
+                Rejected
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="hidden items-center gap-3 rounded-lg border border-border/70 bg-background px-3 py-2 text-[11px] text-muted-foreground shadow-sm md:flex">
@@ -213,20 +368,56 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
 
       <div className="grid gap-3 border-b border-border/70 bg-background p-4 sm:grid-cols-2 lg:grid-cols-4 lg:p-5">
         <Stat label="Tours" value={stats.total} accent="text-foreground" helper="Total scheduled" />
-        <Stat label="Accepted" value={stats.accepted} accent={STATUS.accepted.text} dot={STATUS.accepted.dot} helper="Confirmed ops" />
-        <Stat label="Pending" value={stats.pending} accent={STATUS.pending.text} dot={STATUS.pending.dot} helper="Awaiting guide" />
-        <Stat label="Unassigned" value={stats.unassigned} accent={STATUS.unassigned.text} dot={STATUS.unassigned.dot} helper="Needs attention" />
+        <Stat
+          label="Accepted"
+          value={stats.accepted}
+          accent={STATUS.accepted.text}
+          dot={STATUS.accepted.dot}
+          helper="Confirmed ops"
+        />
+        <Stat
+          label="Pending"
+          value={stats.pending}
+          accent={STATUS.pending.text}
+          dot={STATUS.pending.dot}
+          helper="Awaiting guide"
+        />
+        <Stat
+          label="Unassigned"
+          value={stats.unassigned}
+          accent={STATUS.unassigned.text}
+          dot={STATUS.unassigned.dot}
+          helper="Needs attention"
+        />
       </div>
 
       <div className="p-4 sm:p-5">
         {view === "day" && (
-          <DayView dateISO={toISO(cursor)} shifts={shiftsByDate[toISO(cursor)] || []} staff={staff} onOpenShift={setSelectedShift} />
+          <DayView
+            dateISO={toISO(cursor)}
+            shifts={shiftsByDate[toISO(cursor)] || []}
+            staff={staff}
+            onOpenShift={setSelectedShift}
+          />
         )}
         {view === "week" && (
-          <WeekView cursor={cursor} shiftsByDate={shiftsByDate} staff={staff} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
+          <WeekView
+            cursor={cursor}
+            shiftsByDate={shiftsByDate}
+            staff={staff}
+            onOpenDay={setSelectedDay}
+            onOpenShift={setSelectedShift}
+            todayISO={todayISO}
+          />
         )}
         {view === "month" && (
-          <MonthView cursor={cursor} shiftsByDate={shiftsByDate} onOpenDay={setSelectedDay} onOpenShift={setSelectedShift} todayISO={todayISO} />
+          <MonthView
+            cursor={cursor}
+            shiftsByDate={shiftsByDate}
+            onOpenDay={setSelectedDay}
+            onOpenShift={setSelectedShift}
+            todayISO={todayISO}
+          />
         )}
       </div>
 
@@ -236,19 +427,42 @@ export function ShiftsCalendar({ shifts, staff, onAssign, showRates = true }: { 
         staff={staff}
         showRates={showRates}
         onClose={() => setSelectedDay(null)}
-        onOpenShift={(s) => { setSelectedDay(null); setSelectedShift(s); }}
+        onOpenShift={(s) => {
+          setSelectedDay(null);
+          setSelectedShift(s);
+        }}
       />
-      <ShiftDetailsDialog shift={selectedShift} staff={staff} showRates={showRates} onClose={() => setSelectedShift(null)} onAssign={onAssign} />
+      <ShiftDetailsDialog
+        shift={selectedShift}
+        staff={staff}
+        showRates={showRates}
+        onClose={() => setSelectedShift(null)}
+        onAssign={onAssign}
+      />
     </Card>
   );
 }
 
-function Stat({ label, value, accent, dot, helper }: { label: string; value: number; accent: string; dot?: string; helper?: string }) {
+function Stat({
+  label,
+  value,
+  accent,
+  dot,
+  helper,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+  dot?: string;
+  helper?: string;
+}) {
   return (
     <div className="rounded-lg border border-border/70 bg-muted/20 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
           {helper && <div className="mt-0.5 text-xs text-muted-foreground">{helper}</div>}
         </div>
         {dot && <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot}`} />}
@@ -257,10 +471,24 @@ function Stat({ label, value, accent, dot, helper }: { label: string; value: num
     </div>
   );
 }
-function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: Shift; staff: Staff[]; onClick: () => void; dense?: boolean; hideTime?: boolean }) {
+function ShiftChip({
+  s,
+  staff,
+  onClick,
+  dense = false,
+  hideTime = false,
+}: {
+  s: CalendarShift;
+  staff: Staff[];
+  onClick: () => void;
+  dense?: boolean;
+  hideTime?: boolean;
+}) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
   const meta = STATUS[s.status];
-  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const pax = paxOf(s);
+  const bookings = s.groupedShifts?.length ?? 1;
+  const capacity = capacityForTitle(s.tourName);
   return (
     <button
       onClick={onClick}
@@ -276,25 +504,36 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
             <span className={`ml-auto h-1.5 w-1.5 rounded-full ${meta.dot}`} />
           </div>
         )}
-        <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">{s.tourName}</div>
+        <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">
+          {s.tourName}
+        </div>
         {pax > 0 && (
           <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
-            <Users className="h-2.5 w-2.5" /> {pax}
+            <Users className="h-2.5 w-2.5" /> {capacity ? `${pax} / ${capacity}` : `${pax} pax`}
+            {bookings > 1 ? ` · ${bookings} bookings` : ""}
           </div>
         )}
         {s.meetingPoint && !dense && (
           <div className="text-[9px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-            <MapPin className="h-2.5 w-2.5 shrink-0" /> <span className="truncate">{s.meetingPoint}</span>
+            <MapPin className="h-2.5 w-2.5 shrink-0" />{" "}
+            <span className="truncate">{s.meetingPoint}</span>
           </div>
         )}
         <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
           {guide ? (
             <>
-              <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-3.5 !w-3.5 text-[8px] !rounded-full" />
+              <Avatar
+                name={guide.name}
+                initials={guide.avatar}
+                size="sm"
+                className="!h-3.5 !w-3.5 text-[8px] !rounded-full"
+              />
               <span className="truncate">{guide.name}</span>
             </>
           ) : (
-            <><User className="h-2.5 w-2.5" /> <span className="italic">Unassigned</span></>
+            <>
+              <User className="h-2.5 w-2.5" /> <span className="italic">Unassigned</span>
+            </>
           )}
         </div>
       </div>
@@ -302,7 +541,17 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
   );
 }
 
-function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpenShift: (s: Shift) => void }) {
+function DayView({
+  dateISO,
+  shifts,
+  staff,
+  onOpenShift,
+}: {
+  dateISO: string;
+  shifts: CalendarShift[];
+  staff: Staff[];
+  onOpenShift: (s: CalendarShift) => void;
+}) {
   void dateISO;
   if (shifts.length === 0) {
     return (
@@ -332,20 +581,31 @@ function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shi
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-foreground truncate">{s.tourName}</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                  <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{s.meetingPoint}</span>
+                  <MapPin className="h-3 w-3 shrink-0" />{" "}
+                  <span className="truncate">{s.meetingPoint}</span>
                 </div>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-foreground/80 shrink-0">
                 {guide ? (
                   <>
-                    <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-6 !w-6 text-[10px] !rounded-full" />
+                    <Avatar
+                      name={guide.name}
+                      initials={guide.avatar}
+                      size="sm"
+                      className="!h-6 !w-6 text-[10px] !rounded-full"
+                    />
                     <span className="font-medium">{guide.name}</span>
                   </>
                 ) : (
-                  <span className="italic text-destructive flex items-center gap-1"><User className="h-3 w-3" /> Unassigned</span>
+                  <span className="italic text-destructive flex items-center gap-1">
+                    <User className="h-3 w-3" /> Unassigned
+                  </span>
                 )}
               </div>
-              <Badge variant="outline" className={`shrink-0 capitalize text-[10px] gap-1 ${meta.text} border-current/30`}>
+              <Badge
+                variant="outline"
+                className={`shrink-0 capitalize text-[10px] gap-1 ${meta.text} border-current/30`}
+              >
                 <Icon className="h-2.5 w-2.5" /> {meta.label}
               </Badge>
             </div>
@@ -356,7 +616,21 @@ function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shi
   );
 }
 
-function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
+function WeekView({
+  cursor,
+  shiftsByDate,
+  staff,
+  onOpenDay,
+  onOpenShift,
+  todayISO,
+}: {
+  cursor: Date;
+  shiftsByDate: Record<string, CalendarShift[]>;
+  staff: Staff[];
+  onOpenDay: (d: string) => void;
+  onOpenShift: (s: CalendarShift) => void;
+  todayISO: string;
+}) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
@@ -369,7 +643,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
 
   // Index by time -> day -> shifts
   const cellMap = useMemo(() => {
-    const m: Record<string, Record<string, Shift[]>> = {};
+    const m: Record<string, Record<string, CalendarShift[]>> = {};
     for (const t of timeRows) m[t] = {};
     for (const d of days) {
       const iso = toISO(d);
@@ -411,11 +685,15 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
                 <div className="text-[10px] uppercase font-semibold text-muted-foreground">
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </div>
-                <div className={`text-base font-bold leading-tight tabular-nums ${isToday ? "text-primary" : "text-foreground"}`}>
+                <div
+                  className={`text-base font-bold leading-tight tabular-nums ${isToday ? "text-primary" : "text-foreground"}`}
+                >
                   {d.getDate()}
                 </div>
                 {list.length > 0 && (
-                  <div className="text-[9px] text-muted-foreground tabular-nums mt-0.5">{list.length} tours</div>
+                  <div className="text-[9px] text-muted-foreground tabular-nums mt-0.5">
+                    {list.length} tours
+                  </div>
                 )}
               </button>
             );
@@ -441,7 +719,13 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
                     }`}
                   >
                     {cellShifts.map((s) => (
-                      <ShiftChip key={s.id} s={s} staff={staff} onClick={() => onOpenShift(s)} hideTime />
+                      <ShiftChip
+                        key={s.id}
+                        s={s}
+                        staff={staff}
+                        onClick={() => onOpenShift(s)}
+                        hideTime
+                      />
                     ))}
                   </div>
                 );
@@ -454,7 +738,19 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
   );
 }
 
-function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
+function MonthView({
+  cursor,
+  shiftsByDate,
+  onOpenDay,
+  onOpenShift,
+  todayISO,
+}: {
+  cursor: Date;
+  shiftsByDate: Record<string, CalendarShift[]>;
+  onOpenDay: (d: string) => void;
+  onOpenShift: (s: CalendarShift) => void;
+  todayISO: string;
+}) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
   const gridStart = startOfWeek(first);
@@ -467,7 +763,12 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
     <div>
       <div className="grid grid-cols-7 gap-1 mb-1">
         {weekdays.map((w) => (
-          <div key={w} className="text-[10px] uppercase font-semibold text-muted-foreground text-center py-1">{w}</div>
+          <div
+            key={w}
+            className="text-[10px] uppercase font-semibold text-muted-foreground text-center py-1"
+          >
+            {w}
+          </div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -477,24 +778,39 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
           const list = shiftsByDate[iso] || [];
           const isToday = iso === todayISO;
           // status counts per day
-          const counts = list.reduce((acc, s) => { acc[s.status] = (acc[s.status] || 0) + 1; return acc; }, {} as Record<Shift["status"], number>);
+          const counts = list.reduce(
+            (acc, s) => {
+              acc[s.status] = (acc[s.status] || 0) + 1;
+              return acc;
+            },
+            {} as Record<Shift["status"], number>,
+          );
           return (
             <div
               key={iso}
               role="button"
               tabIndex={0}
               onClick={() => onOpenDay(iso)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDay(iso); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onOpenDay(iso);
+                }
+              }}
               className={`min-h-[96px] rounded-md border p-1.5 text-left transition relative overflow-hidden hover:border-primary/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer ${
                 isToday ? "border-primary bg-primary/5" : "border-border"
               } ${inMonth ? "bg-card" : "bg-muted/20 opacity-60"}`}
             >
               <div className="flex items-center justify-between mb-1">
-                <div className={`text-xs font-bold tabular-nums ${isToday ? "text-primary-foreground bg-primary rounded-full h-5 w-5 flex items-center justify-center" : "text-foreground"}`}>
+                <div
+                  className={`text-xs font-bold tabular-nums ${isToday ? "text-primary-foreground bg-primary rounded-full h-5 w-5 flex items-center justify-center" : "text-foreground"}`}
+                >
                   {d.getDate()}
                 </div>
                 {list.length > 0 && (
-                  <span className="text-[9px] font-bold text-muted-foreground tabular-nums">{list.length}</span>
+                  <span className="text-[9px] font-bold text-muted-foreground tabular-nums">
+                    {list.length}
+                  </span>
                 )}
               </div>
               <div className="space-y-0.5">
@@ -503,7 +819,10 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
                   return (
                     <button
                       key={s.id}
-                      onClick={(e) => { e.stopPropagation(); onOpenShift(s); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenShift(s);
+                      }}
                       className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium hover:bg-muted transition`}
                     >
                       <span className="tabular-nums">{s.startTime}</span> {s.tourName}
@@ -514,7 +833,10 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
                   <div className="flex items-center gap-1 mt-1">
                     {(Object.keys(counts) as (keyof typeof counts)[]).map((k) =>
                       counts[k] ? (
-                        <span key={k} className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-medium">
+                        <span
+                          key={k}
+                          className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-medium"
+                        >
                           <span className={`h-1.5 w-1.5 rounded-full ${STATUS[k].dot}`} />
                           {counts[k]}
                         </span>
@@ -531,9 +853,30 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRates = true }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void; showRates?: boolean }) {
+function DayDetailsDialog({
+  dateISO,
+  shifts,
+  staff,
+  onClose,
+  onOpenShift,
+  showRates = true,
+}: {
+  dateISO: string | null;
+  shifts: CalendarShift[];
+  staff: Staff[];
+  onClose: () => void;
+  onOpenShift: (s: CalendarShift) => void;
+  showRates?: boolean;
+}) {
   const open = !!dateISO;
-  const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
+  const dateLabel = dateISO
+    ? new Date(dateISO).toLocaleDateString(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -546,7 +889,9 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
           </DialogDescription>
         </DialogHeader>
         {shifts.length === 0 ? (
-          <div className="text-sm text-muted-foreground italic py-8 text-center">No tours scheduled.</div>
+          <div className="text-sm text-muted-foreground italic py-8 text-center">
+            No tours scheduled.
+          </div>
         ) : (
           <div className="space-y-3">
             {shifts.map((s) => {
@@ -554,47 +899,74 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
               const meta = STATUS[s.status];
               const Icon = meta.Icon;
               return (
-                <button key={s.id} type="button" onClick={() => onOpenShift(s)} className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden transition focus:outline-none focus:ring-2 ${meta.ring} hover:brightness-105`}>
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onOpenShift(s)}
+                  className={`w-full text-left rounded-lg border ${meta.chip} relative overflow-hidden transition focus:outline-none focus:ring-2 ${meta.ring} hover:brightness-105`}
+                >
                   <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
                   <div className="p-3 pl-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <div className="font-semibold text-sm text-foreground">{s.tourName}</div>
                         <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Clock className="h-3 w-3" /> <span className="tabular-nums">{s.startTime}–{s.endTime}</span>
+                          <Clock className="h-3 w-3" />{" "}
+                          <span className="tabular-nums">
+                            {s.startTime}–{s.endTime}
+                          </span>
                         </div>
                       </div>
-                      <Badge variant="outline" className={`capitalize text-[10px] shrink-0 gap-1 ${meta.text} border-current/30`}>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize text-[10px] shrink-0 gap-1 ${meta.text} border-current/30`}
+                      >
                         <Icon className="h-2.5 w-2.5" /> {meta.label}
                       </Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-foreground/85">
-                      <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}</div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}
+                      </div>
                       <div className="flex items-center gap-1.5">
                         {guide ? (
                           <>
-                            <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-5 !w-5 text-[9px] !rounded-full" />
+                            <Avatar
+                              name={guide.name}
+                              initials={guide.avatar}
+                              size="sm"
+                              className="!h-5 !w-5 text-[9px] !rounded-full"
+                            />
                             <span className="font-medium">{guide.name}</span>
                           </>
                         ) : (
-                          <span className="italic text-destructive flex items-center gap-1"><User className="h-3 w-3" /> Unassigned</span>
+                          <span className="italic text-destructive flex items-center gap-1">
+                            <User className="h-3 w-3" /> Unassigned
+                          </span>
                         )}
                       </div>
                       {s.participants && (
                         <div className="flex items-center gap-1.5">
-                          <Users className="h-3 w-3 text-muted-foreground" /> {s.participants.adults + s.participants.teens + s.participants.infants} pax
+                          <Users className="h-3 w-3 text-muted-foreground" />{" "}
+                          {s.participants.adults + s.participants.teens + s.participants.infants}{" "}
+                          pax
                         </div>
                       )}
                       {showRates && s.rate !== undefined && (
-                        <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
+                        <div className="flex items-center gap-1.5">
+                          <Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}
+                        </div>
                       )}
                     </div>
                     {s.customer && (
                       <div className="mt-2 text-xs text-foreground/80">
-                        Customer: <span className="font-medium">{s.customer.name}</span> · {s.customer.phone}
+                        Customer: <span className="font-medium">{s.customer.name}</span> ·{" "}
+                        {s.customer.phone}
                       </div>
                     )}
-                    {s.notes && <div className="mt-2 text-xs italic text-muted-foreground">📝 {s.notes}</div>}
+                    {s.notes && (
+                      <div className="mt-2 text-xs italic text-muted-foreground">📝 {s.notes}</div>
+                    )}
                   </div>
                 </button>
               );
@@ -606,7 +978,19 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn; showRates?: boolean }) {
+function ShiftDetailsDialog({
+  shift,
+  staff,
+  onClose,
+  onAssign,
+  showRates = true,
+}: {
+  shift: CalendarShift | null;
+  staff: Staff[];
+  onClose: () => void;
+  onAssign?: AssignFn;
+  showRates?: boolean;
+}) {
   const open = !!shift;
   if (!shift) {
     return (
@@ -619,14 +1003,22 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
   const guide = staff.find((x) => x.id === s.assignedStaffId);
   const meta = STATUS[s.status];
   const Icon = meta.Icon;
-  const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const dateLabel = new Date(s.date).toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const pax = paxOf(s);
+  const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
-  const handleAssign = (staffId: string) => {
+  const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
-    void onAssign(s.id, staffId, member.name);
+    for (const row of bookingRows) {
+      await onAssign(row.id, staffId, member.name);
+    }
     onClose();
   };
   return (
@@ -634,46 +1026,110 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
-          <DialogDescription className="capitalize">{dateLabel}</DialogDescription>
+          <DialogDescription className="capitalize">
+            {dateLabel}
+            {bookingRows.length > 1 ? ` · ${bookingRows.length} Bokun bookings grouped` : ""}
+          </DialogDescription>
         </DialogHeader>
         <div className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
           <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
           <div className="p-4 pl-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" /> <span className="tabular-nums">{s.startTime}–{s.endTime}</span>
+                <Clock className="h-3 w-3" />{" "}
+                <span className="tabular-nums">
+                  {s.startTime}–{s.endTime}
+                </span>
               </div>
-              <Badge variant="outline" className={`capitalize text-[10px] gap-1 ${meta.text} border-current/30`}>
+              <Badge
+                variant="outline"
+                className={`capitalize text-[10px] gap-1 ${meta.text} border-current/30`}
+              >
                 <Icon className="h-2.5 w-2.5" /> {meta.label}
               </Badge>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs text-foreground/85">
-              <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}</div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}
+              </div>
               <div className="flex items-center gap-1.5">
                 {guide ? (
                   <>
-                    <Avatar name={guide.name} initials={guide.avatar} size="sm" className="!h-5 !w-5 text-[9px] !rounded-full" />
+                    <Avatar
+                      name={guide.name}
+                      initials={guide.avatar}
+                      size="sm"
+                      className="!h-5 !w-5 text-[9px] !rounded-full"
+                    />
                     <span className="font-medium">{guide.name}</span>
                   </>
                 ) : (
-                  <span className="italic text-destructive flex items-center gap-1"><User className="h-3 w-3" /> Unassigned</span>
+                  <span className="italic text-destructive flex items-center gap-1">
+                    <User className="h-3 w-3" /> Unassigned
+                  </span>
                 )}
               </div>
               {pax > 0 && (
-                <div className="flex items-center gap-1.5"><Users className="h-3 w-3 text-muted-foreground" /> {pax} pax</div>
+                <div className="flex items-center gap-1.5">
+                  <Users className="h-3 w-3 text-muted-foreground" /> {pax} pax
+                </div>
               )}
               {showRates && s.rate !== undefined && (
-                <div className="flex items-center gap-1.5"><Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}</div>
+                <div className="flex items-center gap-1.5">
+                  <Euro className="h-3 w-3 text-muted-foreground" /> {s.rate}
+                </div>
               )}
             </div>
             {s.customer && (
               <div className="text-xs text-foreground/80">
-                Customer: <span className="font-medium">{s.customer.name}</span> · {s.customer.phone}
+                Customer: <span className="font-medium">{s.customer.name}</span> ·{" "}
+                {s.customer.phone}
               </div>
             )}
             {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
           </div>
         </div>
+        {bookingRows.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 text-xs font-semibold text-foreground">Bookings</div>
+            <div className="space-y-2">
+              {bookingRows.map((b) => {
+                const bpax = paxOf(b);
+                const payment = b.operationsNotes
+                  ?.replace(/^Payment:\s*/i, "")
+                  .replaceAll("_", " ");
+                return (
+                  <div
+                    key={b.id}
+                    className="rounded-md border border-border/70 bg-muted/20 p-2 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold text-foreground">
+                        {b.customer?.name ?? "Unknown customer"}
+                      </div>
+                      <div className="font-mono text-[10px] text-muted-foreground">
+                        {b.bookingId}
+                      </div>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
+                      <span>{bpax} pax</span>
+                      {payment && <span className="capitalize">{payment.toLowerCase()}</span>}
+                      {showRates && b.rate !== undefined && <span>€ {b.rate}</span>}
+                      {b.customer?.phone && b.customer.phone !== "—" && (
+                        <span>{b.customer.phone}</span>
+                      )}
+                    </div>
+                    {(b.participantList?.length ?? 0) > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">
+                        {b.participantList!.map((p) => `${p.name} (${p.category})`).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {onAssign && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
@@ -687,7 +1143,8 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
               <SelectContent>
                 {assignableStaff.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.name}{m.role === "admin" ? " (admin)" : ""}
+                    {m.name}
+                    {m.role === "admin" ? " (admin)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
