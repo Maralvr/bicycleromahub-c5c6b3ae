@@ -1014,10 +1014,12 @@ function ShiftDetailsDialog({
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
   const [savingDeparture, setSavingDeparture] = useState(false);
+  const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
     setMeetingPoint(shift?.meetingPoint ?? "");
+    setGuideSearch("");
   }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint]);
 
   if (!shift) {
