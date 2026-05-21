@@ -56,8 +56,7 @@ function LiveShiftsPage() {
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const upcoming = shifts.filter((s) => s.date >= todayStr);
-  const past = shifts.filter((s) => s.date < todayStr);
+  const todays = shifts.filter((s) => s.date === todayStr);
 
   if (!ready) return null;
 
