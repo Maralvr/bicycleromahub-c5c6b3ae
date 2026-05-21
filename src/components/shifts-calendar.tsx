@@ -1265,7 +1265,7 @@ function ShiftDetailsDialog({
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <Avatar name={m.name} size="sm" className="!h-6 !w-6 text-[10px] !rounded-full" />
+                        <Avatar name={m.name} initials={m.avatar} size="sm" className="!h-6 !w-6 text-[10px] !rounded-full" />
                         <span className="font-medium">
                           {m.name}
                           {m.role === "admin" ? " (admin)" : ""}
