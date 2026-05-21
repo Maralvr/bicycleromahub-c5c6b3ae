@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
@@ -57,24 +57,28 @@ function DashboardPage() {
       sub: "+2 vs yesterday",
       icon: CalendarRange,
       accent: true,
+      to: "/shifts" as const,
     },
     {
       label: t.dashboard.pendingAccept,
       value: pending.length,
       sub: "Awaiting response",
       icon: Clock,
+      to: "/shifts" as const,
     },
     {
       label: t.dashboard.activeStaff,
       value: `${activeStaff}/${staff.length}`,
       sub: "On the clock",
       icon: Users2,
+      to: "/staff" as const,
     },
     {
       label: t.dashboard.openTasks,
       value: openTasks.length,
       sub: `${tasks.length - openTasks.length} done today`,
       icon: ClipboardCheck,
+      to: "/tasks" as const,
     },
   ];
 
@@ -92,24 +96,29 @@ function DashboardPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s) => (
-          <Card
+          <Link
             key={s.label}
-            className={`p-5 border-border/60 relative overflow-hidden group hover:shadow-[var(--shadow-card)] transition-all ${s.accent ? "bg-gradient-to-br from-primary/10 via-card to-card border-primary/20" : ""}`}
+            to={s.to}
+            className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${s.accent ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}
-              >
-                <s.icon className="h-5 w-5" />
+            <Card
+              className={`p-5 border-border/60 relative overflow-hidden group hover:shadow-[var(--shadow-card)] hover:border-primary/40 active:scale-[0.98] transition-all cursor-pointer h-full ${s.accent ? "bg-gradient-to-br from-primary/10 via-card to-card border-primary/20" : ""}`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${s.accent ? "bg-primary text-primary-foreground" : "bg-muted text-foreground/70"}`}
+                >
+                  <s.icon className="h-5 w-5" />
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
               </div>
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
-            </div>
-            <div className="text-3xl font-bold text-foreground tracking-tight">{s.value}</div>
-            <div className="text-sm font-medium text-foreground/80 mt-1">{s.label}</div>
-            <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" /> {s.sub}
-            </div>
-          </Card>
+              <div className="text-3xl font-bold text-foreground tracking-tight">{s.value}</div>
+              <div className="text-sm font-medium text-foreground/80 mt-1">{s.label}</div>
+              <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> {s.sub}
+              </div>
+            </Card>
+          </Link>
         ))}
       </div>
 
