@@ -7,6 +7,13 @@ const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
 };
 
 type BokunDateValue = string | number;
+type BokunAddress = {
+  addressLine1?: string;
+  addressLine2?: string | null;
+  city?: string;
+  postalCode?: string;
+  countryCode?: string;
+};
 
 function pricingCategoryKey(title: string) {
   const normalized = title.toLowerCase().trim();
@@ -39,9 +46,34 @@ function dateOnly(value: BokunDateValue) {
 
 function textValue(value: unknown) {
   if (typeof value === "string") return value || null;
+  if (Array.isArray(value)) {
+    const notes = value
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return null;
+        const body = (item as { body?: unknown }).body;
+        return typeof body === "string" ? body : null;
+      })
+      .filter(Boolean);
+    return notes.length ? notes.join("\n\n") : null;
+  }
   if (!value || typeof value !== "object") return null;
   const entries = Object.entries(value).filter(([, v]) => typeof v === "string" && v);
   return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join("\n") : null;
+}
+
+function addressText(address?: string | BokunAddress | null) {
+  if (!address) return null;
+  if (typeof address === "string") return address;
+  return [address.addressLine1, address.addressLine2, address.city, address.postalCode, address.countryCode]
+    .filter(Boolean)
+    .join(", ") || null;
+}
+
+function placeText(place?: { title?: string; address?: string | BokunAddress } | null) {
+  if (!place) return null;
+  const address = addressText(place.address);
+  return [place.title, address].filter(Boolean).join(" — ") || null;
 }
 
 function computeEnd(start: BokunDateValue, end?: BokunDateValue, durationMinutes?: number) {
