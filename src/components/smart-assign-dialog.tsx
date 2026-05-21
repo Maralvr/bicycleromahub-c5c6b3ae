@@ -26,9 +26,13 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
   const [sortMode, setSortMode] = useState<SortMode>("score");
   const [showIneligible, setShowIneligible] = useState(false);
   const [search, setSearch] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      setNote("");
+    }
   }, [open, shift?.id]);
 
   const candidates = useMemo<StaffCandidate[]>(() => {
