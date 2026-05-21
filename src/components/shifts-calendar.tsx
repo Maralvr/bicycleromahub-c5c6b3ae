@@ -345,7 +345,7 @@ function ShiftChip({ s, staff, onClick, dense = false, hideTime = false }: { s: 
   );
 }
 
-function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shifts: Shift[]; staff: Staff[]; onOpenShift: (s: Shift) => void }) {
+function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shifts: CalendarShift[]; staff: Staff[]; onOpenShift: (s: CalendarShift) => void }) {
   void dateISO;
   if (shifts.length === 0) {
     return (
@@ -399,7 +399,7 @@ function DayView({ dateISO, shifts, staff, onOpenShift }: { dateISO: string; shi
   );
 }
 
-function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; staff: Staff[]; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
+function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, CalendarShift[]>; staff: Staff[]; onOpenDay: (d: string) => void; onOpenShift: (s: CalendarShift) => void; todayISO: string }) {
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
@@ -412,7 +412,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
 
   // Index by time -> day -> shifts
   const cellMap = useMemo(() => {
-    const m: Record<string, Record<string, Shift[]>> = {};
+    const m: Record<string, Record<string, CalendarShift[]>> = {};
     for (const t of timeRows) m[t] = {};
     for (const d of days) {
       const iso = toISO(d);
@@ -497,7 +497,7 @@ function WeekView({ cursor, shiftsByDate, staff, onOpenDay, onOpenShift, todayIS
   );
 }
 
-function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, Shift[]>; onOpenDay: (d: string) => void; onOpenShift: (s: Shift) => void; todayISO: string }) {
+function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: { cursor: Date; shiftsByDate: Record<string, CalendarShift[]>; onOpenDay: (d: string) => void; onOpenShift: (s: CalendarShift) => void; todayISO: string }) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
   const gridStart = startOfWeek(first);
@@ -574,7 +574,7 @@ function MonthView({ cursor, shiftsByDate, onOpenDay, onOpenShift, todayISO }: {
   );
 }
 
-function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRates = true }: { dateISO: string | null; shifts: Shift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: Shift) => void; showRates?: boolean }) {
+function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRates = true }: { dateISO: string | null; shifts: CalendarShift[]; staff: Staff[]; onClose: () => void; onOpenShift: (s: CalendarShift) => void; showRates?: boolean }) {
   const open = !!dateISO;
   const dateLabel = dateISO ? new Date(dateISO).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
   return (
@@ -649,7 +649,7 @@ function DayDetailsDialog({ dateISO, shifts, staff, onClose, onOpenShift, showRa
   );
 }
 
-function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true }: { shift: Shift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn; showRates?: boolean }) {
+function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true }: { shift: CalendarShift | null; staff: Staff[]; onClose: () => void; onAssign?: AssignFn; showRates?: boolean }) {
   const open = !!shift;
   if (!shift) {
     return (
