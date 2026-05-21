@@ -1067,7 +1067,14 @@ function ShiftDetailsDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>{s.tourName}</span>
+            {s.rateTitle && (
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                {s.rateTitle}
+              </Badge>
+            )}
+          </DialogTitle>
           <DialogDescription className="capitalize">
             {dateLabel}
             {bookingRows.length > 1 ? ` · ${bookingRows.length} Bokun bookings grouped` : ""}
