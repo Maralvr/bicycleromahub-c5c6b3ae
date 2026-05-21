@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
+type UpdateTimeFn = (shiftId: string, startTime: string, endTime: string) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
 type CalendarShift = Shift & { groupedShifts?: Shift[] };
