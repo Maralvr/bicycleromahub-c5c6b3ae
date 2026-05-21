@@ -1194,11 +1194,11 @@ function ShiftDetailsDialog({
             </div>
           </div>
         )}
-        {onUpdateTime && (
+        {onUpdateDeparture && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              Override tour time
+              Override departure
               {bookingRows.length > 1 && (
                 <span className="font-normal text-muted-foreground">
                   (applies to all {bookingRows.length} bookings)
@@ -1214,19 +1214,31 @@ function ShiftDetailsDialog({
                 <Label htmlFor="ov-end" className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
                 <Input id="ov-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
               </div>
+            </div>
+            <div className="mt-2 space-y-1">
+              <Label htmlFor="ov-meet" className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
+              <Input
+                id="ov-meet"
+                value={meetingPoint}
+                onChange={(e) => setMeetingPoint(e.target.value)}
+                placeholder="e.g. Piazza del Popolo, fountain side"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-end">
               <Button
                 size="sm"
                 variant="outline"
                 className="h-9 text-xs"
-                disabled={!timeChanged || savingTime}
-                onClick={handleSaveTime}
+                disabled={!departureChanged || savingDeparture}
+                onClick={handleSaveDeparture}
               >
-                {savingTime ? "Saving…" : "Save time"}
+                {savingDeparture ? "Saving…" : "Save changes"}
               </Button>
             </div>
-            {timeChanged && (
+            {departureChanged && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Time will also be saved automatically when you assign a guide.
+                Changes will also be saved automatically when you assign a guide.
               </p>
             )}
           </div>
