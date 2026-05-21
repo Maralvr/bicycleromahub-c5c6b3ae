@@ -663,13 +663,16 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
   const meta = STATUS[s.status];
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const pax = s.participants ? s.participants.adults + s.participants.teens + s.participants.infants : 0;
+  const pax = paxOf(s);
+  const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
-  const handleAssign = (staffId: string) => {
+  const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
-    void onAssign(s.id, staffId, member.name);
+    for (const row of bookingRows) {
+      await onAssign(row.id, staffId, member.name);
+    }
     onClose();
   };
   return (
@@ -677,7 +680,9 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">{s.tourName}</DialogTitle>
-          <DialogDescription className="capitalize">{dateLabel}</DialogDescription>
+          <DialogDescription className="capitalize">
+            {dateLabel}{bookingRows.length > 1 ? ` · ${bookingRows.length} Bokun bookings grouped` : ""}
+          </DialogDescription>
         </DialogHeader>
         <div className={`rounded-lg border ${meta.chip} relative overflow-hidden`}>
           <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.bar}`} />
@@ -717,6 +722,36 @@ function ShiftDetailsDialog({ shift, staff, onClose, onAssign, showRates = true 
             {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
           </div>
         </div>
+        {bookingRows.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 text-xs font-semibold text-foreground">Bookings</div>
+            <div className="space-y-2">
+              {bookingRows.map((b) => {
+                const bpax = paxOf(b);
+                const payment = b.operationsNotes?.replace(/^Payment:\s*/i, "").replaceAll("_", " ");
+                return (
+                  <div key={b.id} className="rounded-md border border-border/70 bg-muted/20 p-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold text-foreground">{b.customer?.name ?? "Unknown customer"}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">{b.bookingId}</div>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
+                      <span>{bpax} pax</span>
+                      {payment && <span className="capitalize">{payment.toLowerCase()}</span>}
+                      {showRates && b.rate !== undefined && <span>€ {b.rate}</span>}
+                      {b.customer?.phone && b.customer.phone !== "—" && <span>{b.customer.phone}</span>}
+                    </div>
+                    {(b.participantList?.length ?? 0) > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">
+                        {b.participantList!.map((p) => `${p.name} (${p.category})`).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {onAssign && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
