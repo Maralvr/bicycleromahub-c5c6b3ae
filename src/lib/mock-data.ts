@@ -29,15 +29,22 @@ export type Shift = {
   id: string;
   source: "bokun" | "manual";
   bookingId?: string;
+  channelBookingRef?: string | null;
+  externalBookingRef?: string | null;
   tourName: string;
   date: string; // YYYY-MM-DD
   startTime: string;
   endTime: string;
   meetingPoint: string;
-  customer?: { name: string; phone: string };
+  customer?: { name: string; phone: string; email?: string | null };
   participants?: { adults: number; teens: number; infants: number; trailers: number };
+  participantList?: { name: string; category: string }[];
   rate?: number;
+  rateTitle?: string | null;
+  seller?: string | null;
+  bookingChannel?: string | null;
   notes?: string;
+  operationsNotes?: string | null;
   assignedStaffId: string | null;
   status: "pending" | "accepted" | "rejected" | "unassigned";
   requiredTags: string[];
