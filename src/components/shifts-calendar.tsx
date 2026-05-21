@@ -1042,6 +1042,10 @@ function ShiftDetailsDialog({
   const pax = paxOf(s);
   const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
+  const q = guideSearch.trim().toLowerCase();
+  const filteredStaff = q
+    ? assignableStaff.filter((m) => m.name.toLowerCase().includes(q))
+    : assignableStaff;
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
   const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
   const departureChanged = timeChanged || meetingChanged;
