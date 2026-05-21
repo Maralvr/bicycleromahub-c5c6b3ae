@@ -517,6 +517,11 @@ function ShiftChip({
         <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">
           {s.tourName}
         </div>
+        {s.rateTitle && (
+          <div className="mt-0.5 inline-flex items-center rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
+            {s.rateTitle}
+          </div>
+        )}
         {pax > 0 && (
           <div className="text-[10px] text-foreground/80 font-medium tabular-nums flex items-center gap-1 mt-0.5">
             <Users className="h-2.5 w-2.5" /> {capacity ? `${pax} / ${capacity}` : `${pax} pax`}
