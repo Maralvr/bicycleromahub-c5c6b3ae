@@ -357,11 +357,18 @@ export async function runBokunImport(
         totalSeen++;
         if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
 
-        const detailId = summary.id ?? summary.bookingId;
+        const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
         let full: BokunBookingFull = summary;
         if (detailId != null) {
           try {
-            full = await bokunFetch("GET", `/booking.json/${detailId}`) as BokunBookingFull;
+            const parent = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
+            full = {
+              ...parent,
+              id: summary.id,
+              bookingId: summary.bookingId ?? summary.id,
+              productConfirmationCode: summary.productConfirmationCode,
+              parentBookingId: summary.parentBookingId ?? parent.bookingId,
+            };
           } catch (e) {
             errors.push(`Detail ${detailId}: ${(e as Error).message}`);
           }
