@@ -7,6 +7,13 @@ const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
 };
 
 type BokunDateValue = string | number;
+type BokunAddress = {
+  addressLine1?: string;
+  addressLine2?: string | null;
+  city?: string;
+  postalCode?: string;
+  countryCode?: string;
+};
 
 function pricingCategoryKey(title: string) {
   const normalized = title.toLowerCase().trim();
@@ -39,9 +46,43 @@ function dateOnly(value: BokunDateValue) {
 
 function textValue(value: unknown) {
   if (typeof value === "string") return value || null;
+  if (Array.isArray(value)) {
+    const notes = value
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return null;
+        const body = (item as { body?: unknown }).body;
+        return typeof body === "string" ? body : null;
+      })
+      .filter(Boolean);
+    return notes.length ? notes.join("\n\n") : null;
+  }
   if (!value || typeof value !== "object") return null;
   const entries = Object.entries(value).filter(([, v]) => typeof v === "string" && v);
   return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join("\n") : null;
+}
+
+function addressText(address?: string | BokunAddress | null) {
+  if (!address) return null;
+  if (typeof address === "string") return address;
+  return [address.addressLine1, address.addressLine2, address.city, address.postalCode, address.countryCode]
+    .filter(Boolean)
+    .join(", ") || null;
+}
+
+function placeText(place?: { title?: string; address?: string | BokunAddress } | null) {
+  if (!place) return null;
+  const address = addressText(place.address);
+  return [place.title, address].filter(Boolean).join(" — ") || null;
+}
+
+function moneyAmount(value?: number | { amount?: number } | null) {
+  if (typeof value === "number") return value;
+  return value?.amount ?? null;
+}
+
+function hasCustomer(customer: BokunBookingFull["customer"] | undefined) {
+  return Boolean(customer?.fullName || customer?.firstName || customer?.lastName || customer?.email || customer?.phoneNumber);
 }
 
 function computeEnd(start: BokunDateValue, end?: BokunDateValue, durationMinutes?: number) {
@@ -96,7 +137,7 @@ type BokunPassenger = { firstName?: string; lastName?: string; fullName?: string
 type BokunPricingCategoryBooking = {
   pricingCategory?: { title?: string; fullTitle?: string };
   quantity?: number;
-  leadPassenger?: BokunPassenger;
+  leadPassenger?: BokunPassenger | boolean;
   passengers?: BokunPassenger[];
 };
 type BokunExtraBooking = { extra?: { title?: string }; title?: string; quantity?: number };
@@ -109,13 +150,14 @@ interface BokunBookingFull {
   parentBookingId?: number | string;
   externalBookingReference?: string;
   productTitle?: string;
-  product?: { title?: string; tags?: string[] };
+  product?: { title?: string; tags?: string[]; id?: number | string };
+  title?: string;
   startDateTime?: BokunDateValue;
   startDate?: BokunDateValue;
   endDateTime?: BokunDateValue;
   durationMinutes?: number;
-  pickupPlace?: { title?: string; address?: string };
-  startPoint?: { title?: string; address?: string };
+  pickupPlace?: { title?: string; address?: string | BokunAddress };
+  startPoint?: { title?: string; address?: string | BokunAddress };
   customer?: {
     firstName?: string;
     lastName?: string;
@@ -127,8 +169,12 @@ interface BokunBookingFull {
   pricingCategoryBookings?: BokunPricingCategoryBooking[];
   extraBookings?: BokunExtraBooking[];
   totalParticipants?: number;
-  totalPrice?: number;
+  totalPrice?: number | { amount?: number; currency?: string };
   totalPriceAmount?: number;
+  totalPaid?: number | { amount?: number; currency?: string };
+  paidAmountAsMoney?: { amount?: number; currency?: string };
+  paymentStatus?: string;
+  paidType?: string;
   totalAsMoney?: { amount?: number; currency?: string };
   currency?: string;
   notes?: string;
@@ -151,29 +197,45 @@ interface BokunBookingFull {
   };
   productBookings?: BokunBookingFull[];
   activityBookings?: Array<{
-    activity?: { title?: string; durationMinutes?: number };
+    bookingId?: number | string;
+    parentBookingId?: number | string;
+    confirmationCode?: string;
+    productConfirmationCode?: string;
+    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }> };
+    product?: { title?: string; tags?: string[]; id?: number | string };
+    title?: string;
     startDateTime?: BokunDateValue;
     endDateTime?: BokunDateValue;
-    pickupPlace?: { title?: string; address?: string };
-    startPoint?: { title?: string; address?: string };
+    pickupPlace?: { title?: string; address?: string | BokunAddress };
+    startPoint?: { title?: string; address?: string | BokunAddress };
+    pickup?: false | { title?: string; address?: string | BokunAddress };
     rateTitle?: string;
     rate?: { title?: string };
     pricingCategoryBookings?: BokunPricingCategoryBooking[];
     extraBookings?: BokunExtraBooking[];
+    extras?: BokunExtraBooking[];
+    totalParticipants?: number;
+    totalPrice?: number | { amount?: number; currency?: string };
+    totalPriceAmount?: number;
+    paidType?: string;
+    seller?: { title?: string; companyName?: string };
+    notes?: unknown;
   }>;
 }
 
 function mapToShiftRow(raw: BokunBookingFull) {
   const a0 = raw.activityBookings?.[0];
-  const productTitle = raw.product?.title ?? raw.productTitle ?? a0?.activity?.title ?? "Bokun booking";
-  const startDateTime = raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
+  const detailActivity = raw.activityBookings?.find((a) => String(a.bookingId ?? a.productConfirmationCode ?? "") === String(raw.id ?? raw.bookingId ?? raw.productConfirmationCode ?? "")) ?? a0;
+  const activity = detailActivity ?? a0;
+  const productTitle = activity?.product?.title ?? activity?.activity?.title ?? activity?.title ?? raw.product?.title ?? raw.productTitle ?? raw.title ?? "Bokun booking";
+  const startDateTime = activity?.startDateTime ?? raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
   if (!startDateTime) return null;
-  const endDateTime = raw.endDateTime ?? a0?.endDateTime;
-  const durationMinutes = raw.durationMinutes ?? a0?.activity?.durationMinutes;
-  const pickupPlace = raw.pickupPlace ?? a0?.pickupPlace;
-  const startPoint = raw.startPoint ?? a0?.startPoint;
-  const pcbs = raw.pricingCategoryBookings ?? a0?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
-  const extras = raw.extraBookings ?? a0?.extraBookings ?? raw.fields?.bookedExtras ?? [];
+  const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
+  const durationMinutes = raw.durationMinutes ?? activity?.activity?.durationMinutes ?? (activity?.activity?.durationHours ? activity.activity.durationHours * 60 : undefined) ?? a0?.activity?.durationMinutes;
+  const pickup = activity?.pickup && typeof activity.pickup === "object" ? activity.pickup : null;
+  const meeting = placeText(raw.pickupPlace) ?? placeText(activity?.pickupPlace) ?? placeText(pickup) ?? placeText(raw.startPoint) ?? placeText(activity?.startPoint) ?? placeText(activity?.activity?.startPoints?.[0]) ?? "TBD";
+  const pcbs = raw.pricingCategoryBookings ?? activity?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
+  const extras = raw.extraBookings ?? activity?.extraBookings ?? activity?.extras ?? raw.fields?.bookedExtras ?? [];
 
   const counts = { adults: 0, teens: 0, infants: 0, trailers: 0 };
   const participantList: Array<{ name: string; category: string }> = [];
@@ -181,27 +243,26 @@ function mapToShiftRow(raw: BokunBookingFull) {
     const catTitle = pcb.pricingCategory?.title ?? "Adult";
     const key = pricingCategoryKey(catTitle);
     counts[key] += pcb.quantity ?? 1;
-    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p));
+    const passengers = [pcb.leadPassenger, ...(pcb.passengers ?? [])].filter((p): p is BokunPassenger => Boolean(p) && typeof p === "object");
     for (const p of passengers) {
       const name = p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" ");
       if (name) participantList.push({ name, category: catTitle });
     }
   }
-  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
+  if (counts.adults + counts.teens + counts.infants === 0) counts.adults = raw.totalParticipants ?? activity?.totalParticipants ?? raw.fields?.totalParticipants ?? 0;
   for (const ex of extras) {
     const extraTitle = ex.extra?.title ?? ex.title ?? "";
     if (extraTitle.toLowerCase().includes("trailer")) counts.trailers += ex.quantity ?? 1;
   }
-  const meeting = pickupPlace?.title || pickupPlace?.address || startPoint?.title || startPoint?.address || "TBD";
-  const customer = raw.customer ?? {};
+  const customer = hasCustomer(raw.customer) ? raw.customer! : {};
   const customerName = customer.fullName || [customer.firstName, customer.lastName].filter(Boolean).join(" ") || "Unknown";
 
-  const bookingIdStr = String(raw.confirmationCode || raw.productConfirmationCode || raw.id || raw.bookingId || "");
+  const bookingIdStr = String(activity?.productConfirmationCode || raw.productConfirmationCode || raw.confirmationCode || raw.id || raw.bookingId || activity?.bookingId || "");
   const channelRef = raw.externalBookingReference || null;
-  const externalRef = raw.parentBookingId ? String(raw.parentBookingId) : null;
+  const externalRef = (raw.parentBookingId ?? activity?.parentBookingId) ? String(raw.parentBookingId ?? activity?.parentBookingId) : null;
 
-  const rateTitle = raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
-  const seller = raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
+  const rateTitle = activity?.rateTitle || activity?.rate?.title || raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
+  const seller = activity?.seller?.title || raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
   const createdRaw = raw.creationDate || raw.createdDate || null;
   const created = createdRaw != null ? new Date(createdRaw as BokunDateValue).toISOString() : null;
@@ -224,14 +285,14 @@ function mapToShiftRow(raw: BokunBookingFull) {
     infants: counts.infants,
     trailers: counts.trailers,
     participants: participantList,
-    rate: raw.totalPriceAmount ?? raw.totalPrice ?? raw.totalAsMoney?.amount ?? null,
+    rate: raw.totalPriceAmount ?? moneyAmount(activity?.totalPrice) ?? activity?.totalPriceAmount ?? moneyAmount(raw.totalPrice) ?? moneyAmount(raw.totalPaid) ?? raw.totalAsMoney?.amount ?? raw.paidAmountAsMoney?.amount ?? null,
     rate_title: rateTitle,
     seller,
     booking_channel: channel,
     bokun_created_at: created,
     ticket_sent: !!raw.ticketSent,
-    notes: textValue(raw.notes) ?? customer.notes ?? null,
-    operations_notes: textValue(raw.internalNotes),
+    notes: textValue(activity?.notes) ?? textValue(raw.notes) ?? customer.notes ?? null,
+    operations_notes: textValue(raw.internalNotes) ?? (raw.paymentStatus || activity?.paidType ? `Payment: ${raw.paymentStatus ?? activity?.paidType}` : null),
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
@@ -296,11 +357,18 @@ export async function runBokunImport(
         totalSeen++;
         if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
 
-        const detailId = summary.id ?? summary.bookingId;
+        const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
         let full: BokunBookingFull = summary;
         if (detailId != null) {
           try {
-            full = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
+            const parent = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
+            full = {
+              ...parent,
+              id: summary.id,
+              bookingId: summary.bookingId ?? summary.id,
+              productConfirmationCode: summary.productConfirmationCode,
+              parentBookingId: summary.parentBookingId ?? parent.bookingId,
+            };
           } catch (e) {
             errors.push(`Detail ${detailId}: ${(e as Error).message}`);
           }
