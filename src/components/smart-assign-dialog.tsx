@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,11 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
   const { staff } = useStaffStore();
   const [sortMode, setSortMode] = useState<SortMode>("score");
   const [showIneligible, setShowIneligible] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open, shift?.id]);
 
   const candidates = useMemo<StaffCandidate[]>(() => {
     if (!shift) return [];
@@ -38,8 +44,11 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
       return b.score - a.score;
     });
-    return showIneligible ? sorted : sorted.filter((c) => c.eligible);
-  }, [shift, staff, allShifts, sortMode, showIneligible]);
+    const filtered = showIneligible ? sorted : sorted.filter((c) => c.eligible);
+    const q = search.trim().toLowerCase();
+    if (!q) return filtered;
+    return filtered.filter((c) => c.staff.name.toLowerCase().includes(q));
+  }, [shift, staff, allShifts, sortMode, showIneligible, search]);
 
   const eligibleCount = useMemo(
     () => (shift ? rankAllCandidates(shift, staff, allShifts).filter((c) => c.eligible).length : 0),
@@ -125,16 +134,31 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
           </div>
         </DialogHeader>
 
+        {/* Search */}
+        <div className="px-4 pt-3 pb-1 border-b border-border/40 bg-background">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search guides by name…"
+              className="h-9 pl-8 text-sm"
+            />
+          </div>
+        </div>
+
         {/* Candidates list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-background">
           {candidates.length === 0 ? (
             <div className="text-sm text-muted-foreground italic flex items-center gap-2 p-6 justify-center">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              No staff match this shift. Try toggling "Show ineligible" or duplicate to a different time.
+              {search.trim()
+                ? `No guides match "${search.trim()}".`
+                : "No staff match this shift. Try toggling \"Show ineligible\" or duplicate to a different time."}
             </div>
           ) : (
             candidates.map((c, i) => (
-              <CandidateRow key={c.staff.id} c={c} isBest={c.eligible && i === 0 && sortMode === "score"} onAssign={() => handleAssign(c)} />
+              <CandidateRow key={c.staff.id} c={c} isBest={c.eligible && i === 0 && sortMode === "score" && !search.trim()} onAssign={() => handleAssign(c)} />
             ))
           )}
         </div>
