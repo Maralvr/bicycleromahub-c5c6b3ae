@@ -86,6 +86,20 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
             {eligibleCount} of {staff.length} guides match this shift's requirements and are free.
           </DialogDescription>
 
+          {/* Note to guide */}
+          <div className="mt-3">
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1 mb-1">
+              <StickyNote className="h-3 w-3" /> Note to guide <span className="text-muted-foreground/60 normal-case font-normal tracking-normal">(optional)</span>
+            </label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note the guide will receive with this assignment…"
+              rows={2}
+              className="text-sm resize-none"
+            />
+          </div>
+
           {/* Shift recap */}
           <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5">
             <div className="font-semibold text-foreground text-sm">{shift.tourName}</div>
