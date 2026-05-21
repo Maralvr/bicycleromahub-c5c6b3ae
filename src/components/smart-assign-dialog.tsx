@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search, StickyNote } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
