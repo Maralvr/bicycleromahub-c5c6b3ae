@@ -39,7 +39,8 @@ import {
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
-type UpdateTimeFn = (shiftId: string, startTime: string, endTime: string) => void | Promise<void>;
+type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: string };
+type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
 type CalendarShift = Shift & { groupedShifts?: Shift[] };
@@ -181,13 +182,13 @@ export function ShiftsCalendar({
   shifts,
   staff,
   onAssign,
-  onUpdateTime,
+  onUpdateDeparture,
   showRates = true,
 }: {
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
-  onUpdateTime?: UpdateTimeFn;
+  onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
 }) {
   const [view, setView] = useState<View>("week");
@@ -447,7 +448,7 @@ export function ShiftsCalendar({
         showRates={showRates}
         onClose={() => setSelectedShift(null)}
         onAssign={onAssign}
-        onUpdateTime={onUpdateTime}
+        onUpdateDeparture={onUpdateDeparture}
       />
     </Card>
   );
@@ -998,24 +999,26 @@ function ShiftDetailsDialog({
   staff,
   onClose,
   onAssign,
-  onUpdateTime,
+  onUpdateDeparture,
   showRates = true,
 }: {
   shift: CalendarShift | null;
   staff: Staff[];
   onClose: () => void;
   onAssign?: AssignFn;
-  onUpdateTime?: UpdateTimeFn;
+  onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
 }) {
   const open = !!shift;
   const [startTime, setStartTime] = useState(shift?.startTime ?? "");
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
-  const [savingTime, setSavingTime] = useState(false);
+  const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
+  const [savingDeparture, setSavingDeparture] = useState(false);
   useEffect(() => {
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
-  }, [shift?.id, shift?.startTime, shift?.endTime]);
+    setMeetingPoint(shift?.meetingPoint ?? "");
+  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint]);
 
   if (!shift) {
     return (
@@ -1038,26 +1041,38 @@ function ShiftDetailsDialog({
   const bookingRows = s.groupedShifts ?? [s];
   const assignableStaff = staff.filter((m) => m.role === "guide" || m.role === "admin");
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
-  const persistTimeIfChanged = async () => {
-    if (!onUpdateTime || !timeChanged) return;
+  const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
+  const departureChanged = timeChanged || meetingChanged;
+  const buildPatch = (): DeparturePatch => {
+    const patch: DeparturePatch = {};
+    if (timeChanged) {
+      patch.startTime = startTime;
+      patch.endTime = endTime;
+    }
+    if (meetingChanged) patch.meetingPoint = meetingPoint;
+    return patch;
+  };
+  const persistDepartureIfChanged = async () => {
+    if (!onUpdateDeparture || !departureChanged) return;
+    const patch = buildPatch();
     for (const row of bookingRows) {
-      await onUpdateTime(row.id, startTime, endTime);
+      await onUpdateDeparture(row.id, patch);
     }
   };
-  const handleSaveTime = async () => {
-    if (!onUpdateTime || !timeChanged) return;
-    setSavingTime(true);
+  const handleSaveDeparture = async () => {
+    if (!onUpdateDeparture || !departureChanged) return;
+    setSavingDeparture(true);
     try {
-      await persistTimeIfChanged();
+      await persistDepartureIfChanged();
     } finally {
-      setSavingTime(false);
+      setSavingDeparture(false);
     }
   };
   const handleAssign = async (staffId: string) => {
     if (!onAssign) return;
     const member = staff.find((m) => m.id === staffId);
     if (!member) return;
-    await persistTimeIfChanged();
+    await persistDepartureIfChanged();
     for (const row of bookingRows) {
       await onAssign(row.id, staffId, member.name);
     }
@@ -1179,11 +1194,11 @@ function ShiftDetailsDialog({
             </div>
           </div>
         )}
-        {onUpdateTime && (
+        {onUpdateDeparture && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              Override tour time
+              Override departure
               {bookingRows.length > 1 && (
                 <span className="font-normal text-muted-foreground">
                   (applies to all {bookingRows.length} bookings)
@@ -1199,19 +1214,31 @@ function ShiftDetailsDialog({
                 <Label htmlFor="ov-end" className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
                 <Input id="ov-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
               </div>
+            </div>
+            <div className="mt-2 space-y-1">
+              <Label htmlFor="ov-meet" className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
+              <Input
+                id="ov-meet"
+                value={meetingPoint}
+                onChange={(e) => setMeetingPoint(e.target.value)}
+                placeholder="e.g. Piazza del Popolo, fountain side"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-end">
               <Button
                 size="sm"
                 variant="outline"
                 className="h-9 text-xs"
-                disabled={!timeChanged || savingTime}
-                onClick={handleSaveTime}
+                disabled={!departureChanged || savingDeparture}
+                onClick={handleSaveDeparture}
               >
-                {savingTime ? "Saving…" : "Save time"}
+                {savingDeparture ? "Saving…" : "Save changes"}
               </Button>
             </div>
-            {timeChanged && (
+            {departureChanged && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Time will also be saved automatically when you assign a guide.
+                Changes will also be saved automatically when you assign a guide.
               </p>
             )}
           </div>

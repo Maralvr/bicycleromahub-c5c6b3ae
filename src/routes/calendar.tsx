@@ -33,8 +33,11 @@ function CalendarPage() {
     await assignShift(shiftId, staffId);
   };
 
-  const handleUpdateTime = async (shiftId: string, startTime: string, endTime: string) => {
-    await updateShift(shiftId, { startTime, endTime });
+  const handleUpdateDeparture = async (
+    shiftId: string,
+    patch: { startTime?: string; endTime?: string; meetingPoint?: string },
+  ) => {
+    await updateShift(shiftId, patch);
   };
 
   return (
@@ -43,7 +46,7 @@ function CalendarPage() {
         title={t.nav.calendar}
         subtitle="All scheduled tours across day, week and month."
       />
-      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateTime={handleUpdateTime} />
+      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateDeparture={handleUpdateDeparture} />
     </AppShell>
   );
 }
