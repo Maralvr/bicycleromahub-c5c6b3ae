@@ -1,4 +1,12 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Shift } from "./mock-data";
 
@@ -149,13 +157,9 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     void fetchAll();
     const channel = supabase
       .channel("shifts-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "shifts" },
-        () => {
-          void fetchAll();
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => {
+        void fetchAll();
+      })
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -209,7 +213,17 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   return (
     <ShiftsStoreContext.Provider
-      value={{ shifts, loading, error, refresh: fetchAll, addShift, updateShift, deleteShift, setStatus, assignShift }}
+      value={{
+        shifts,
+        loading,
+        error,
+        refresh: fetchAll,
+        addShift,
+        updateShift,
+        deleteShift,
+        setStatus,
+        assignShift,
+      }}
     >
       {children}
     </ShiftsStoreContext.Provider>
