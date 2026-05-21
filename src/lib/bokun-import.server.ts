@@ -218,6 +218,7 @@ interface BokunBookingFull {
     totalPrice?: number | { amount?: number; currency?: string };
     totalPriceAmount?: number;
     paidType?: string;
+    seller?: { title?: string; companyName?: string };
     notes?: unknown;
   }>;
 }
