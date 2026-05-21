@@ -311,6 +311,7 @@ function TasksPage() {
                 isMine={task.assigneeId === staffId}
                 updates={updatesForTask(task.id)}
                 onPostUpdate={() => setUpdateDialogTask(task)}
+                onDelete={isAdmin ? () => handleDelete(task) : undefined}
               />
             ))}
             {done.length === 0 && (
