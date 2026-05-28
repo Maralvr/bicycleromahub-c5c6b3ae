@@ -80,9 +80,27 @@ function ShiftsPage() {
       // Loop chunks one page at a time so each request stays small and progress is committed after every page.
       let done = false;
       let pages = 0;
+      let consecutiveFailures = 0;
       let last: Awaited<ReturnType<typeof processChunk>> | null = null;
       while (!done) {
-        const res = await processChunk({ data: { accessToken: token, runId } });
+        let res: Awaited<ReturnType<typeof processChunk>>;
+        try {
+          res = await processChunk({ data: { accessToken: token, runId } });
+          consecutiveFailures = 0;
+        } catch (err) {
+          consecutiveFailures++;
+          const msg = (err as Error).message ?? "";
+          // Retry transient gateway/timeout errors so a single slow page doesn't abort the whole import.
+          if (consecutiveFailures < 5 && /timeout|502|503|504|fetch|network/i.test(msg)) {
+            toast.loading(`Retrying page ${pages + 1}…`, {
+              id: tid,
+              description: `Attempt ${consecutiveFailures + 1} of 5`,
+            });
+            await new Promise((r) => setTimeout(r, 1500 * consecutiveFailures));
+            continue;
+          }
+          throw err;
+        }
         last = res;
         done = res.done;
         pages++;
@@ -95,7 +113,7 @@ function ShiftsPage() {
         } else {
           toast.loading(`Importing… page ${pages}`, { id: tid });
         }
-        if (pages > 500) break; // safety cap
+        if (pages > 1000) break; // safety cap
       }
 
       toast.success(`Imported ${last?.created ?? 0} new, updated ${last?.updated ?? 0}`, {
