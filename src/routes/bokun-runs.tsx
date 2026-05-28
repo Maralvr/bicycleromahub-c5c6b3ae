@@ -74,11 +74,31 @@ function BokunRunsPage() {
 
   // Auto-poll every 2s while any run is still in flight
   const hasRunning = runs.some((r) => !r.finished_at);
+  const runningCount = runs.filter((r) => !r.finished_at).length;
   useEffect(() => {
     if (!ready || !hasRunning) return;
     const t = setInterval(() => void load(), 2000);
     return () => clearInterval(t);
   }, [ready, hasRunning, load]);
+
+  const cancelRunning = useCallback(async () => {
+    if (!hasRunning) return;
+    if (!confirm(`Cancel ${runningCount} running import${runningCount === 1 ? "" : "s"}?`)) return;
+    const { error } = await supabase
+      .from("bokun_import_runs")
+      .update({
+        finished_at: new Date().toISOString(),
+        success: false,
+        error_message: "Cancelled by admin",
+      })
+      .is("finished_at", null);
+    if (error) {
+      toast.error(`Failed to cancel: ${error.message}`);
+    } else {
+      toast.success(`Cancelled ${runningCount} run${runningCount === 1 ? "" : "s"}`);
+      void load();
+    }
+  }, [hasRunning, runningCount, load]);
 
   if (!ready) return null;
 
