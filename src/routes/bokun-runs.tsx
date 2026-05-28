@@ -108,10 +108,18 @@ function BokunRunsPage() {
         title="Bokun import runs"
         subtitle="History of scheduled and manual Bokun syncs"
         actions={
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            {hasRunning && (
+              <Button variant="outline" size="sm" onClick={() => void cancelRunning()}>
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel running ({runningCount})
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         }
       />
 
