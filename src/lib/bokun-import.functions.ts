@@ -51,34 +51,7 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
 /** Get the current Bokun cron schedule status and last run time. */
 export const getBokunCronStatusFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    const { data: jobs } = await supabaseAdmin
-      .schema("cron")
-      .from("job")
-      .select("jobid,jobname,schedule,active")
-      .ilike("command", "%sync-bokun%");
-
-    const isScheduled = (jobs?.length ?? 0) > 0;
-    const schedule = jobs?.[0]?.schedule ?? null;
-
-    const { data: lastRuns } = await supabaseAdmin
-      .schema("cron")
-      .from("job_run_details")
-      .select("start_time,end_time,status")
-      .ilike("command", "%sync-bokun%")
-      .order("start_time", { ascending: false })
-      .limit(1);
-
-    const lastRun = lastRuns?.[0] ?? null;
-
-    return {
-      isScheduled,
-      schedule,
-      lastRun: lastRun
-        ? {
-            startTime: lastRun.start_time as string,
-            endTime: lastRun.end_time as string | null,
-            status: lastRun.status as string,
-          }
-        : null,
-    };
+    const { data, error } = await supabaseAdmin.rpc("get_bokun_cron_status");
+    if (error) throw new Error(error.message);
+    return (data as { isScheduled: boolean; schedule: string | null; lastRun: { startTime: string; endTime: string | null; status: string } | null }) ?? { isScheduled: false, schedule: null, lastRun: null };
   });
