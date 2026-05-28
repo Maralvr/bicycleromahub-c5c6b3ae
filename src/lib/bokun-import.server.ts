@@ -309,62 +309,64 @@ function extractSearchBookings(searchRes: BokunSearchResponse | null) {
   return productBookings.length ? productBookings : directResults;
 }
 
-export async function runBokunImport(
+const PAGE_SIZE = 50;
+
+export async function startBokunImport(
   fromDate: string,
   toDate = "2099-12-31",
   trigger: "manual" | "cron" = "manual",
-  options: { maxPages?: number; detailConcurrency?: number } = {},
 ) {
-  const maxPages = options.maxPages ?? (trigger === "cron" ? 1 : 200);
-  const detailConcurrency = options.detailConcurrency ?? 10;
-  let page = 1;
-  const pageSize = 50;
-  let totalSeen = 0;
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
-  const errors: string[] = [];
-
-  const { data: runRow } = await supabaseAdmin
+  const { data: runRow, error } = await supabaseAdmin
     .from("bokun_import_runs")
-    .insert({ from_date: fromDate, to_date: toDate, trigger })
+    .insert({ from_date: fromDate, to_date: toDate, trigger, next_page: 1 })
     .select("id")
     .single();
-  const runId = runRow?.id as string | undefined;
+  if (error || !runRow) throw new Error(`Could not create run: ${error?.message ?? "unknown"}`);
+  return { runId: runRow.id as string };
+}
 
+/**
+ * Process a single page of an in-flight Bokun import run.
+ * Returns done=true once there are no more pages.
+ */
+export async function processBokunImportChunk(runId: string, detailConcurrency = 10) {
+  const { data: run, error: loadErr } = await supabaseAdmin
+    .from("bokun_import_runs")
+    .select("*")
+    .eq("id", runId)
+    .single();
+  if (loadErr || !run) throw new Error(`Run not found: ${runId}`);
+  if (run.finished_at) {
+    return { done: true, totalSeen: run.total_seen, totalHits: run.total_hits, page: run.next_page };
+  }
+
+  const page = run.next_page ?? 1;
+  let totalSeen = run.total_seen ?? 0;
+  let created = run.created ?? 0;
+  let updated = run.updated ?? 0;
+  let skipped = run.skipped ?? 0;
+  const errors: string[] = Array.isArray(run.errors) ? [...(run.errors as string[])] : [];
   let fatal: string | null = null;
+  let done = false;
 
   try {
-    while (true) {
-      let searchRes: BokunSearchResponse | null = null;
-      try {
-        const fromMs = Date.parse(`${fromDate}T00:00:00Z`);
-        const toMs = Date.parse(`${toDate}T23:59:59Z`);
-        searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
-          bookingRole: "SELLER",
-          startDateRange: { from: fromMs, to: toMs },
-          pageSize,
-          page,
-          sortField: "startDate",
-          sortOrder: "ASC",
-        });
-      } catch (e) {
-        errors.push(`Search page ${page}: ${(e as Error).message}`);
-        break;
-      }
+    const fromMs = Date.parse(`${run.from_date}T00:00:00Z`);
+    const toMs = Date.parse(`${run.to_date}T23:59:59Z`);
+    const searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
+      bookingRole: "SELLER",
+      startDateRange: { from: fromMs, to: toMs },
+      pageSize: PAGE_SIZE,
+      page,
+      sortField: "startDate",
+      sortOrder: "ASC",
+    }) as BokunSearchResponse;
 
-      // Capture total hits on first successful page so the UI can show progress
-      if (page === 1 && runId && typeof searchRes?.totalHits === "number") {
-        await supabaseAdmin
-          .from("bokun_import_runs")
-          .update({ total_hits: searchRes.totalHits })
-          .eq("id", runId);
-      }
+    const totalHits = typeof searchRes?.totalHits === "number" ? searchRes.totalHits : run.total_hits;
 
-      const results = extractSearchBookings(searchRes);
-      if (results.length === 0) break;
-
-      // Filter out cancelled bookings up front
+    const results = extractSearchBookings(searchRes);
+    if (results.length === 0) {
+      done = true;
+    } else {
       const liveSummaries: BokunBookingFull[] = [];
       for (const summary of results) {
         totalSeen++;
@@ -372,7 +374,6 @@ export async function runBokunImport(
         liveSummaries.push(summary);
       }
 
-      // Fetch booking details in parallel batches
       const fullBookings: BokunBookingFull[] = [];
       for (let i = 0; i < liveSummaries.length; i += detailConcurrency) {
         const batch = liveSummaries.slice(i, i + detailConcurrency);
@@ -396,7 +397,6 @@ export async function runBokunImport(
         fullBookings.push(...settled);
       }
 
-      // Upsert each booking (serial — DB writes are fast and we want stable errors)
       for (const full of fullBookings) {
         const row = mapToShiftRow(full);
         if (!row || !row.booking_id) { skipped++; continue; }
@@ -424,23 +424,30 @@ export async function runBokunImport(
         }
       }
 
-      // Push incremental progress so the UI can render a live %
-      if (runId) {
-        await supabaseAdmin
-          .from("bokun_import_runs")
-          .update({ total_seen: totalSeen, created, updated, skipped })
-          .eq("id", runId);
-      }
-
-      if (results.length < pageSize) break;
-      page++;
-      if (page > maxPages) break;
+      if (results.length < PAGE_SIZE) done = true;
     }
+
+    const nextPage = done ? page : page + 1;
+    await supabaseAdmin
+      .from("bokun_import_runs")
+      .update({
+        total_seen: totalSeen,
+        total_hits: totalHits ?? null,
+        created,
+        updated,
+        skipped,
+        errors: errors.slice(0, 50),
+        next_page: nextPage,
+        ...(done ? {
+          finished_at: new Date().toISOString(),
+          success: errors.length === 0,
+        } : {}),
+      })
+      .eq("id", runId);
+
+    return { done, totalSeen, totalHits, page, created, updated, skipped, errors: errors.slice(0, 20) };
   } catch (e) {
     fatal = (e as Error).message;
-  }
-
-  if (runId) {
     await supabaseAdmin
       .from("bokun_import_runs")
       .update({
@@ -450,13 +457,38 @@ export async function runBokunImport(
         updated,
         skipped,
         errors: errors.slice(0, 50),
-        success: !fatal && errors.length === 0,
+        success: false,
         error_message: fatal,
       })
       .eq("id", runId);
+    throw e;
   }
+}
 
-  return { totalSeen, created, updated, skipped, errors: errors.slice(0, 20), runId };
+/**
+ * Legacy single-shot helper kept for the cron path (one page per tick).
+ */
+export async function runBokunImport(
+  fromDate: string,
+  toDate = "2099-12-31",
+  trigger: "manual" | "cron" = "manual",
+  options: { maxPages?: number } = {},
+) {
+  const { runId } = await startBokunImport(fromDate, toDate, trigger);
+  const maxPages = options.maxPages ?? 1;
+  let lastResult: Awaited<ReturnType<typeof processBokunImportChunk>> | null = null;
+  for (let i = 0; i < maxPages; i++) {
+    lastResult = await processBokunImportChunk(runId);
+    if (lastResult.done) break;
+  }
+  return {
+    runId,
+    totalSeen: lastResult?.totalSeen ?? 0,
+    created: lastResult?.created ?? 0,
+    updated: lastResult?.updated ?? 0,
+    skipped: lastResult?.skipped ?? 0,
+    errors: lastResult?.errors ?? [],
+  };
 }
 
 export async function assertAdmin(accessToken: string) {
@@ -468,3 +500,4 @@ export async function assertAdmin(accessToken: string) {
     .eq("user_id", userData.user.id);
   if (!roles?.some((r) => r.role === "admin")) throw new Error("Admin only");
 }
+

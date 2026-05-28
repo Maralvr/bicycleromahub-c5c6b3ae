@@ -23,6 +23,7 @@ export type Database = {
           finished_at: string | null
           from_date: string
           id: string
+          next_page: number
           skipped: number
           started_at: string
           success: boolean
@@ -40,6 +41,7 @@ export type Database = {
           finished_at?: string | null
           from_date: string
           id?: string
+          next_page?: number
           skipped?: number
           started_at?: string
           success?: boolean
@@ -57,6 +59,7 @@ export type Database = {
           finished_at?: string | null
           from_date?: string
           id?: string
+          next_page?: number
           skipped?: number
           started_at?: string
           success?: boolean

@@ -13,7 +13,7 @@ import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { importBokunBookings } from "@/lib/bokun-import.functions";
+import { startBokunImportFn, processBokunImportChunkFn } from "@/lib/bokun-import.functions";
 
 import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
@@ -61,22 +61,48 @@ function ShiftsPage() {
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const [importing, setImporting] = useState(false);
-  const importBokun = useServerFn(importBokunBookings);
-  
+  const startImport = useServerFn(startBokunImportFn);
+  const processChunk = useServerFn(processBokunImportChunkFn);
+
   const handleImportBokun = async () => {
     if (!confirm("Import all Bokun bookings from March 1, 2026 onwards? Existing bookings will be updated.")) return;
     setImporting(true);
-    const tid = toast.loading("Importing from Bokun…", { description: "This may take a minute." });
+    const tid = toast.loading("Starting Bokun import…", {
+      description: "Track live progress on the Bokun runs page.",
+    });
     try {
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
-      const res = await importBokun({ data: { accessToken: token, fromDate: "2026-03-01" } });
-      toast.success(`Imported ${res.created} new, updated ${res.updated}`, {
+
+      const { runId } = await startImport({ data: { accessToken: token, fromDate: "2026-03-01" } });
+
+      // Loop chunks one page at a time so each request stays small and progress is committed after every page.
+      let done = false;
+      let pages = 0;
+      let last: Awaited<ReturnType<typeof processChunk>> | null = null;
+      while (!done) {
+        const res = await processChunk({ data: { accessToken: token, runId } });
+        last = res;
+        done = res.done;
+        pages++;
+        if (res.totalHits && res.totalSeen != null) {
+          const pct = Math.min(99, Math.round((res.totalSeen / res.totalHits) * 100));
+          toast.loading(`Importing… ${pct}%`, {
+            id: tid,
+            description: `${res.totalSeen}/${res.totalHits} bookings · page ${pages}`,
+          });
+        } else {
+          toast.loading(`Importing… page ${pages}`, { id: tid });
+        }
+        if (pages > 500) break; // safety cap
+      }
+
+      toast.success(`Imported ${last?.created ?? 0} new, updated ${last?.updated ?? 0}`, {
         id: tid,
-        description: `${res.totalSeen} bookings seen, ${res.skipped} skipped${res.errors.length ? `, ${res.errors.length} errors` : ""}`,
+        description: `${last?.totalSeen ?? 0} bookings seen, ${last?.skipped ?? 0} skipped${last?.errors?.length ? `, ${last.errors.length} errors` : ""}`,
       });
-      if (res.errors.length) console.warn("Bokun import errors:", res.errors);
+      if (last?.errors?.length) console.warn("Bokun import errors:", last.errors);
       await refreshShifts?.();
     } catch (e) {
       toast.error("Import failed", { id: tid, description: (e as Error).message });
