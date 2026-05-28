@@ -1,8 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { runBokunImport, assertAdmin } from "./bokun-import.server";
+import {
+  runBokunImport,
+  startBokunImport,
+  processBokunImportChunk,
+  assertAdmin,
+} from "./bokun-import.server";
 
-export const importBokunBookings = createServerFn({ method: "POST" })
+/**
+ * Kick off a manual Bokun import — creates a run row and returns its id.
+ * The client then calls `processBokunImportChunkFn` repeatedly until done.
+ */
+export const startBokunImportFn = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       accessToken: z.string().min(20),
@@ -12,12 +21,25 @@ export const importBokunBookings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await assertAdmin(data.accessToken);
-    return runBokunImport(data.fromDate, data.toDate);
+    return startBokunImport(data.fromDate, data.toDate, "manual");
   });
 
+/** Process one page (~50 bookings) of an in-flight run. */
+export const processBokunImportChunkFn = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({
+      accessToken: z.string().min(20),
+      runId: z.string().uuid(),
+    }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    await assertAdmin(data.accessToken);
+    return processBokunImportChunk(data.runId);
+  });
+
+/** Cron: rolling window, one page per tick. */
 export const syncBokunCronImport = createServerFn({ method: "POST" })
   .handler(async () => {
-    // Rolling window: last 30 days → next 180 days. Keeps each cron tick small.
     const today = new Date();
     const from = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
     const to = new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000);
