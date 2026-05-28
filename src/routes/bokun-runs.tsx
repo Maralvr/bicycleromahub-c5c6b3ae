@@ -54,10 +54,18 @@ function progressPct(r: RunRow): number | null {
   return pct;
 }
 
+interface CronStatus {
+  isScheduled: boolean;
+  schedule: string | null;
+  lastRun: { startTime: string; endTime: string | null; status: string } | null;
+}
+
 function BokunRunsPage() {
   const { ready } = useRequireAdmin();
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
+  const fetchCronStatus = useServerFn(getBokunCronStatusFn);
 
   const load = useCallback(async () => {
     setLoading(true);
