@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   runBokunImport,
   startBokunImport,
@@ -45,4 +46,12 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
     const to = new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     return runBokunImport(iso(from), iso(to), "cron", { maxPages: 1 });
+  });
+
+/** Get the current Bokun cron schedule status and last run time. */
+export const getBokunCronStatusFn = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const { data, error } = await supabaseAdmin.rpc("get_bokun_cron_status");
+    if (error) throw new Error(error.message);
+    return (data as { isScheduled: boolean; schedule: string | null; lastRun: { startTime: string; endTime: string | null; status: string } | null }) ?? { isScheduled: false, schedule: null, lastRun: null };
   });

@@ -7,7 +7,9 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { getBokunCronStatusFn } from "@/lib/bokun-import.functions";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, PauseCircle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/bokun-runs")({
@@ -52,10 +54,18 @@ function progressPct(r: RunRow): number | null {
   return pct;
 }
 
+interface CronStatus {
+  isScheduled: boolean;
+  schedule: string | null;
+  lastRun: { startTime: string; endTime: string | null; status: string } | null;
+}
+
 function BokunRunsPage() {
   const { ready } = useRequireAdmin();
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
+  const fetchCronStatus = useServerFn(getBokunCronStatusFn);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +81,11 @@ function BokunRunsPage() {
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
+
+  useEffect(() => {
+    if (!ready) return;
+    void fetchCronStatus().then(setCronStatus).catch(() => setCronStatus(null));
+  }, [ready, fetchCronStatus]);
 
   // Auto-poll every 2s while any run is still in flight
   const hasRunning = runs.some((r) => !r.finished_at);
@@ -122,6 +137,37 @@ function BokunRunsPage() {
           </div>
         }
       />
+
+      {cronStatus && (
+        <Card className="p-4 mb-4 flex items-center gap-4">
+          {cronStatus.isScheduled ? (
+            <PlayCircle className="h-5 w-5 text-success shrink-0" />
+          ) : (
+            <PauseCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm">
+                Bokun auto-sync cron is {cronStatus.isScheduled ? "running" : "paused"}
+              </span>
+              {cronStatus.isScheduled && cronStatus.schedule && (
+                <Badge variant="outline" className="text-[10px]">{cronStatus.schedule}</Badge>
+              )}
+            </div>
+            {cronStatus.lastRun ? (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Last run: {new Date(cronStatus.lastRun.startTime).toLocaleString()}{" "}
+                · {cronStatus.lastRun.status}
+                {cronStatus.lastRun.endTime && (
+                  <span> · {Math.round((new Date(cronStatus.lastRun.endTime).getTime() - new Date(cronStatus.lastRun.startTime).getTime()) / 1000)}s</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-0.5">No recorded runs yet.</div>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="space-y-3">
         {runs.length === 0 && !loading && (
