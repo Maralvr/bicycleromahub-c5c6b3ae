@@ -82,6 +82,11 @@ function BokunRunsPage() {
     if (ready) void load();
   }, [ready, load]);
 
+  useEffect(() => {
+    if (!ready) return;
+    void fetchCronStatus().then(setCronStatus).catch(() => setCronStatus(null));
+  }, [ready, fetchCronStatus]);
+
   // Auto-poll every 2s while any run is still in flight
   const hasRunning = runs.some((r) => !r.finished_at);
   const runningCount = runs.filter((r) => !r.finished_at).length;
