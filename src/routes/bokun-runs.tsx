@@ -21,6 +21,7 @@ interface RunRow {
   to_date: string;
   trigger: string;
   total_seen: number;
+  total_hits: number | null;
   created: number;
   updated: number;
   skipped: number;
@@ -42,6 +43,14 @@ function duration(start: string, end: string | null) {
   return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
 }
 
+function progressPct(r: RunRow): number | null {
+  // Done → always 100%
+  if (r.finished_at) return 100;
+  if (!r.total_hits || r.total_hits <= 0) return null;
+  const pct = Math.min(99, Math.round((r.total_seen / r.total_hits) * 100));
+  return pct;
+}
+
 function BokunRunsPage() {
   const { ready } = useRequireAdmin();
   const [runs, setRuns] = useState<RunRow[]>([]);
@@ -61,6 +70,14 @@ function BokunRunsPage() {
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
+
+  // Auto-poll every 2s while any run is still in flight
+  const hasRunning = runs.some((r) => !r.finished_at);
+  useEffect(() => {
+    if (!ready || !hasRunning) return;
+    const t = setInterval(() => void load(), 2000);
+    return () => clearInterval(t);
+  }, [ready, hasRunning, load]);
 
   if (!ready) return null;
 
@@ -139,6 +156,33 @@ function BokunRunsPage() {
                 </div>
               </div>
             </div>
+
+            {(() => {
+              const pct = progressPct(r);
+              if (pct === null) return null;
+              const running = !r.finished_at;
+              return (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                    <span>
+                      {running ? "Importing…" : "Complete"}
+                      {r.total_hits != null && (
+                        <span className="ml-2 font-mono">
+                          {r.total_seen}/{r.total_hits}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold tabular-nums">{pct}%</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${running ? "bg-primary" : r.errors?.length ? "bg-destructive" : "bg-success"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
 
             {r.error_message && (
               <div className="mt-3 p-2 rounded bg-destructive/10 text-destructive text-xs font-mono">

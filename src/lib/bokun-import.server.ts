@@ -353,6 +353,14 @@ export async function runBokunImport(
         break;
       }
 
+      // Capture total hits on first successful page so the UI can show progress
+      if (page === 1 && runId && typeof searchRes?.totalHits === "number") {
+        await supabaseAdmin
+          .from("bokun_import_runs")
+          .update({ total_hits: searchRes.totalHits })
+          .eq("id", runId);
+      }
+
       const results = extractSearchBookings(searchRes);
       if (results.length === 0) break;
 
@@ -414,6 +422,14 @@ export async function runBokunImport(
           if (error) errors.push(`Insert ${row.booking_id}: ${error.message}`);
           else created++;
         }
+      }
+
+      // Push incremental progress so the UI can render a live %
+      if (runId) {
+        await supabaseAdmin
+          .from("bokun_import_runs")
+          .update({ total_seen: totalSeen, created, updated, skipped })
+          .eq("id", runId);
       }
 
       if (results.length < pageSize) break;

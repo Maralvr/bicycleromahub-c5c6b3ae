@@ -27,6 +27,7 @@ export type Database = {
           started_at: string
           success: boolean
           to_date: string
+          total_hits: number | null
           total_seen: number
           trigger: string
           updated: number
@@ -43,6 +44,7 @@ export type Database = {
           started_at?: string
           success?: boolean
           to_date: string
+          total_hits?: number | null
           total_seen?: number
           trigger?: string
           updated?: number
@@ -59,6 +61,7 @@ export type Database = {
           started_at?: string
           success?: boolean
           to_date?: string
+          total_hits?: number | null
           total_seen?: number
           trigger?: string
           updated?: number
