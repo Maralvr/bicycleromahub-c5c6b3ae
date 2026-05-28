@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/bokun-runs")({
   component: BokunRunsPage,
@@ -73,11 +74,31 @@ function BokunRunsPage() {
 
   // Auto-poll every 2s while any run is still in flight
   const hasRunning = runs.some((r) => !r.finished_at);
+  const runningCount = runs.filter((r) => !r.finished_at).length;
   useEffect(() => {
     if (!ready || !hasRunning) return;
     const t = setInterval(() => void load(), 2000);
     return () => clearInterval(t);
   }, [ready, hasRunning, load]);
+
+  const cancelRunning = useCallback(async () => {
+    if (!hasRunning) return;
+    if (!confirm(`Cancel ${runningCount} running import${runningCount === 1 ? "" : "s"}?`)) return;
+    const { error } = await supabase
+      .from("bokun_import_runs")
+      .update({
+        finished_at: new Date().toISOString(),
+        success: false,
+        error_message: "Cancelled by admin",
+      })
+      .is("finished_at", null);
+    if (error) {
+      toast.error(`Failed to cancel: ${error.message}`);
+    } else {
+      toast.success(`Cancelled ${runningCount} run${runningCount === 1 ? "" : "s"}`);
+      void load();
+    }
+  }, [hasRunning, runningCount, load]);
 
   if (!ready) return null;
 
@@ -87,10 +108,18 @@ function BokunRunsPage() {
         title="Bokun import runs"
         subtitle="History of scheduled and manual Bokun syncs"
         actions={
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            {hasRunning && (
+              <Button variant="outline" size="sm" onClick={() => void cancelRunning()}>
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel running ({runningCount})
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         }
       />
 
