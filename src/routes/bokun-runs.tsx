@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useServerFn } from "@tanstack/react-start";
 import { getBokunCronStatusFn } from "@/lib/bokun-import.functions";
-import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Clock, PauseCircle, PlayCircle } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, PauseCircle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/bokun-runs")({
