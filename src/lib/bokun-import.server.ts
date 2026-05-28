@@ -313,7 +313,10 @@ export async function runBokunImport(
   fromDate: string,
   toDate = "2099-12-31",
   trigger: "manual" | "cron" = "manual",
+  options: { maxPages?: number; detailConcurrency?: number } = {},
 ) {
+  const maxPages = options.maxPages ?? (trigger === "cron" ? 1 : 200);
+  const detailConcurrency = options.detailConcurrency ?? 10;
   let page = 1;
   const pageSize = 50;
   let totalSeen = 0;
@@ -353,27 +356,40 @@ export async function runBokunImport(
       const results = extractSearchBookings(searchRes);
       if (results.length === 0) break;
 
+      // Filter out cancelled bookings up front
+      const liveSummaries: BokunBookingFull[] = [];
       for (const summary of results) {
         totalSeen++;
         if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
+        liveSummaries.push(summary);
+      }
 
-        const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
-        let full: BokunBookingFull = summary;
-        if (detailId != null) {
+      // Fetch booking details in parallel batches
+      const fullBookings: BokunBookingFull[] = [];
+      for (let i = 0; i < liveSummaries.length; i += detailConcurrency) {
+        const batch = liveSummaries.slice(i, i + detailConcurrency);
+        const settled = await Promise.all(batch.map(async (summary) => {
+          const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
+          if (detailId == null) return summary;
           try {
             const parent = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
-            full = {
+            return {
               ...parent,
               id: summary.id,
               bookingId: summary.bookingId ?? summary.id,
               productConfirmationCode: summary.productConfirmationCode,
               parentBookingId: summary.parentBookingId ?? parent.bookingId,
-            };
+            } as BokunBookingFull;
           } catch (e) {
             errors.push(`Detail ${detailId}: ${(e as Error).message}`);
+            return summary;
           }
-        }
+        }));
+        fullBookings.push(...settled);
+      }
 
+      // Upsert each booking (serial — DB writes are fast and we want stable errors)
+      for (const full of fullBookings) {
         const row = mapToShiftRow(full);
         if (!row || !row.booking_id) { skipped++; continue; }
 
@@ -400,10 +416,9 @@ export async function runBokunImport(
         }
       }
 
-
       if (results.length < pageSize) break;
       page++;
-      if (page > 200) break;
+      if (page > maxPages) break;
     }
   } catch (e) {
     fatal = (e as Error).message;
