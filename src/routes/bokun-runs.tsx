@@ -138,6 +138,37 @@ function BokunRunsPage() {
         }
       />
 
+      {cronStatus && (
+        <Card className="p-4 mb-4 flex items-center gap-4">
+          {cronStatus.isScheduled ? (
+            <PlayCircle className="h-5 w-5 text-success shrink-0" />
+          ) : (
+            <PauseCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm">
+                Bokun auto-sync cron is {cronStatus.isScheduled ? "running" : "paused"}
+              </span>
+              {cronStatus.isScheduled && cronStatus.schedule && (
+                <Badge variant="outline" className="text-[10px]">{cronStatus.schedule}</Badge>
+              )}
+            </div>
+            {cronStatus.lastRun ? (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Last run: {new Date(cronStatus.lastRun.startTime).toLocaleString()}{" "}
+                · {cronStatus.lastRun.status}
+                {cronStatus.lastRun.endTime && (
+                  <span> · {Math.round((new Date(cronStatus.lastRun.endTime).getTime() - new Date(cronStatus.lastRun.startTime).getTime()) / 1000)}s</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-0.5">No recorded runs yet.</div>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div className="space-y-3">
         {runs.length === 0 && !loading && (
           <Card className="p-8 text-center text-sm text-muted-foreground">
