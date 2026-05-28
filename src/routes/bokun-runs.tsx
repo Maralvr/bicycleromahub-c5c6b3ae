@@ -157,6 +157,33 @@ function BokunRunsPage() {
               </div>
             </div>
 
+            {(() => {
+              const pct = progressPct(r);
+              if (pct === null) return null;
+              const running = !r.finished_at;
+              return (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                    <span>
+                      {running ? "Importing…" : "Complete"}
+                      {r.total_hits != null && (
+                        <span className="ml-2 font-mono">
+                          {r.total_seen}/{r.total_hits}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold tabular-nums">{pct}%</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${running ? "bg-primary" : r.errors?.length ? "bg-destructive" : "bg-success"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
             {r.error_message && (
               <div className="mt-3 p-2 rounded bg-destructive/10 text-destructive text-xs font-mono">
                 {r.error_message}
