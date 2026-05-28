@@ -16,4 +16,11 @@ export const importBokunBookings = createServerFn({ method: "POST" })
   });
 
 export const syncBokunCronImport = createServerFn({ method: "POST" })
-  .handler(async () => runBokunImport("2026-03-01", undefined, "cron"));
+  .handler(async () => {
+    // Rolling window: last 30 days → next 180 days. Keeps each cron tick small.
+    const today = new Date();
+    const from = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const to = new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return runBokunImport(iso(from), iso(to), "cron", { maxPages: 1 });
+  });
