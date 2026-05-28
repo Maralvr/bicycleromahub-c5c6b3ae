@@ -309,7 +309,7 @@ function extractSearchBookings(searchRes: BokunSearchResponse | null) {
   return productBookings.length ? productBookings : directResults;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 15;
 
 export async function startBokunImport(
   fromDate: string,
