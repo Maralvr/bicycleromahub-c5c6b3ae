@@ -1049,14 +1049,18 @@ function ShiftDetailsDialog({
   const [startTime, setStartTime] = useState(shift?.startTime ?? "");
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
+  const [rate, setRate] = useState<string>(shift?.rate != null ? String(shift.rate) : "");
+  const [rateTitle, setRateTitle] = useState<string>(shift?.rateTitle ?? "");
   const [savingDeparture, setSavingDeparture] = useState(false);
   const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
     setMeetingPoint(shift?.meetingPoint ?? "");
+    setRate(shift?.rate != null ? String(shift.rate) : "");
+    setRateTitle(shift?.rateTitle ?? "");
     setGuideSearch("");
-  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint]);
+  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
 
   if (!shift) {
     return (
@@ -1084,7 +1088,11 @@ function ShiftDetailsDialog({
     : assignableStaff;
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
   const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
-  const departureChanged = timeChanged || meetingChanged;
+  const origRate = s.rate != null ? String(s.rate) : "";
+  const origRateTitle = s.rateTitle ?? "";
+  const rateChanged = rate !== origRate;
+  const rateTitleChanged = rateTitle !== origRateTitle;
+  const departureChanged = timeChanged || meetingChanged || rateChanged || rateTitleChanged;
   const buildPatch = (): DeparturePatch => {
     const patch: DeparturePatch = {};
     if (timeChanged) {
@@ -1092,6 +1100,8 @@ function ShiftDetailsDialog({
       patch.endTime = endTime;
     }
     if (meetingChanged) patch.meetingPoint = meetingPoint;
+    if (rateChanged) patch.rate = rate === "" ? null : Number(rate);
+    if (rateTitleChanged) patch.rateTitle = rateTitle.trim() || null;
     return patch;
   };
   const persistDepartureIfChanged = async () => {
