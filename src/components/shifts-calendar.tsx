@@ -686,10 +686,10 @@ function WeekView({
   }
 
   return (
-    <div className="overflow-x-auto -mx-2 px-2">
+    <div className="overflow-auto -mx-2 px-2 max-h-[calc(100vh-12rem)] sm:max-h-[calc(100vh-14rem)]">
       <div className="min-w-[760px] sm:min-w-[900px]">
         {/* Header row */}
-        <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] sm:grid-cols-[88px_repeat(7,minmax(0,1fr))] gap-1 sticky top-0 z-20 bg-background pb-1">
+        <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] sm:grid-cols-[88px_repeat(7,minmax(0,1fr))] gap-1 sticky top-0 z-20 bg-background pb-1 pt-1 shadow-[0_1px_0_0_hsl(var(--border))]">
           <div className="sticky left-0 z-30 bg-background text-[10px] uppercase tracking-wider font-bold text-muted-foreground py-2 px-2 flex items-center gap-1 border-r border-border/60">
             <Clock className="h-3 w-3" /> Start
           </div>
