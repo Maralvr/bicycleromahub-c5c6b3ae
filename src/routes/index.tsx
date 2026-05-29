@@ -103,6 +103,7 @@ function DashboardPage() {
           <Link
             key={s.label}
             to={s.to}
+            search={s.search as never}
             className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Card
