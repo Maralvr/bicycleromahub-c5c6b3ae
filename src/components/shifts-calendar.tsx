@@ -783,8 +783,8 @@ function MonthView({
   const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div>
-      <div className="grid grid-cols-7 gap-1 mb-1">
+    <div className="overflow-auto -mx-2 px-2 max-h-[calc(100vh-12rem)] sm:max-h-[calc(100vh-14rem)]">
+      <div className="grid grid-cols-7 gap-1 mb-1 sticky top-0 z-20 bg-background pt-1 pb-1 border-b border-border/70">
         {weekdays.map((w) => (
           <div
             key={w}
