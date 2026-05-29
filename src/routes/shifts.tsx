@@ -69,6 +69,10 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
+  const handleCalendarShiftClick = (s: CalendarShift) => {
+    setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
+  };
   const [importing, setImporting] = useState(false);
   const startImport = useServerFn(startBokunImportFn);
   const processChunk = useServerFn(processBokunImportChunkFn);
