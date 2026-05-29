@@ -495,6 +495,16 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
 
                 {s.notes && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{s.notes}</div>}
 
+                {/* Booking notes thread — admin & assigned guide */}
+                {(currentRole === "admin" || s.assignedStaffId === currentStaffId) && (
+                  <div className="mt-4">
+                    <BookingNotesThread
+                      shiftId={s.id}
+                      canPost={currentRole === "admin" || s.assignedStaffId === currentStaffId}
+                    />
+                  </div>
+                )}
+
                 {/* AI suggestions panel for unassigned shifts */}
                 {!guide && !guideView && !pastView && (
                   <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20">
