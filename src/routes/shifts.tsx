@@ -13,6 +13,7 @@ import { useStaffStore } from "@/lib/staff-store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { AttachmentPicker } from "@/components/attachment-picker";
 import type { Attachment } from "@/lib/mock-data";
 import type { Shift, GuideNote } from "@/lib/mock-data";
