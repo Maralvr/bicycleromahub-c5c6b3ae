@@ -521,7 +521,7 @@ function ShiftChip({
   hideTime?: boolean;
 }) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
-  const meta = STATUS[s.status];
+  const meta = metaOf(s);
   const pax = paxOf(s);
   const bookings = s.groupedShifts?.length ?? 1;
   const capacity = capacityForTitle(s.tourName);
@@ -605,7 +605,7 @@ function DayView({
     <div className="space-y-2">
       {shifts.map((s) => {
         const guide = staff.find((x) => x.id === s.assignedStaffId);
-        const meta = STATUS[s.status];
+        const meta = metaOf(s);
         const Icon = meta.Icon;
         return (
           <button
@@ -856,7 +856,7 @@ function MonthView({
               </div>
               <div className="space-y-0.5">
                 {list.slice(0, 2).map((s) => {
-                  const meta = STATUS[s.status];
+                  const meta = metaOf(s);
                   return (
                     <button
                       key={s.id}
@@ -937,7 +937,7 @@ function DayDetailsDialog({
           <div className="space-y-3">
             {shifts.map((s) => {
               const guide = staff.find((x) => x.id === s.assignedStaffId);
-              const meta = STATUS[s.status];
+              const meta = metaOf(s);
               const Icon = meta.Icon;
               return (
                 <button
@@ -1056,7 +1056,7 @@ function ShiftDetailsDialog({
   }
   const s = shift;
   const guide = staff.find((x) => x.id === s.assignedStaffId);
-  const meta = STATUS[s.status];
+  const meta = metaOf(s);
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, {
     weekday: "long",
