@@ -746,3 +746,93 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
     </div>
   );
 }
+
+function RejectShiftDialog({
+  shift,
+  open,
+  onClose,
+  onConfirm,
+}: {
+  shift: Shift | null;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string, attachments: Attachment[]) => Promise<void> | void;
+}) {
+  const [reason, setReason] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const reset = () => {
+    setReason("");
+    setAttachments([]);
+    setSubmitting(false);
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await onConfirm(reason, attachments);
+      reset();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reject this shift?</DialogTitle>
+          <DialogDescription>
+            {shift ? (
+              <>
+                <span className="font-medium">{shift.tourName}</span> · {shift.date} {shift.startTime}–{shift.endTime}
+              </>
+            ) : null}
+            <div className="mt-1">The shift will go back to the unassigned pool and admins will be notified.</div>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="reject-reason">Reason (optional)</Label>
+            <Textarea
+              id="reject-reason"
+              placeholder="Sick today, double-booked, vehicle issue…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Visible to admins (and the next guide) in the booking notes thread.
+            </p>
+          </div>
+          <AttachmentPicker attachments={attachments} onChange={setAttachments} max={3} />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { reset(); onClose(); }} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            <XCircle className="h-3.5 w-3.5 mr-1" />
+            {submitting ? "Rejecting…" : "Reject shift"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
