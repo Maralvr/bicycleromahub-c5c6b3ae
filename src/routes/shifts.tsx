@@ -39,7 +39,20 @@ import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
+type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
+
 export const Route = createFileRoute("/shifts")({
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter } => {
+    const tab = search.tab as string | undefined;
+    const status = search.status as string | undefined;
+    const validTabs: ShiftsTab[] = ["calendar", "all", "bokun", "manual", "mine", "past"];
+    const validStatuses: ShiftStatusFilter[] = ["pending", "unassigned", "accepted", "rejected"];
+    return {
+      tab: tab && validTabs.includes(tab as ShiftsTab) ? (tab as ShiftsTab) : undefined,
+      status: status && validStatuses.includes(status as ShiftStatusFilter) ? (status as ShiftStatusFilter) : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Shifts — Bicycle Roma" },
