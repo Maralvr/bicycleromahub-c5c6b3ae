@@ -39,7 +39,20 @@ import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
+type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
+
 export const Route = createFileRoute("/shifts")({
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter } => {
+    const tab = search.tab as string | undefined;
+    const status = search.status as string | undefined;
+    const validTabs: ShiftsTab[] = ["calendar", "all", "bokun", "manual", "mine", "past"];
+    const validStatuses: ShiftStatusFilter[] = ["pending", "unassigned", "accepted", "rejected"];
+    return {
+      tab: tab && validTabs.includes(tab as ShiftsTab) ? (tab as ShiftsTab) : undefined,
+      status: status && validStatuses.includes(status as ShiftStatusFilter) ? (status as ShiftStatusFilter) : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Shifts — Bicycle Roma" },
@@ -55,7 +68,20 @@ function ShiftsPage() {
   const { user } = useAuth();
   const { staff } = useStaffStore();
   const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const isAdminRole = role === "admin";
+  const defaultTab: ShiftsTab = search.tab ?? (isAdminRole ? (search.status ? "all" : "calendar") : "calendar");
+  const [activeTab, setActiveTab] = useState<ShiftsTab>(defaultTab);
+  useEffect(() => {
+    if (search.tab && search.tab !== activeTab) setActiveTab(search.tab);
+    else if (search.status && activeTab === "calendar" && isAdminRole) setActiveTab("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.tab, search.status]);
+  const statusFilter = search.status ?? null;
+  const clearStatusFilter = () => navigate({ search: (prev: { tab?: ShiftsTab; status?: ShiftStatusFilter }) => ({ ...prev, status: undefined }), replace: true });
   const [rejectDialogShift, setRejectDialogShift] = useState<Shift | null>(null);
+
 
   const handleDelete = async (s: Shift) => {
     const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
@@ -169,8 +195,9 @@ function ShiftsPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
   const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
-  const upcomingShifts = filteredShifts.filter((s) => !isPast(s));
-  const pastShifts = filteredShifts.filter(isPast);
+  const byStatus = (s: Shift) => !statusFilter || s.status === statusFilter;
+  const upcomingShifts = filteredShifts.filter((s) => !isPast(s) && byStatus(s));
+  const pastShifts = filteredShifts.filter((s) => isPast(s) && byStatus(s));
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
@@ -405,7 +432,16 @@ function ShiftsPage() {
         totalCount={shifts.length}
       />
 
-      <Tabs defaultValue="calendar" key={role + staffId} className="mb-6">
+      {statusFilter && (
+        <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            Showing only <span className="font-semibold capitalize">{statusFilter}</span> shifts
+          </span>
+          <Button size="sm" variant="ghost" onClick={clearStatusFilter}>Clear filter</Button>
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ShiftsTab)} key={role + staffId} className="mb-6">
         {isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>

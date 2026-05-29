@@ -57,7 +57,8 @@ function DashboardPage() {
       sub: "+2 vs yesterday",
       icon: CalendarRange,
       accent: true,
-      to: "/shifts" as const,
+      to: "/live-shifts" as const,
+      search: undefined,
     },
     {
       label: t.dashboard.pendingAccept,
@@ -65,6 +66,7 @@ function DashboardPage() {
       sub: "Awaiting response",
       icon: Clock,
       to: "/shifts" as const,
+      search: { tab: "all" as const, status: "pending" as const },
     },
     {
       label: t.dashboard.activeStaff,
@@ -72,6 +74,7 @@ function DashboardPage() {
       sub: "On the clock",
       icon: Users2,
       to: "/staff" as const,
+      search: undefined,
     },
     {
       label: t.dashboard.openTasks,
@@ -79,6 +82,7 @@ function DashboardPage() {
       sub: `${tasks.length - openTasks.length} done today`,
       icon: ClipboardCheck,
       to: "/tasks" as const,
+      search: undefined,
     },
   ];
 
@@ -99,6 +103,7 @@ function DashboardPage() {
           <Link
             key={s.label}
             to={s.to}
+            search={s.search as never}
             className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Card
@@ -161,8 +166,8 @@ function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 sm:justify-end sm:flex-shrink-0">
                       <StatusPill status={s.status} />
-                      <Button size="sm" variant="outline" className="h-7 text-xs">
-                        Assign
+                      <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                        <Link to="/shifts" search={{ tab: "all", status: "unassigned" } as never}>Assign</Link>
                       </Button>
                     </div>
                   </div>
