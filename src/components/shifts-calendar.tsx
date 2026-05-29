@@ -1250,7 +1250,7 @@ function ShiftDetailsDialog({
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              Override departure
+              Admin overrides
               {bookingRows.length > 1 && (
                 <span className="font-normal text-muted-foreground">
                   (applies to all {bookingRows.length} bookings)
@@ -1266,6 +1266,12 @@ function ShiftDetailsDialog({
                 <Label htmlFor="ov-end" className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
                 <Input id="ov-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
               </div>
+              {showRates && (
+                <div className="space-y-1">
+                  <Label htmlFor="ov-rate" className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate (€)</Label>
+                  <Input id="ov-rate" type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 w-24 text-xs" />
+                </div>
+              )}
             </div>
             <div className="mt-2 space-y-1">
               <Label htmlFor="ov-meet" className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
@@ -1274,6 +1280,16 @@ function ShiftDetailsDialog({
                 value={meetingPoint}
                 onChange={(e) => setMeetingPoint(e.target.value)}
                 placeholder="e.g. Piazza del Popolo, fountain side"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="mt-2 space-y-1">
+              <Label htmlFor="ov-lang" className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
+              <Input
+                id="ov-lang"
+                value={rateTitle}
+                onChange={(e) => setRateTitle(e.target.value)}
+                placeholder="e.g. Public tour in Spanish"
                 className="h-9 text-xs"
               />
             </div>
