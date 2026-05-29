@@ -38,15 +38,18 @@ export const processBokunImportChunkFn = createServerFn({ method: "POST" })
     return processBokunImportChunk(data.runId);
   });
 
-/** Cron: rolling window, one page per tick. */
+/** Cron: import March 2026 onward, one page per tick. */
 export const syncBokunCronImport = createServerFn({ method: "POST" })
   .handler(async () => {
     const today = new Date();
-    const from = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const to = new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return runBokunImport(iso(from), iso(to), "cron", { maxPages: 1 });
+    // Fixed start: March 1, 2026. End: today + 365 days to cover future bookings.
+    const from = "2026-03-01";
+    const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    return runBokunImport(from, to, "cron", { maxPages: 1 });
   });
+
 
 /** Get the current Bokun cron schedule status and last run time. */
 export const getBokunCronStatusFn = createServerFn({ method: "POST" })
