@@ -223,19 +223,26 @@ function AdminStaffDirectory() {
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  const derived = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof deriveStaffStatus>>();
+    const now = new Date();
+    staff.forEach((s) => map.set(s.id, deriveStaffStatus(s, allShifts, now)));
+    return map;
+  }, [staff, allShifts]);
+
   const counts = useMemo(
     () => ({
       all: staff.length,
-      available: staff.filter((s) => s.status === "available").length,
-      on_shift: staff.filter((s) => s.status === "on_shift").length,
-      off: staff.filter((s) => s.status === "off").length,
+      available: staff.filter((s) => derived.get(s.id) === "available").length,
+      on_shift: staff.filter((s) => derived.get(s.id) === "on_shift").length,
+      off: staff.filter((s) => derived.get(s.id) === "off").length,
     }),
-    [staff],
+    [staff, derived],
   );
 
   const filtered = staff.filter((s) => {
     const matchesQ = [s.name, ...s.tags, ...s.languages, s.role].join(" ").toLowerCase().includes(q.toLowerCase());
-    const matchesFilter = filter === "all" || s.status === filter;
+    const matchesFilter = filter === "all" || derived.get(s.id) === filter;
     return matchesQ && matchesFilter;
   });
 
