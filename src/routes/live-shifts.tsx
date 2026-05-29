@@ -53,11 +53,16 @@ function LiveShiftsPage() {
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<LiveShift | null>(null);
 
+  const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
+
   const pointById = useMemo(() => new Map(points.map((p) => [p.id, p])), [points]);
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const todays = shifts.filter((s) => s.date === todayStr);
+  const baseTodays = shifts.filter((s) => s.date === todayStr);
+  // If a date range is set, ignore the "today" restriction so users can search the full range.
+  const visibleShifts = filters.from || filters.to ? shifts : baseTodays;
+  const todays = visibleShifts.filter((s) => matchesShiftFilter(s, filters));
 
   if (!ready) return null;
 
