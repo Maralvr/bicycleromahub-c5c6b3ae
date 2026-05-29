@@ -84,8 +84,11 @@ function MyAvailabilityView() {
         <StatCard
           icon={LangIcon}
           label="Status"
-          value={me.status === "available" ? "Available" : me.status === "on_shift" ? "On shift" : "Off duty"}
-          sub={me.status === "off" ? "Not on the clock" : "Visible to dispatch"}
+          value={(() => {
+            const d = deriveStaffStatus(me, allShifts);
+            return d === "on_shift" ? "On shift" : d === "off" ? "Off duty" : d === "available" ? "Available" : "Idle";
+          })()}
+          sub="Based on today's shifts & time off"
         />
       </div>
 
