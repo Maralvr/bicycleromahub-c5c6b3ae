@@ -121,6 +121,25 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
             />
           </div>
 
+          {/* Admin overrides — rate (hidden from guides) + tour language */}
+          {onOverride && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="sa-rate" className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+                  <Euro className="h-3 w-3" /> Rate (€)
+                </Label>
+                <Input id="sa-rate" type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sa-lang" className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+                  <Languages className="h-3 w-3" /> Tour language / rate name
+                </Label>
+                <Input id="sa-lang" value={rateTitle} onChange={(e) => setRateTitle(e.target.value)} placeholder="e.g. Public tour in Spanish" className="h-9 text-xs" />
+              </div>
+            </div>
+          )}
+
+
           {/* Shift recap */}
           <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5">
             <div className="font-semibold text-foreground text-sm">{shift.tourName}</div>
