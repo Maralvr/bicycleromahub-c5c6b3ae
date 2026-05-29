@@ -421,6 +421,7 @@ function ShiftsPage() {
                   }
                 : undefined
             }
+            onShiftClick={handleCalendarShiftClick}
           />
         </TabsContent>
         {isAdmin && (
