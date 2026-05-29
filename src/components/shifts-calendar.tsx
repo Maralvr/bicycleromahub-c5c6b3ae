@@ -397,6 +397,9 @@ export function ShiftsCalendar({
                 <span className={`h-2 w-2 rounded-full ${STATUS[k].dot}`} /> {STATUS[k].label}
               </span>
             ))}
+            <span className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${MANUAL_META.dot}`} /> {MANUAL_META.label}
+            </span>
           </div>
         </div>
       </div>
