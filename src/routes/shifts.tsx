@@ -145,7 +145,7 @@ function ShiftsPage() {
     }
   };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
-  const { notesByShift, addNote, notifyGuide } = useNotesStore();
+  const { notesByShift, addNote, notifyGuide, notifyGuides } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
   const handleNoteSubmit = (note: GuideNote) => {
@@ -162,20 +162,76 @@ function ShiftsPage() {
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
-  const updateStatus = async (id: string, status: Shift["status"]) => {
-    if (status === "rejected") {
-      // Reject = release the shift back to the unassigned pool for redispatch.
-      const { error } = await supabase.rpc("reject_shift", { _shift_id: id });
-      if (error) {
-        toast.error("Couldn't reject shift", { description: error.message });
+  const adminStaffIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
+  const notifyAdmins = (
+    n: { type: "shift_accepted" | "shift_rejected"; title: string; body: string; shiftId?: string },
+  ) => {
+    if (adminStaffIds.length === 0) return;
+    notifyGuides(adminStaffIds, { ...n, link: "/shifts" });
+  };
+
+  const handleAccept = async (id: string) => {
+    const sh = shifts.find((s) => s.id === id);
+    await setStatus(id, "accepted");
+    toast.success("Shift accepted");
+    if (sh) {
+      const guide = staff.find((m) => m.id === sh.assignedStaffId);
+      notifyAdmins({
+        type: "shift_accepted",
+        title: `${guide?.name ?? "Guide"} accepted a shift`,
+        body: shiftSummary(sh),
+        shiftId: id,
+      });
+    }
+  };
+
+  const handleRejectConfirm = async (reason: string, attachments: Attachment[]) => {
+    const sh = rejectDialogShift;
+    if (!sh) return;
+    const guide = staff.find((m) => m.id === sh.assignedStaffId);
+    const trimmed = reason.trim();
+
+    // 1. Save reason + attachments to the booking notes thread (preserves authorship + timestamp).
+    if ((trimmed || attachments.length > 0) && user) {
+      const { error: noteErr } = await supabase.from("booking_notes").insert({
+        shift_id: sh.id,
+        author_profile_id: user.id,
+        author_name: guide?.name ?? "Guide",
+        author_role: "guide",
+        message: `Rejected this shift${trimmed ? `: ${trimmed}` : "."}`,
+        attachments,
+      });
+      if (noteErr) {
+        toast.error("Couldn't save rejection note", { description: noteErr.message });
         return;
       }
-      toast.success("Shift released", { description: "Back in the unassigned pool — admin will redispatch." });
+    }
+
+    // 2. Release the shift back to the unassigned pool.
+    const { error } = await supabase.rpc("reject_shift", { _shift_id: sh.id });
+    if (error) {
+      toast.error("Couldn't reject shift", { description: error.message });
       return;
     }
-    await setStatus(id, status);
-    toast.success(`Shift ${status}`);
+
+    // 3. Notify every admin.
+    const reasonSnippet = trimmed ? ` — “${trimmed.slice(0, 120)}${trimmed.length > 120 ? "…" : ""}”` : "";
+    notifyAdmins({
+      type: "shift_rejected",
+      title: `${guide?.name ?? "Guide"} rejected a shift`,
+      body: `${shiftSummary(sh)}${reasonSnippet}`,
+      shiftId: sh.id,
+    });
+
+    setRejectDialogShift(null);
+    toast.success("Shift released", { description: "Admin notified — back in the unassigned pool." });
   };
+
+  const openReject = (id: string) => {
+    const sh = shifts.find((s) => s.id === id);
+    if (sh) setRejectDialogShift(sh);
+  };
+
 
   const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string, note?: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
