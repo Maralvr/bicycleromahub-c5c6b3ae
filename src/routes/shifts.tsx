@@ -198,6 +198,11 @@ function ShiftsPage() {
         });
       }
     }
+    toast.success(`Assigned to ${staffName}`, {
+      description: note ? "Note sent to guide — awaiting accept/reject." : "Notified in-app — awaiting accept/reject.",
+    });
+  };
+
   const handleUnassign = async (id: string) => {
     const prev = shifts.find((s) => s.id === id);
     await assignShift(id, null);
@@ -212,11 +217,6 @@ function ShiftsPage() {
         link: "/shifts",
       });
     }
-  };
-
-    toast.success(`Assigned to ${staffName}`, {
-      description: note ? "Note sent to guide — awaiting accept/reject." : "Notified in-app — awaiting accept/reject.",
-    });
   };
 
   const autoAssignAll = async () => {
