@@ -101,9 +101,9 @@ function ShiftsPage() {
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
-  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => {
+  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
     await updateShift(id, patch);
-    toast.success("Departure updated");
+    toast.success("Booking updated");
   };
   const [importing, setImporting] = useState(false);
   const startImport = useServerFn(startBokunImportFn);
