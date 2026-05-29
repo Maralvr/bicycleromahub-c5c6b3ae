@@ -25,6 +25,7 @@ import { InvoiceDialog } from "@/components/invoice-dialog";
 import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
+import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useState } from "react";
@@ -417,6 +418,7 @@ function ShiftsPage() {
 function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
+  const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
   const { signatures: waiverSignatures } = useWaiverSignatures();
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
   return (
@@ -492,6 +494,16 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                 )}
 
                 {s.notes && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{s.notes}</div>}
+
+                {/* Booking notes thread — admin & assigned guide */}
+                {(currentRole === "admin" || s.assignedStaffId === currentStaffId) && (
+                  <div className="mt-4">
+                    <BookingNotesThread
+                      shiftId={s.id}
+                      canPost={currentRole === "admin" || s.assignedStaffId === currentStaffId}
+                    />
+                  </div>
+                )}
 
                 {/* AI suggestions panel for unassigned shifts */}
                 {!guide && !guideView && !pastView && (

@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_notes: {
+        Row: {
+          attachments: Json
+          author_name: string
+          author_profile_id: string
+          author_role: string
+          created_at: string
+          id: string
+          message: string
+          shift_id: string
+        }
+        Insert: {
+          attachments?: Json
+          author_name?: string
+          author_profile_id: string
+          author_role?: string
+          created_at?: string
+          id?: string
+          message: string
+          shift_id: string
+        }
+        Update: {
+          attachments?: Json
+          author_name?: string
+          author_profile_id?: string
+          author_role?: string
+          created_at?: string
+          id?: string
+          message?: string
+          shift_id?: string
+        }
+        Relationships: []
+      }
       field_updates: {
         Row: {
           attachments: Json
