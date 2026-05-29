@@ -324,7 +324,7 @@ function ShiftsPage() {
         )}
         <TabsContent value="calendar" className="mt-5">
           <ShiftsCalendar
-            shifts={isAdmin ? upcomingShifts : upcomingShifts.filter((s) => s.assignedStaffId === staffId)}
+            shifts={isAdmin ? shifts : shifts.filter((s) => s.assignedStaffId === staffId)}
             staff={staff}
             showRates={isAdmin}
             onAssign={isAdmin ? assignStaff : undefined}
