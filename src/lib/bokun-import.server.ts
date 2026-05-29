@@ -485,6 +485,13 @@ export async function runBokunImport(
   options: { maxPages?: number } = {},
 ) {
   const { runId } = await startBokunImport(fromDate, toDate, trigger);
+  return continueBokunImport(runId, options);
+}
+
+export async function continueBokunImport(
+  runId: string,
+  options: { maxPages?: number } = {},
+) {
   const maxPages = options.maxPages ?? 1;
   let lastResult: Awaited<ReturnType<typeof processBokunImportChunk>> | null = null;
   for (let i = 0; i < maxPages; i++) {
@@ -494,6 +501,9 @@ export async function runBokunImport(
   return {
     runId,
     totalSeen: lastResult?.totalSeen ?? 0,
+    totalHits: lastResult?.totalHits ?? null,
+    done: lastResult?.done ?? false,
+    page: lastResult?.page ?? null,
     created: lastResult?.created ?? 0,
     updated: lastResult?.updated ?? 0,
     skipped: lastResult?.skipped ?? 0,
