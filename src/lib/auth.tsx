@@ -33,24 +33,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
 
   const loadUserData = async (userId: string) => {
-    const [{ data: profileRow }, { data: roleRows, error: roleErr }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, display_name, avatar_initials, phone, staff_id")
-        .eq("id", userId)
-        .maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
-    console.log("[auth] loadUserData", { userId, roleRows, roleErr });
-    setProfile((profileRow as Profile) ?? null);
-    setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
+    try {
+      const [{ data: profileRow }, { data: roleRows, error: roleErr }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, display_name, avatar_initials, phone, staff_id")
+          .eq("id", userId)
+          .maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+      ]);
+      console.log("[auth] loadUserData", { userId, roleRows, roleErr });
+      setProfile((profileRow as Profile) ?? null);
+      setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
+    } finally {
+      // Roles are now known — safe to release the AuthGate. Releasing earlier
+      // causes an admin to briefly see the guide view on refresh because
+      // `isAdmin` defaults to false until roles arrive.
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     // Safety net: never let the app hang on the loading screen.
-    // If session retrieval stalls (flaky network on installed PWA,
-    // Supabase slow to respond), force-resolve loading after 6s so the
-    // user can at least reach the auth screen.
     const safetyTimer = setTimeout(() => {
       setLoading((prev) => {
         if (prev) console.warn("[auth] safety timeout — forcing loading=false");
@@ -62,25 +66,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        // Defer Supabase calls to avoid deadlock with the auth state listener
+        // Defer Supabase calls to avoid deadlock with the auth state listener.
+        // loadUserData() will flip `loading` to false once roles are resolved.
         setTimeout(() => {
           void loadUserData(newSession.user.id);
         }, 0);
       } else {
         setProfile(null);
         setRoles([]);
+        setLoading(false);
       }
-      // The listener fires immediately with INITIAL_SESSION — use that
-      // to release the loading gate even if getSession() is slow.
-      setLoading(false);
     });
 
     void supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
         await loadUserData(data.session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     // Refresh roles/profile when the tab regains focus so DB-side role changes
