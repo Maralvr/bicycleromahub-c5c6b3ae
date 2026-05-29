@@ -414,7 +414,7 @@ export function ShiftsCalendar({
             dateISO={toISO(cursor)}
             shifts={shiftsByDate[toISO(cursor)] || []}
             staff={staff}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
           />
         )}
         {view === "week" && (
@@ -423,7 +423,7 @@ export function ShiftsCalendar({
             shiftsByDate={shiftsByDate}
             staff={staff}
             onOpenDay={setSelectedDay}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
             todayISO={todayISO}
           />
         )}
@@ -432,7 +432,7 @@ export function ShiftsCalendar({
             cursor={cursor}
             shiftsByDate={shiftsByDate}
             onOpenDay={setSelectedDay}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
             todayISO={todayISO}
           />
         )}
@@ -446,7 +446,7 @@ export function ShiftsCalendar({
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => {
           setSelectedDay(null);
-          setSelectedShift(s);
+          openShift(s);
         }}
       />
       <ShiftDetailsDialog
