@@ -57,7 +57,8 @@ function DashboardPage() {
       sub: "+2 vs yesterday",
       icon: CalendarRange,
       accent: true,
-      to: "/shifts" as const,
+      to: "/live-shifts" as const,
+      search: undefined,
     },
     {
       label: t.dashboard.pendingAccept,
@@ -65,6 +66,7 @@ function DashboardPage() {
       sub: "Awaiting response",
       icon: Clock,
       to: "/shifts" as const,
+      search: { tab: "all" as const, status: "pending" as const },
     },
     {
       label: t.dashboard.activeStaff,
@@ -72,6 +74,7 @@ function DashboardPage() {
       sub: "On the clock",
       icon: Users2,
       to: "/staff" as const,
+      search: undefined,
     },
     {
       label: t.dashboard.openTasks,
@@ -79,6 +82,7 @@ function DashboardPage() {
       sub: `${tasks.length - openTasks.length} done today`,
       icon: ClipboardCheck,
       to: "/tasks" as const,
+      search: undefined,
     },
   ];
 
