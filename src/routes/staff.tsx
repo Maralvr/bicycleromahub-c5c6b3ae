@@ -380,7 +380,7 @@ function AdminStaffDirectory() {
                   <div>
                     <SheetTitle className="text-left">{liveOpenStaff.name}</SheetTitle>
                     <SheetDescription className="capitalize text-left">{liveOpenStaff.role} · {liveOpenStaff.phone}</SheetDescription>
-                    <div className="mt-1.5"><StatusPill status={liveOpenStaff.status} /></div>
+                    {(() => { const d = deriveStaffStatus(liveOpenStaff, allShifts); return d ? <div className="mt-1.5"><StatusPill status={d} /></div> : null; })()}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs pt-1">
