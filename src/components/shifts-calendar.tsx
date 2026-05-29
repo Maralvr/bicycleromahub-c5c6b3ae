@@ -44,7 +44,7 @@ type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: str
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
-type CalendarShift = Shift & { groupedShifts?: Shift[] };
+export type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 /**
  * Status color system: solid bar + tinted bg + strong foreground contrast.
