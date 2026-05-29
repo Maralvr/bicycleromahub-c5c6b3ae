@@ -113,7 +113,7 @@ function MyAvailabilityView() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-foreground truncate">{me.name}</h3>
                   <div className="text-xs text-muted-foreground capitalize">{me.role}</div>
-                  <div className="mt-1.5"><StatusPill status={me.status} /></div>
+                  {(() => { const d = deriveStaffStatus(me, allShifts); return d ? <div className="mt-1.5"><StatusPill status={d} /></div> : null; })()}
                 </div>
               </div>
               <Button
