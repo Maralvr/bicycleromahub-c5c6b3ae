@@ -126,8 +126,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
-        Loading…
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+        <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin" />
+        <p className="text-sm">Loading…</p>
       </div>
     );
   }
