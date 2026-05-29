@@ -397,32 +397,42 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         fullBookings.push(...settled);
       }
 
+      const rows: ReturnType<typeof mapToShiftRow>[] = [];
       for (const full of fullBookings) {
         const row = mapToShiftRow(full);
         if (!row || !row.booking_id) { skipped++; continue; }
+        rows.push(row);
+      }
 
-        const { data: existing } = await supabaseAdmin
+      if (rows.length > 0) {
+        // Find which booking_ids already exist so we can preserve `status`
+        // for new rows (default 'unassigned') without overwriting existing assignments.
+        const bookingIds = rows.map((r) => r!.booking_id!);
+        const { data: existingRows, error: existingErr } = await supabaseAdmin
           .from("shifts")
-          .select("id")
+          .select("booking_id")
           .eq("source", "bokun")
-          .eq("booking_id", row.booking_id)
-          .maybeSingle();
+          .in("booking_id", bookingIds);
+        if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
+        const existingSet = new Set((existingRows ?? []).map((r) => r.booking_id));
 
-        if (existing) {
-          const { error } = await supabaseAdmin
-            .from("shifts")
-            .update(row)
-            .eq("id", existing.id);
-          if (error) errors.push(`Update ${row.booking_id}: ${error.message}`);
-          else updated++;
+        const payload = rows.map((r) =>
+          existingSet.has(r!.booking_id!) ? r! : { ...r!, status: "unassigned" as const },
+        );
+
+        const { error: upsertErr } = await supabaseAdmin
+          .from("shifts")
+          .upsert(payload, { onConflict: "source,booking_id" });
+        if (upsertErr) {
+          errors.push(`Upsert page ${page}: ${upsertErr.message}`);
         } else {
-          const { error } = await supabaseAdmin
-            .from("shifts")
-            .insert({ ...row, status: "unassigned" });
-          if (error) errors.push(`Insert ${row.booking_id}: ${error.message}`);
-          else created++;
+          for (const r of rows) {
+            if (existingSet.has(r!.booking_id!)) updated++;
+            else created++;
+          }
         }
       }
+
 
       if (results.length < PAGE_SIZE) done = true;
     }
