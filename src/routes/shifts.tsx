@@ -13,6 +13,7 @@ import { useStaffStore } from "@/lib/staff-store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { AttachmentPicker } from "@/components/attachment-picker";
 import type { Attachment } from "@/lib/mock-data";
 import type { Shift, GuideNote } from "@/lib/mock-data";
@@ -35,7 +36,7 @@ import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/shifts")({
@@ -73,6 +74,10 @@ function ShiftsPage() {
   const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
+  };
+  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => {
+    await updateShift(id, patch);
+    toast.success("Departure updated");
   };
   const [importing, setImporting] = useState(false);
   const startImport = useServerFn(startBokunImportFn);
@@ -423,30 +428,23 @@ function ShiftsPage() {
             staff={staff}
             showRates={isAdmin}
             onAssign={isAdmin ? assignStaff : undefined}
-            onUpdateDeparture={
-              isAdmin
-                ? async (id, patch) => {
-                    await updateShift(id, patch);
-                    toast.success("Departure updated");
-                  }
-                : undefined
-            }
+            onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             onShiftClick={handleCalendarShiftClick}
           />
         </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
@@ -467,6 +465,7 @@ function ShiftsPage() {
             onDuplicate={duplicate}
             onDelete={isAdmin ? handleDelete : undefined}
             onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
+            onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
           />
         </TabsContent>
       </Tabs>
@@ -536,6 +535,7 @@ function ShiftsPage() {
               onDuplicate={duplicate}
               onDelete={isAdmin ? handleDelete : undefined}
               onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
+              onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             />
           )}
         </DialogContent>
@@ -544,7 +544,57 @@ function ShiftsPage() {
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
+function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => Promise<void> | void }) {
+  const [startTime, setStartTime] = useState(shift.startTime);
+  const [endTime, setEndTime] = useState(shift.endTime);
+  const [meetingPoint, setMeetingPoint] = useState(shift.meetingPoint ?? "");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setStartTime(shift.startTime);
+    setEndTime(shift.endTime);
+    setMeetingPoint(shift.meetingPoint ?? "");
+  }, [shift.id, shift.startTime, shift.endTime, shift.meetingPoint]);
+  const changed = startTime !== shift.startTime || endTime !== shift.endTime || meetingPoint !== (shift.meetingPoint ?? "");
+  const save = async () => {
+    if (!changed) return;
+    setSaving(true);
+    try {
+      const patch: { startTime?: string; endTime?: string; meetingPoint?: string } = {};
+      if (startTime !== shift.startTime) patch.startTime = startTime;
+      if (endTime !== shift.endTime) patch.endTime = endTime;
+      if (meetingPoint !== (shift.meetingPoint ?? "")) patch.meetingPoint = meetingPoint;
+      await onUpdateDeparture(shift.id, patch);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="mt-4 p-3 rounded-lg border border-border/60 bg-muted/30">
+      <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
+        <Clock className="h-3 w-3 text-primary" /> Override departure
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`ov-start-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
+          <Input id={`ov-start-${shift.id}`} type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9 w-28 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`ov-end-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
+          <Input id={`ov-end-${shift.id}`} type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
+        </div>
+        <div className="flex-1 min-w-[200px] space-y-1">
+          <Label htmlFor={`ov-meet-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
+          <Input id={`ov-meet-${shift.id}`} value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} placeholder="e.g. Piazza del Popolo, fountain side" className="h-9 text-xs" />
+        </div>
+        <Button size="sm" variant="outline" className="h-9 text-xs" disabled={!changed || saving} onClick={save}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => Promise<void> | void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
@@ -688,6 +738,10 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                       </div>
                     )}
                   </div>
+                )}
+
+                {onUpdateDeparture && !guideView && !pastView && (
+                  <ShiftOverrideDeparture shift={s} onUpdateDeparture={onUpdateDeparture} />
                 )}
 
                 <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-border/60 flex-wrap">
