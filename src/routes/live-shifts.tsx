@@ -97,6 +97,13 @@ function LiveShiftsPage() {
         </div>
       </div>
 
+      <ShiftFilters
+        value={filters}
+        onChange={setFilters}
+        resultCount={todays.length}
+        totalCount={visibleShifts.length}
+      />
+
       {error && (
         <Card className="p-4 mb-4 border-destructive/40 bg-destructive/5 text-sm text-destructive">{error}</Card>
       )}
@@ -106,15 +113,21 @@ function LiveShiftsPage() {
       ) : todays.length === 0 ? (
         <Card className="p-10 text-center border-dashed">
           <Clock className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
-          <h3 className="font-semibold text-foreground">No tours today</h3>
-          <p className="text-sm text-muted-foreground mt-1">Live shifts only show today's tours. Check back tomorrow or create a manual one.</p>
+          <h3 className="font-semibold text-foreground">
+            {filters.query || filters.from || filters.to ? "No matching shifts" : "No tours today"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {filters.query || filters.from || filters.to
+              ? "Try clearing the filters or widening the date range."
+              : "Live shifts only show today's tours. Check back tomorrow or create a manual one."}
+          </p>
           <Button onClick={() => setCreating(true)} className="mt-4">
             <Plus className="h-4 w-4 mr-1" /> New shift
           </Button>
         </Card>
       ) : (
         <div className="space-y-6">
-          <Section title="Today" shifts={todays} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} />
+          <Section title={filters.from || filters.to ? "Results" : "Today"} shifts={todays} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} />
         </div>
       )}
 
