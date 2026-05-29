@@ -428,14 +428,7 @@ function ShiftsPage() {
             staff={staff}
             showRates={isAdmin}
             onAssign={isAdmin ? assignStaff : undefined}
-            onUpdateDeparture={
-              isAdmin
-                ? async (id, patch) => {
-                    await updateShift(id, patch);
-                    toast.success("Departure updated");
-                  }
-                : undefined
-            }
+            onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             onShiftClick={handleCalendarShiftClick}
           />
         </TabsContent>
