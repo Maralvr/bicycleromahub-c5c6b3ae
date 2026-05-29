@@ -503,6 +503,33 @@ function ShiftsPage() {
         onClose={() => setRejectDialogShift(null)}
         onConfirm={handleRejectConfirm}
       />
+
+      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && setCardDialogShifts(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+          <DialogHeader>
+            <DialogTitle>
+              {cardDialogShifts && cardDialogShifts.length > 1
+                ? `${cardDialogShifts.length} bookings`
+                : "Booking details"}
+            </DialogTitle>
+          </DialogHeader>
+          {cardDialogShifts && (
+            <ShiftList
+              shifts={cardDialogShifts}
+              allShifts={shifts}
+              guideView={!isAdmin}
+              onAssign={assignStaff}
+              onOpenAssignDialog={isAdmin ? setAssignDialogShift : undefined}
+              onAccept={handleAccept}
+              onReject={openReject}
+              onUnassign={isAdmin ? handleUnassign : undefined}
+              onDuplicate={duplicate}
+              onDelete={isAdmin ? handleDelete : undefined}
+              onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
