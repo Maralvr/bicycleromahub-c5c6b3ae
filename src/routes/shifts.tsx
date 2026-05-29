@@ -491,6 +491,13 @@ function ShiftsPage() {
           }
         }}
       />
+
+      <RejectShiftDialog
+        shift={rejectDialogShift}
+        open={!!rejectDialogShift}
+        onClose={() => setRejectDialogShift(null)}
+        onConfirm={handleRejectConfirm}
+      />
     </AppShell>
   );
 }
