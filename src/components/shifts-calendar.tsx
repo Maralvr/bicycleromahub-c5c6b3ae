@@ -93,6 +93,24 @@ const STATUS = {
   },
 } as const;
 
+/**
+ * Manual bookings get their own distinct color (purple), so they're easy to
+ * spot in the calendar regardless of assignment status.
+ */
+const MANUAL_META = {
+  label: "Manual",
+  Icon: AlertCircle,
+  bar: "bg-manual",
+  chip: "bg-manual/12 hover:bg-manual/20 border-manual/40",
+  dot: "bg-manual",
+  text: "text-manual",
+  ring: "ring-manual/40",
+} as const;
+
+function metaOf(s: { source: Shift["source"]; status: Shift["status"] }) {
+  return s.source === "manual" ? MANUAL_META : STATUS[s.status];
+}
+
 function toISO(d: Date) {
   return d.toISOString().slice(0, 10);
 }
