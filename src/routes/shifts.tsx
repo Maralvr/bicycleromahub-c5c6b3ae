@@ -581,25 +581,38 @@ function ShiftsPage() {
   );
 }
 
-function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => Promise<void> | void }) {
+function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
   const [startTime, setStartTime] = useState(shift.startTime);
   const [endTime, setEndTime] = useState(shift.endTime);
   const [meetingPoint, setMeetingPoint] = useState(shift.meetingPoint ?? "");
+  const [rate, setRate] = useState<string>(shift.rate != null ? String(shift.rate) : "");
+  const [rateTitle, setRateTitle] = useState<string>(shift.rateTitle ?? "");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     setStartTime(shift.startTime);
     setEndTime(shift.endTime);
     setMeetingPoint(shift.meetingPoint ?? "");
-  }, [shift.id, shift.startTime, shift.endTime, shift.meetingPoint]);
-  const changed = startTime !== shift.startTime || endTime !== shift.endTime || meetingPoint !== (shift.meetingPoint ?? "");
+    setRate(shift.rate != null ? String(shift.rate) : "");
+    setRateTitle(shift.rateTitle ?? "");
+  }, [shift.id, shift.startTime, shift.endTime, shift.meetingPoint, shift.rate, shift.rateTitle]);
+  const origRate = shift.rate != null ? String(shift.rate) : "";
+  const origRateTitle = shift.rateTitle ?? "";
+  const changed =
+    startTime !== shift.startTime ||
+    endTime !== shift.endTime ||
+    meetingPoint !== (shift.meetingPoint ?? "") ||
+    rate !== origRate ||
+    rateTitle !== origRateTitle;
   const save = async () => {
     if (!changed) return;
     setSaving(true);
     try {
-      const patch: { startTime?: string; endTime?: string; meetingPoint?: string } = {};
+      const patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null } = {};
       if (startTime !== shift.startTime) patch.startTime = startTime;
       if (endTime !== shift.endTime) patch.endTime = endTime;
       if (meetingPoint !== (shift.meetingPoint ?? "")) patch.meetingPoint = meetingPoint;
+      if (rate !== origRate) patch.rate = rate === "" ? null : Number(rate);
+      if (rateTitle !== origRateTitle) patch.rateTitle = rateTitle.trim() || null;
       await onUpdateDeparture(shift.id, patch);
     } finally {
       setSaving(false);
@@ -608,7 +621,7 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
   return (
     <div className="mt-4 p-3 rounded-lg border border-border/60 bg-muted/30">
       <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
-        <Clock className="h-3 w-3 text-primary" /> Override departure
+        <Clock className="h-3 w-3 text-primary" /> Admin overrides
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
@@ -622,6 +635,14 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
         <div className="flex-1 min-w-[200px] space-y-1">
           <Label htmlFor={`ov-meet-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
           <Input id={`ov-meet-${shift.id}`} value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} placeholder="e.g. Piazza del Popolo, fountain side" className="h-9 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`ov-rate-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate (€)</Label>
+          <Input id={`ov-rate-${shift.id}`} type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 w-24 text-xs" />
+        </div>
+        <div className="flex-1 min-w-[200px] space-y-1">
+          <Label htmlFor={`ov-lang-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
+          <Input id={`ov-lang-${shift.id}`} value={rateTitle} onChange={(e) => setRateTitle(e.target.value)} placeholder="e.g. Public tour in Spanish" className="h-9 text-xs" />
         </div>
         <Button size="sm" variant="outline" className="h-9 text-xs" disabled={!changed || saving} onClick={save}>
           {saving ? "Saving…" : "Save"}
