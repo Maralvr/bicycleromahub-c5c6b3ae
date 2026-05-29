@@ -195,8 +195,9 @@ function ShiftsPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
   const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
-  const upcomingShifts = filteredShifts.filter((s) => !isPast(s));
-  const pastShifts = filteredShifts.filter(isPast);
+  const byStatus = (s: Shift) => !statusFilter || s.status === statusFilter;
+  const upcomingShifts = filteredShifts.filter((s) => !isPast(s) && byStatus(s));
+  const pastShifts = filteredShifts.filter((s) => isPast(s) && byStatus(s));
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
