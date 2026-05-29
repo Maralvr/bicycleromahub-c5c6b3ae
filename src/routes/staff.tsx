@@ -319,7 +319,7 @@ function AdminStaffDirectory() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-2">
-                    <StatusPill status={s.status} />
+                    {(() => { const d = derived.get(s.id); return d ? <StatusPill status={d} /> : <span className="text-[11px] text-muted-foreground italic">No shift today</span>; })()}
                     <a href={`tel:${s.phone}`} onClick={(e) => e.stopPropagation()} className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 truncate">
                       <Phone className="h-3 w-3 flex-shrink-0" /> {s.phone}
                     </a>
