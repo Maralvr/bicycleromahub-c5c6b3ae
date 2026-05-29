@@ -166,8 +166,8 @@ function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 sm:justify-end sm:flex-shrink-0">
                       <StatusPill status={s.status} />
-                      <Button size="sm" variant="outline" className="h-7 text-xs">
-                        Assign
+                      <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                        <Link to="/shifts" search={{ tab: "all", status: "unassigned" } as never}>Assign</Link>
                       </Button>
                     </div>
                   </div>
