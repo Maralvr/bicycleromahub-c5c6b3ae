@@ -465,6 +465,7 @@ function ShiftsPage() {
             onDuplicate={duplicate}
             onDelete={isAdmin ? handleDelete : undefined}
             onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
+            onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
           />
         </TabsContent>
       </Tabs>
