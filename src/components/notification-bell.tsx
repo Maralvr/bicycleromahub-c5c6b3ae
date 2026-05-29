@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X } from "lucide-react";
+import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ const TYPE_META: Record<GuideNotification["type"], { icon: typeof Bell; cls: str
   unassigned: { icon: X, cls: "bg-muted text-muted-foreground border-border", label: "Removed" },
   shift_updated: { icon: CalendarRange, cls: "bg-warning/10 text-warning-foreground border-warning/30", label: "Shift updated" },
   shift_cancelled: { icon: AlertTriangle, cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Cancelled" },
+  shift_accepted: { icon: CheckCircle2, cls: "bg-success/10 text-success border-success/30", label: "Accepted" },
+  shift_rejected: { icon: XCircle, cls: "bg-destructive/10 text-destructive border-destructive/30", label: "Rejected" },
   broadcast: { icon: Megaphone, cls: "bg-secondary/10 text-secondary-foreground border-secondary/30", label: "Broadcast" },
   reminder: { icon: Bell, cls: "bg-primary/10 text-primary border-primary/30", label: "Reminder" },
   task: { icon: ListChecks, cls: "bg-accent text-foreground border-border", label: "Task" },
