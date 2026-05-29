@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
-type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: string };
+type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null };
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
@@ -1049,14 +1049,18 @@ function ShiftDetailsDialog({
   const [startTime, setStartTime] = useState(shift?.startTime ?? "");
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
+  const [rate, setRate] = useState<string>(shift?.rate != null ? String(shift.rate) : "");
+  const [rateTitle, setRateTitle] = useState<string>(shift?.rateTitle ?? "");
   const [savingDeparture, setSavingDeparture] = useState(false);
   const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
     setMeetingPoint(shift?.meetingPoint ?? "");
+    setRate(shift?.rate != null ? String(shift.rate) : "");
+    setRateTitle(shift?.rateTitle ?? "");
     setGuideSearch("");
-  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint]);
+  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
 
   if (!shift) {
     return (
@@ -1084,7 +1088,11 @@ function ShiftDetailsDialog({
     : assignableStaff;
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
   const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
-  const departureChanged = timeChanged || meetingChanged;
+  const origRate = s.rate != null ? String(s.rate) : "";
+  const origRateTitle = s.rateTitle ?? "";
+  const rateChanged = rate !== origRate;
+  const rateTitleChanged = rateTitle !== origRateTitle;
+  const departureChanged = timeChanged || meetingChanged || rateChanged || rateTitleChanged;
   const buildPatch = (): DeparturePatch => {
     const patch: DeparturePatch = {};
     if (timeChanged) {
@@ -1092,6 +1100,8 @@ function ShiftDetailsDialog({
       patch.endTime = endTime;
     }
     if (meetingChanged) patch.meetingPoint = meetingPoint;
+    if (rateChanged) patch.rate = rate === "" ? null : Number(rate);
+    if (rateTitleChanged) patch.rateTitle = rateTitle.trim() || null;
     return patch;
   };
   const persistDepartureIfChanged = async () => {
@@ -1240,7 +1250,7 @@ function ShiftDetailsDialog({
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-primary" />
-              Override departure
+              Admin overrides
               {bookingRows.length > 1 && (
                 <span className="font-normal text-muted-foreground">
                   (applies to all {bookingRows.length} bookings)
@@ -1256,6 +1266,12 @@ function ShiftDetailsDialog({
                 <Label htmlFor="ov-end" className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
                 <Input id="ov-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
               </div>
+              {showRates && (
+                <div className="space-y-1">
+                  <Label htmlFor="ov-rate" className="text-[10px] uppercase tracking-wide text-muted-foreground">Rate (€)</Label>
+                  <Input id="ov-rate" type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 w-24 text-xs" />
+                </div>
+              )}
             </div>
             <div className="mt-2 space-y-1">
               <Label htmlFor="ov-meet" className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
@@ -1264,6 +1280,16 @@ function ShiftDetailsDialog({
                 value={meetingPoint}
                 onChange={(e) => setMeetingPoint(e.target.value)}
                 placeholder="e.g. Piazza del Popolo, fountain side"
+                className="h-9 text-xs"
+              />
+            </div>
+            <div className="mt-2 space-y-1">
+              <Label htmlFor="ov-lang" className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
+              <Input
+                id="ov-lang"
+                value={rateTitle}
+                onChange={(e) => setRateTitle(e.target.value)}
+                placeholder="e.g. Public tour in Spanish"
                 className="h-9 text-xs"
               />
             </div>

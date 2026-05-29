@@ -35,9 +35,10 @@ function CalendarPage() {
 
   const handleUpdateDeparture = async (
     shiftId: string,
-    patch: { startTime?: string; endTime?: string; meetingPoint?: string },
+    patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null },
   ) => {
-    await updateShift(shiftId, patch);
+    const { rate, ...rest } = patch;
+    await updateShift(shiftId, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
   };
 
   return (

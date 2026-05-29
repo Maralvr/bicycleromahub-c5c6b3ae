@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search, StickyNote } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertTriangle, MapPin, Clock, Users, Bell, ArrowDownUp, EyeOff, Eye, Search, StickyNote, Euro, Languages } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/avatar";
@@ -13,25 +14,34 @@ import { rankAllCandidates, type StaffCandidate } from "@/lib/staff-matcher";
 
 type SortMode = "score" | "name" | "least_busy";
 
+type OverridePatch = { rate?: number | null; rateTitle?: string | null };
+
 type Props = {
   shift: Shift | null;
   allShifts: Shift[];
   open: boolean;
   onClose: () => void;
   onAssign: (shiftId: string, staffId: string, staffName: string, note?: string) => void;
+  onOverride?: (shiftId: string, patch: OverridePatch) => Promise<void> | void;
 };
 
-export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }: Props) {
+export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, onOverride }: Props) {
   const { staff } = useStaffStore();
   const [sortMode, setSortMode] = useState<SortMode>("score");
   const [showIneligible, setShowIneligible] = useState(false);
   const [search, setSearch] = useState("");
   const [note, setNote] = useState("");
+  const [rate, setRate] = useState<string>("");
+  const [rateTitle, setRateTitle] = useState<string>("");
 
   useEffect(() => {
     if (!open) {
       setSearch("");
       setNote("");
+    }
+    if (shift) {
+      setRate(shift.rate != null ? String(shift.rate) : "");
+      setRateTitle(shift.rateTitle ?? "");
     }
   }, [open, shift?.id]);
 
@@ -61,18 +71,29 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
   );
   const best = candidates.find((c) => c.eligible);
 
-  const handleAssign = (c: StaffCandidate) => {
+  const handleAssign = async (c: StaffCandidate) => {
     if (!shift) return;
+    if (onOverride) {
+      const origRate = shift.rate != null ? String(shift.rate) : "";
+      const origRateTitle = shift.rateTitle ?? "";
+      const patch: OverridePatch = {};
+      if (rate !== origRate) patch.rate = rate === "" ? null : Number(rate);
+      if (rateTitle !== origRateTitle) patch.rateTitle = rateTitle.trim() || null;
+      if (Object.keys(patch).length > 0) {
+        await onOverride(shift.id, patch);
+      }
+    }
     onAssign(shift.id, c.staff.id, c.staff.name, note.trim() || undefined);
     onClose();
   };
 
   const handleAutoAssign = () => {
     if (!shift || !best) return;
-    handleAssign(best);
+    void handleAssign(best);
   };
 
   if (!shift) return null;
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -99,6 +120,25 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign }:
               className="text-sm resize-none"
             />
           </div>
+
+          {/* Admin overrides — rate (hidden from guides) + tour language */}
+          {onOverride && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="sa-rate" className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+                  <Euro className="h-3 w-3" /> Rate (€)
+                </Label>
+                <Input id="sa-rate" type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="h-9 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sa-lang" className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+                  <Languages className="h-3 w-3" /> Tour language / rate name
+                </Label>
+                <Input id="sa-lang" value={rateTitle} onChange={(e) => setRateTitle(e.target.value)} placeholder="e.g. Public tour in Spanish" className="h-9 text-xs" />
+              </div>
+            </div>
+          )}
+
 
           {/* Shift recap */}
           <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs space-y-1.5">
