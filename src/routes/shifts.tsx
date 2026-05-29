@@ -26,7 +26,7 @@ import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -203,6 +203,22 @@ function ShiftsPage() {
     });
   };
 
+  const handleUnassign = async (id: string) => {
+    const prev = shifts.find((s) => s.id === id);
+    await assignShift(id, null);
+    toast.success("Guide unassigned", { description: "Shift is back in the unassigned pool." });
+    if (prev?.assignedStaffId) {
+      notifyGuide({
+        staffId: prev.assignedStaffId,
+        type: "unassigned",
+        title: "Shift removed from your schedule",
+        body: `${shiftSummary({ ...prev, assignedStaffId: null })} — unassigned by admin.`,
+        shiftId: id,
+        link: "/shifts",
+      });
+    }
+  };
+
   const autoAssignAll = async () => {
     const unassigned = shifts.filter((s) => !s.assignedStaffId);
     if (unassigned.length === 0) {
@@ -341,17 +357,17 @@ function ShiftsPage() {
         </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
@@ -415,7 +431,7 @@ function ShiftsPage() {
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
@@ -595,6 +611,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     {!pastView && !guideView && guide && onOpenAssignDialog && (
                       <Button size="sm" variant="outline" onClick={() => onOpenAssignDialog(s)}>
                         <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
+                      </Button>
+                    )}
+                    {!pastView && !guideView && guide && onUnassign && (
+                      <Button size="sm" variant="outline" onClick={() => onUnassign(s.id)} className="border-destructive/40 text-destructive hover:bg-destructive/5">
+                        <UserX className="h-3.5 w-3.5 mr-1" /> Unassign
                       </Button>
                     )}
                     {!guideView && !pastView && (
