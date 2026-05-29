@@ -33,7 +33,7 @@ import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
-import { ShiftsCalendar } from "@/components/shifts-calendar";
+import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -69,6 +69,10 @@ function ShiftsPage() {
   const [assignDialogShift, setAssignDialogShift] = useState<Shift | null>(null);
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
+  const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
+  const handleCalendarShiftClick = (s: CalendarShift) => {
+    setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
+  };
   const [importing, setImporting] = useState(false);
   const startImport = useServerFn(startBokunImportFn);
   const processChunk = useServerFn(processBokunImportChunkFn);
@@ -417,6 +421,7 @@ function ShiftsPage() {
                   }
                 : undefined
             }
+            onShiftClick={handleCalendarShiftClick}
           />
         </TabsContent>
         {isAdmin && (
@@ -498,6 +503,33 @@ function ShiftsPage() {
         onClose={() => setRejectDialogShift(null)}
         onConfirm={handleRejectConfirm}
       />
+
+      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && setCardDialogShifts(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+          <DialogHeader>
+            <DialogTitle>
+              {cardDialogShifts && cardDialogShifts.length > 1
+                ? `${cardDialogShifts.length} bookings`
+                : "Booking details"}
+            </DialogTitle>
+          </DialogHeader>
+          {cardDialogShifts && (
+            <ShiftList
+              shifts={cardDialogShifts}
+              allShifts={shifts}
+              guideView={!isAdmin}
+              onAssign={assignStaff}
+              onOpenAssignDialog={isAdmin ? setAssignDialogShift : undefined}
+              onAccept={handleAccept}
+              onReject={openReject}
+              onUnassign={isAdmin ? handleUnassign : undefined}
+              onDuplicate={duplicate}
+              onDelete={isAdmin ? handleDelete : undefined}
+              onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

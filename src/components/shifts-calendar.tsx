@@ -44,7 +44,7 @@ type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: str
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
-type CalendarShift = Shift & { groupedShifts?: Shift[] };
+export type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 /**
  * Status color system: solid bar + tinted bg + strong foreground contrast.
@@ -185,17 +185,23 @@ export function ShiftsCalendar({
   onAssign,
   onUpdateDeparture,
   showRates = true,
+  onShiftClick,
 }: {
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
+  onShiftClick?: (s: CalendarShift) => void;
 }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
+  const openShift = (s: CalendarShift) => {
+    if (onShiftClick) onShiftClick(s);
+    else setSelectedShift(s);
+  };
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
@@ -408,7 +414,7 @@ export function ShiftsCalendar({
             dateISO={toISO(cursor)}
             shifts={shiftsByDate[toISO(cursor)] || []}
             staff={staff}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
           />
         )}
         {view === "week" && (
@@ -417,7 +423,7 @@ export function ShiftsCalendar({
             shiftsByDate={shiftsByDate}
             staff={staff}
             onOpenDay={setSelectedDay}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
             todayISO={todayISO}
           />
         )}
@@ -426,7 +432,7 @@ export function ShiftsCalendar({
             cursor={cursor}
             shiftsByDate={shiftsByDate}
             onOpenDay={setSelectedDay}
-            onOpenShift={setSelectedShift}
+            onOpenShift={openShift}
             todayISO={todayISO}
           />
         )}
@@ -440,7 +446,7 @@ export function ShiftsCalendar({
         onClose={() => setSelectedDay(null)}
         onOpenShift={(s) => {
           setSelectedDay(null);
-          setSelectedShift(s);
+          openShift(s);
         }}
       />
       <ShiftDetailsDialog
