@@ -46,6 +46,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-manual: var(--manual);
+  --color-manual-foreground: var(--manual-foreground);
   --color-primary-glow: var(--primary-glow);
   --color-border: var(--border);
   --color-input: var(--input);
