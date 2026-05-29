@@ -93,6 +93,24 @@ const STATUS = {
   },
 } as const;
 
+/**
+ * Manual bookings get their own distinct color (purple), so they're easy to
+ * spot in the calendar regardless of assignment status.
+ */
+const MANUAL_META = {
+  label: "Manual",
+  Icon: AlertCircle,
+  bar: "bg-manual",
+  chip: "bg-manual/12 hover:bg-manual/20 border-manual/40",
+  dot: "bg-manual",
+  text: "text-manual",
+  ring: "ring-manual/40",
+} as const;
+
+function metaOf(s: { source: Shift["source"]; status: Shift["status"] }) {
+  return s.source === "manual" ? MANUAL_META : STATUS[s.status];
+}
+
 function toISO(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -379,6 +397,9 @@ export function ShiftsCalendar({
                 <span className={`h-2 w-2 rounded-full ${STATUS[k].dot}`} /> {STATUS[k].label}
               </span>
             ))}
+            <span className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${MANUAL_META.dot}`} /> {MANUAL_META.label}
+            </span>
           </div>
         </div>
       </div>
@@ -503,7 +524,7 @@ function ShiftChip({
   hideTime?: boolean;
 }) {
   const guide = staff.find((x) => x.id === s.assignedStaffId);
-  const meta = STATUS[s.status];
+  const meta = metaOf(s);
   const pax = paxOf(s);
   const bookings = s.groupedShifts?.length ?? 1;
   const capacity = capacityForTitle(s.tourName);
@@ -587,7 +608,7 @@ function DayView({
     <div className="space-y-2">
       {shifts.map((s) => {
         const guide = staff.find((x) => x.id === s.assignedStaffId);
-        const meta = STATUS[s.status];
+        const meta = metaOf(s);
         const Icon = meta.Icon;
         return (
           <button
@@ -838,7 +859,7 @@ function MonthView({
               </div>
               <div className="space-y-0.5">
                 {list.slice(0, 2).map((s) => {
-                  const meta = STATUS[s.status];
+                  const meta = metaOf(s);
                   return (
                     <button
                       key={s.id}
@@ -919,7 +940,7 @@ function DayDetailsDialog({
           <div className="space-y-3">
             {shifts.map((s) => {
               const guide = staff.find((x) => x.id === s.assignedStaffId);
-              const meta = STATUS[s.status];
+              const meta = metaOf(s);
               const Icon = meta.Icon;
               return (
                 <button
@@ -1038,7 +1059,7 @@ function ShiftDetailsDialog({
   }
   const s = shift;
   const guide = staff.find((x) => x.id === s.assignedStaffId);
-  const meta = STATUS[s.status];
+  const meta = metaOf(s);
   const Icon = meta.Icon;
   const dateLabel = new Date(s.date).toLocaleDateString(undefined, {
     weekday: "long",
