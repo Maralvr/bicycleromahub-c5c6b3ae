@@ -94,22 +94,30 @@ const STATUS = {
 } as const;
 
 /**
- * Manual bookings get their own distinct color (purple), so they're easy to
- * spot in the calendar regardless of assignment status.
+ * Manual bookings get a distinct purple chip background, but the status
+ * stripe (bar), dot and icon stay in the assignment-status color so you can
+ * tell unassigned / pending / accepted / rejected at a glance.
  */
-const MANUAL_META = {
+function metaOf(s: { source: Shift["source"]; status: Shift["status"] }) {
+  const status = STATUS[s.status];
+  if (s.source !== "manual") return status;
+  return {
+    label: `Manual · ${status.label}`,
+    Icon: status.Icon,
+    bar: status.bar, // status color stripe stays
+    chip: "bg-manual/15 hover:bg-manual/25 border-manual/50",
+    dot: status.dot, // status color dot stays
+    text: status.text,
+    ring: "ring-manual/50",
+  } as const;
+}
+
+const MANUAL_LEGEND = {
   label: "Manual",
-  Icon: AlertCircle,
-  bar: "bg-manual",
-  chip: "bg-manual/12 hover:bg-manual/20 border-manual/40",
   dot: "bg-manual",
-  text: "text-manual",
-  ring: "ring-manual/40",
 } as const;
 
-function metaOf(s: { source: Shift["source"]; status: Shift["status"] }) {
-  return s.source === "manual" ? MANUAL_META : STATUS[s.status];
-}
+
 
 function toISO(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -398,7 +406,7 @@ export function ShiftsCalendar({
               </span>
             ))}
             <span className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${MANUAL_META.dot}`} /> {MANUAL_META.label}
+              <span className={`h-2 w-2 rounded-full ${MANUAL_LEGEND.dot}`} /> {MANUAL_LEGEND.label}
             </span>
           </div>
         </div>
