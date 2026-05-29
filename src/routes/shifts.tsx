@@ -68,7 +68,20 @@ function ShiftsPage() {
   const { user } = useAuth();
   const { staff } = useStaffStore();
   const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const isAdminRole = role === "admin";
+  const defaultTab: ShiftsTab = search.tab ?? (isAdminRole ? (search.status ? "all" : "calendar") : "calendar");
+  const [activeTab, setActiveTab] = useState<ShiftsTab>(defaultTab);
+  useEffect(() => {
+    if (search.tab && search.tab !== activeTab) setActiveTab(search.tab);
+    else if (search.status && activeTab === "calendar" && isAdminRole) setActiveTab("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.tab, search.status]);
+  const statusFilter = search.status ?? null;
+  const clearStatusFilter = () => navigate({ search: (prev) => ({ ...prev, status: undefined }), replace: true });
   const [rejectDialogShift, setRejectDialogShift] = useState<Shift | null>(null);
+
 
   const handleDelete = async (s: Shift) => {
     const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
