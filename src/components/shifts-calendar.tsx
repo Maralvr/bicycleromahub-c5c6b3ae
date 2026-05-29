@@ -185,17 +185,23 @@ export function ShiftsCalendar({
   onAssign,
   onUpdateDeparture,
   showRates = true,
+  onShiftClick,
 }: {
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
+  onShiftClick?: (s: CalendarShift) => void;
 }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
+  const openShift = (s: CalendarShift) => {
+    if (onShiftClick) onShiftClick(s);
+    else setSelectedShift(s);
+  };
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
