@@ -79,7 +79,7 @@ function ShiftsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.tab, search.status]);
   const statusFilter = search.status ?? null;
-  const clearStatusFilter = () => navigate({ search: (prev) => ({ ...prev, status: undefined }), replace: true });
+  const clearStatusFilter = () => navigate({ search: (prev: { tab?: ShiftsTab; status?: ShiftStatusFilter }) => ({ ...prev, status: undefined }), replace: true });
   const [rejectDialogShift, setRejectDialogShift] = useState<Shift | null>(null);
 
 
