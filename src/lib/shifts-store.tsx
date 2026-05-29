@@ -112,6 +112,7 @@ function shiftToDbPatch(input: ShiftPatch): Record<string, unknown> {
     out.trailers = input.participants?.trailers ?? 0;
   }
   if (input.rate !== undefined) out.rate = input.rate ?? null;
+  if (input.rateTitle !== undefined) out.rate_title = input.rateTitle ?? null;
   if (input.notes !== undefined) out.notes = input.notes ?? null;
   if (input.assignedStaffId !== undefined) out.assigned_staff_id = input.assignedStaffId;
   if (input.status !== undefined) out.status = input.status;
