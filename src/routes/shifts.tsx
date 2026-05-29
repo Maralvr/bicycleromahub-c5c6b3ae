@@ -597,6 +597,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         <Wand2 className="h-3.5 w-3.5 mr-1" /> Reassign
                       </Button>
                     )}
+                    {!pastView && !guideView && guide && onUnassign && (
+                      <Button size="sm" variant="outline" onClick={() => onUnassign(s.id)} className="border-destructive/40 text-destructive hover:bg-destructive/5">
+                        <UserX className="h-3.5 w-3.5 mr-1" /> Unassign
+                      </Button>
+                    )}
                     {!guideView && !pastView && (
                       <Button size="sm" variant="outline" onClick={() => onDuplicate(s)}>
                         <Copy className="h-3.5 w-3.5 mr-1" /> {t.common.duplicate}
