@@ -816,7 +816,7 @@ function RejectShiftDialog({
               Visible to admins (and the next guide) in the booking notes thread.
             </p>
           </div>
-          <AttachmentPicker attachments={attachments} onChange={setAttachments} max={3} />
+          <AttachmentPicker attachments={attachments} onChange={setAttachments} maxFiles={3} />
         </div>
 
         <DialogFooter>
