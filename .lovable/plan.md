@@ -1,41 +1,35 @@
-## Goal
+## Problem
 
-Make the assign/accept/reject loop fully observable for admins, and let guides reject with an optional reason that's preserved (with authorship) in the booking notes thread.
+On hard refresh, the app sometimes shows the guide view for a split second before snapping back to the admin view. Root cause is a race in `src/lib/auth.tsx`:
 
-## Changes
+- `onAuthStateChange` fires immediately with `INITIAL_SESSION` and calls `setLoading(false)` right away.
+- The actual roles fetch (`loadUserData`) is deferred with `setTimeout(..., 0)` and runs **after** loading is already false.
+- During that gap, `isAdmin` is `false`, so `useCurrentUser` resolves `role = "staff"`. Pages like `/calendar` even `<Navigate to="/shifts" />` based on this, and `/shifts` renders the "My shifts" guide layout.
 
-### 1. Database (already applied)
-Added two values to the `notification_type` enum: `shift_accepted` and `shift_rejected`. No further schema changes needed — we reuse `guide_notifications` (fan out one row per admin) and `booking_notes` (for the rejection reason).
+The existing `AuthGate` only waits on `loading`, not on roles, so the guide UI flashes through.
 
-### 2. `src/lib/notes-store.tsx`
-- Extend the `GuideNotification.type` union with `"shift_accepted"` and `"shift_rejected"`.
+## Fix
 
-### 3. `src/routes/shifts.tsx` — Guide accept flow
-- On Accept, after the status update, fan out a notification to every staff row whose `role === "admin"` (using existing `notifyGuides`):
-  - type: `shift_accepted`, title: `"{Guide name} accepted a shift"`, body: tour summary, link: `/shifts`.
+1. **`src/lib/auth.tsx`** — introduce a `rolesLoaded` flag and only flip `loading` to `false` once we know the user's roles (or there is no session).
+   - Set `rolesLoaded = false` whenever we kick off `loadUserData`; set it to `true` in a `finally` inside `loadUserData`.
+   - In the `onAuthStateChange` listener: if there is no session, set `loading=false` immediately; if there is a session, do **not** flip loading here — wait for `loadUserData` to finish.
+   - In the `getSession().then(...)` initial path: await `loadUserData` (already does) before `setLoading(false)`. Keep the 6 s safety timer as-is.
+   - This guarantees `isAdmin` reflects the real role the first time any consumer reads it.
 
-### 4. `src/routes/shifts.tsx` — Guide reject flow (with optional note)
-- Replace the bare "Reject" button on the guide's shift card with one that opens a small reject dialog (new local component, same styling as `LeaveNoteDialog`).
-- Dialog fields: optional reason textarea + optional attachments (`AttachmentPicker`) + Confirm/Cancel.
-- On Confirm:
-  1. If a reason or attachment is provided, insert a `booking_notes` row authored by the guide (`author_profile_id = user.id`, `author_role = "guide"`, message prefixed with `"Rejected this shift:"`), so it appears in the existing booking notes thread with author + timestamp.
-  2. Call the existing `reject_shift` RPC (releases the shift back to the unassigned pool).
-  3. Fan out a `shift_rejected` notification to every admin: title `"{Guide} rejected a shift"`, body includes tour summary + (truncated) reason if provided, link `/shifts`.
-  4. Toast the guide: "Shift released — admin notified."
+2. **`src/components/app-shell.tsx` (or a tiny shared `<FullScreenLoader />`)** — replace the current `"Loading…"` text in `AuthGate` (`src/routes/__root.tsx`) with a centered spinner using the existing `Loader2` icon from `lucide-react` so the refresh moment feels intentional instead of blank.
 
-### 5. `src/routes/shifts.tsx` — Unassign by admin (already notifies the guide)
-- Confirm the existing `handleUnassign` path already sends a `unassigned` notification to the affected guide — no change needed, just verifying.
+3. **`src/lib/current-user.tsx`** — no behavioral change needed once roles load before `loading=false`, but add a short comment noting the invariant ("`isAdmin` is trustworthy here because `AuthGate` waits for `rolesLoaded`").
 
-### 6. No email/push
-Per your instruction, in-app only for now. We'll wire email later when you decide.
-
-## Files touched
-
-- `src/lib/notes-store.tsx` — type union extension only.
-- `src/routes/shifts.tsx` — add `notifyAdmins` helper, reject dialog state + component, modify `updateStatus`, wire onReject to open dialog.
+4. **`src/routes/calendar.tsx`** — keep the `role !== "admin"` redirect; with the fix it will only run after roles are known, so no more accidental bounce. No code change required, just verify after the auth fix.
 
 ## Out of scope
 
-- No changes to booking_notes schema, RLS, or the existing thread component.
-- No email/push.
-- No changes to admin's existing reassign / assign-with-note flow.
+- No DB / RLS / migrations.
+- No changes to notifications, shifts logic, or `useRequireAdmin` (it already gates on `loading`).
+- No changes to the staff/shifts stores.
+
+## Files touched
+
+- `src/lib/auth.tsx` — add `rolesLoaded`, fix loading sequencing.
+- `src/routes/__root.tsx` — swap the "Loading…" text for a spinner.
+- `src/lib/current-user.tsx` — small clarifying comment only.
