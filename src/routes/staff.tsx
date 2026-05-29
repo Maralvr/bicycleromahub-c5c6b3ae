@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
+import { deriveStaffStatus } from "@/lib/staff-status";
 
 
 export const Route = createFileRoute("/staff")({
@@ -83,8 +84,11 @@ function MyAvailabilityView() {
         <StatCard
           icon={LangIcon}
           label="Status"
-          value={me.status === "available" ? "Available" : me.status === "on_shift" ? "On shift" : "Off duty"}
-          sub={me.status === "off" ? "Not on the clock" : "Visible to dispatch"}
+          value={(() => {
+            const d = deriveStaffStatus(me, allShifts);
+            return d === "on_shift" ? "On shift" : d === "off" ? "Off duty" : d === "available" ? "Available" : "Idle";
+          })()}
+          sub="Based on today's shifts & time off"
         />
       </div>
 
@@ -109,7 +113,7 @@ function MyAvailabilityView() {
                 <div className="min-w-0">
                   <h3 className="font-semibold text-foreground truncate">{me.name}</h3>
                   <div className="text-xs text-muted-foreground capitalize">{me.role}</div>
-                  <div className="mt-1.5"><StatusPill status={me.status} /></div>
+                  {(() => { const d = deriveStaffStatus(me, allShifts); return d ? <div className="mt-1.5"><StatusPill status={d} /></div> : null; })()}
                 </div>
               </div>
               <Button
@@ -219,19 +223,26 @@ function AdminStaffDirectory() {
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
+  const derived = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof deriveStaffStatus>>();
+    const now = new Date();
+    staff.forEach((s) => map.set(s.id, deriveStaffStatus(s, allShifts, now)));
+    return map;
+  }, [staff, allShifts]);
+
   const counts = useMemo(
     () => ({
       all: staff.length,
-      available: staff.filter((s) => s.status === "available").length,
-      on_shift: staff.filter((s) => s.status === "on_shift").length,
-      off: staff.filter((s) => s.status === "off").length,
+      available: staff.filter((s) => derived.get(s.id) === "available").length,
+      on_shift: staff.filter((s) => derived.get(s.id) === "on_shift").length,
+      off: staff.filter((s) => derived.get(s.id) === "off").length,
     }),
-    [staff],
+    [staff, derived],
   );
 
   const filtered = staff.filter((s) => {
     const matchesQ = [s.name, ...s.tags, ...s.languages, s.role].join(" ").toLowerCase().includes(q.toLowerCase());
-    const matchesFilter = filter === "all" || s.status === filter;
+    const matchesFilter = filter === "all" || derived.get(s.id) === filter;
     return matchesQ && matchesFilter;
   });
 
@@ -308,7 +319,7 @@ function AdminStaffDirectory() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-2">
-                    <StatusPill status={s.status} />
+                    {(() => { const d = derived.get(s.id); return d ? <StatusPill status={d} /> : <span className="text-[11px] text-muted-foreground italic">No shift today</span>; })()}
                     <a href={`tel:${s.phone}`} onClick={(e) => e.stopPropagation()} className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 truncate">
                       <Phone className="h-3 w-3 flex-shrink-0" /> {s.phone}
                     </a>
@@ -369,7 +380,7 @@ function AdminStaffDirectory() {
                   <div>
                     <SheetTitle className="text-left">{liveOpenStaff.name}</SheetTitle>
                     <SheetDescription className="capitalize text-left">{liveOpenStaff.role} · {liveOpenStaff.phone}</SheetDescription>
-                    <div className="mt-1.5"><StatusPill status={liveOpenStaff.status} /></div>
+                    {(() => { const d = deriveStaffStatus(liveOpenStaff, allShifts); return d ? <div className="mt-1.5"><StatusPill status={d} /></div> : null; })()}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs pt-1">
