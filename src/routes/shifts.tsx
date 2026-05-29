@@ -102,7 +102,8 @@ function ShiftsPage() {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
   const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
-    await updateShift(id, patch);
+    const { rate, ...rest } = patch;
+    await updateShift(id, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
     toast.success("Booking updated");
   };
   const [importing, setImporting] = useState(false);
