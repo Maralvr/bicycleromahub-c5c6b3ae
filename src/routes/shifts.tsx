@@ -432,7 +432,16 @@ function ShiftsPage() {
         totalCount={shifts.length}
       />
 
-      <Tabs defaultValue="calendar" key={role + staffId} className="mb-6">
+      {statusFilter && (
+        <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            Showing only <span className="font-semibold capitalize">{statusFilter}</span> shifts
+          </span>
+          <Button size="sm" variant="ghost" onClick={clearStatusFilter}>Clear filter</Button>
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ShiftsTab)} key={role + staffId} className="mb-6">
         {isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>
