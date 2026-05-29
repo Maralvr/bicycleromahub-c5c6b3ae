@@ -393,6 +393,13 @@ function ShiftsPage() {
         }
       />
 
+      <ShiftFilters
+        value={filters}
+        onChange={setFilters}
+        resultCount={filteredShifts.length}
+        totalCount={shifts.length}
+      />
+
       <Tabs defaultValue="calendar" key={role + staffId} className="mb-6">
         {isAdmin && (
           <TabsList className="bg-muted">
