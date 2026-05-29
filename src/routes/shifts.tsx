@@ -75,6 +75,10 @@ function ShiftsPage() {
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
+  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => {
+    await updateShift(id, patch);
+    toast.success("Departure updated");
+  };
   const [importing, setImporting] = useState(false);
   const startImport = useServerFn(startBokunImportFn);
   const processChunk = useServerFn(processBokunImportChunkFn);
