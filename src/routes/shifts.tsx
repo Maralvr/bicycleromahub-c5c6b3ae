@@ -513,6 +513,7 @@ function ShiftsPage() {
         open={!!assignDialogShift}
         onClose={() => setAssignDialogShift(null)}
         onAssign={assignStaff}
+        onOverride={isAdmin ? (id, patch) => handleUpdateDeparture(id, patch) : undefined}
       />
 
       <LeaveNoteDialog
