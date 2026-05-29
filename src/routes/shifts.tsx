@@ -545,6 +545,56 @@ function ShiftsPage() {
   );
 }
 
+function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => Promise<void> | void }) {
+  const [startTime, setStartTime] = useState(shift.startTime);
+  const [endTime, setEndTime] = useState(shift.endTime);
+  const [meetingPoint, setMeetingPoint] = useState(shift.meetingPoint ?? "");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setStartTime(shift.startTime);
+    setEndTime(shift.endTime);
+    setMeetingPoint(shift.meetingPoint ?? "");
+  }, [shift.id, shift.startTime, shift.endTime, shift.meetingPoint]);
+  const changed = startTime !== shift.startTime || endTime !== shift.endTime || meetingPoint !== (shift.meetingPoint ?? "");
+  const save = async () => {
+    if (!changed) return;
+    setSaving(true);
+    try {
+      const patch: { startTime?: string; endTime?: string; meetingPoint?: string } = {};
+      if (startTime !== shift.startTime) patch.startTime = startTime;
+      if (endTime !== shift.endTime) patch.endTime = endTime;
+      if (meetingPoint !== (shift.meetingPoint ?? "")) patch.meetingPoint = meetingPoint;
+      await onUpdateDeparture(shift.id, patch);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="mt-4 p-3 rounded-lg border border-border/60 bg-muted/30">
+      <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
+        <Clock className="h-3 w-3 text-primary" /> Override departure
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`ov-start-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
+          <Input id={`ov-start-${shift.id}`} type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9 w-28 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`ov-end-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">End</Label>
+          <Input id={`ov-end-${shift.id}`} type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-9 w-28 text-xs" />
+        </div>
+        <div className="flex-1 min-w-[200px] space-y-1">
+          <Label htmlFor={`ov-meet-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Meeting point</Label>
+          <Input id={`ov-meet-${shift.id}`} value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} placeholder="e.g. Piazza del Popolo, fountain side" className="h-9 text-xs" />
+        </div>
+        <Button size="sm" variant="outline" className="h-9 text-xs" disabled={!changed || saving} onClick={save}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string }) => Promise<void> | void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
