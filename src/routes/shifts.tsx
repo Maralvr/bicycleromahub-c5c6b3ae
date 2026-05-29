@@ -65,9 +65,16 @@ function ShiftsPage() {
   const processChunk = useServerFn(processBokunImportChunkFn);
 
   const handleImportBokun = async () => {
-    if (!confirm("Import all Bokun bookings from March 1, 2026 onwards? Existing bookings will be updated.")) return;
+    const fromDate = prompt("Import Bokun bookings FROM date (YYYY-MM-DD):", "2026-05-01");
+    if (!fromDate) return;
+    const toDate = prompt("Import Bokun bookings TO date (YYYY-MM-DD):", "2026-06-30");
+    if (!toDate) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+      toast.error("Invalid date format. Use YYYY-MM-DD.");
+      return;
+    }
     setImporting(true);
-    const tid = toast.loading("Starting Bokun import…", {
+    const tid = toast.loading(`Starting Bokun import (${fromDate} → ${toDate})…`, {
       description: "Track live progress on the Bokun runs page.",
     });
     try {
@@ -75,7 +82,7 @@ function ShiftsPage() {
       const token = sess.session?.access_token;
       if (!token) throw new Error("Not signed in");
 
-      const { runId } = await startImport({ data: { accessToken: token, fromDate: "2026-03-01" } });
+      const { runId } = await startImport({ data: { accessToken: token, fromDate, toDate } });
 
       // Loop chunks one page at a time so each request stays small and progress is committed after every page.
       let done = false;
