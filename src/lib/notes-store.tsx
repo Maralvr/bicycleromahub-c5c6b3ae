@@ -12,6 +12,8 @@ export type GuideNotification = {
     | "unassigned"
     | "shift_updated"
     | "shift_cancelled"
+    | "shift_accepted"
+    | "shift_rejected"
     | "broadcast"
     | "reminder"
     | "task";

@@ -8,7 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
+import { useAuth } from "@/lib/auth";
 import { useStaffStore } from "@/lib/staff-store";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { AttachmentPicker } from "@/components/attachment-picker";
+import type { Attachment } from "@/lib/mock-data";
 import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,8 +50,10 @@ export const Route = createFileRoute("/shifts")({
 function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
+  const { user } = useAuth();
   const { staff } = useStaffStore();
   const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
+  const [rejectDialogShift, setRejectDialogShift] = useState<Shift | null>(null);
 
   const handleDelete = async (s: Shift) => {
     const label = s.source === "bokun" ? `Bokun booking ${s.bookingId ?? ""}` : "manual shift";
@@ -137,7 +145,7 @@ function ShiftsPage() {
     }
   };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
-  const { notesByShift, addNote, notifyGuide } = useNotesStore();
+  const { notesByShift, addNote, notifyGuide, notifyGuides } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
   const handleNoteSubmit = (note: GuideNote) => {
@@ -154,20 +162,76 @@ function ShiftsPage() {
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
-  const updateStatus = async (id: string, status: Shift["status"]) => {
-    if (status === "rejected") {
-      // Reject = release the shift back to the unassigned pool for redispatch.
-      const { error } = await supabase.rpc("reject_shift", { _shift_id: id });
-      if (error) {
-        toast.error("Couldn't reject shift", { description: error.message });
+  const adminStaffIds = staff.filter((s) => s.role === "admin").map((s) => s.id);
+  const notifyAdmins = (
+    n: { type: "shift_accepted" | "shift_rejected"; title: string; body: string; shiftId?: string },
+  ) => {
+    if (adminStaffIds.length === 0) return;
+    notifyGuides(adminStaffIds, { ...n, link: "/shifts" });
+  };
+
+  const handleAccept = async (id: string) => {
+    const sh = shifts.find((s) => s.id === id);
+    await setStatus(id, "accepted");
+    toast.success("Shift accepted");
+    if (sh) {
+      const guide = staff.find((m) => m.id === sh.assignedStaffId);
+      notifyAdmins({
+        type: "shift_accepted",
+        title: `${guide?.name ?? "Guide"} accepted a shift`,
+        body: shiftSummary(sh),
+        shiftId: id,
+      });
+    }
+  };
+
+  const handleRejectConfirm = async (reason: string, attachments: Attachment[]) => {
+    const sh = rejectDialogShift;
+    if (!sh) return;
+    const guide = staff.find((m) => m.id === sh.assignedStaffId);
+    const trimmed = reason.trim();
+
+    // 1. Save reason + attachments to the booking notes thread (preserves authorship + timestamp).
+    if ((trimmed || attachments.length > 0) && user) {
+      const { error: noteErr } = await supabase.from("booking_notes").insert({
+        shift_id: sh.id,
+        author_profile_id: user.id,
+        author_name: guide?.name ?? "Guide",
+        author_role: "guide",
+        message: `Rejected this shift${trimmed ? `: ${trimmed}` : "."}`,
+        attachments,
+      });
+      if (noteErr) {
+        toast.error("Couldn't save rejection note", { description: noteErr.message });
         return;
       }
-      toast.success("Shift released", { description: "Back in the unassigned pool — admin will redispatch." });
+    }
+
+    // 2. Release the shift back to the unassigned pool.
+    const { error } = await supabase.rpc("reject_shift", { _shift_id: sh.id });
+    if (error) {
+      toast.error("Couldn't reject shift", { description: error.message });
       return;
     }
-    await setStatus(id, status);
-    toast.success(`Shift ${status}`);
+
+    // 3. Notify every admin.
+    const reasonSnippet = trimmed ? ` — “${trimmed.slice(0, 120)}${trimmed.length > 120 ? "…" : ""}”` : "";
+    notifyAdmins({
+      type: "shift_rejected",
+      title: `${guide?.name ?? "Guide"} rejected a shift`,
+      body: `${shiftSummary(sh)}${reasonSnippet}`,
+      shiftId: sh.id,
+    });
+
+    setRejectDialogShift(null);
+    toast.success("Shift released", { description: "Admin notified — back in the unassigned pool." });
   };
+
+  const openReject = (id: string) => {
+    const sh = shifts.find((s) => s.id === id);
+    if (sh) setRejectDialogShift(sh);
+  };
+
 
   const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string, note?: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
@@ -357,21 +421,21 @@ function ShiftsPage() {
         </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={upcomingShifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={(id) => updateStatus(id, "accepted")} onReject={(id) => updateStatus(id, "rejected")} onDuplicate={duplicate} />
+          <ShiftList shifts={upcomingShifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="past" className="mt-5">
           <ShiftList
@@ -383,8 +447,8 @@ function ShiftsPage() {
             onLeaveNote={setNoteDialogShift}
             onAssign={assignStaff}
             onOpenAssignDialog={setAssignDialogShift}
-            onAccept={(id) => updateStatus(id, "accepted")}
-            onReject={(id) => updateStatus(id, "rejected")}
+            onAccept={handleAccept}
+            onReject={openReject}
             onDuplicate={duplicate}
             onDelete={isAdmin ? handleDelete : undefined}
             onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
@@ -426,6 +490,13 @@ function ShiftsPage() {
             toast.error("Couldn't create shift", { description: String(e) });
           }
         }}
+      />
+
+      <RejectShiftDialog
+        shift={rejectDialogShift}
+        open={!!rejectDialogShift}
+        onClose={() => setRejectDialogShift(null)}
+        onConfirm={handleRejectConfirm}
       />
     </AppShell>
   );
@@ -673,5 +744,95 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         );
       })}
     </div>
+  );
+}
+
+function RejectShiftDialog({
+  shift,
+  open,
+  onClose,
+  onConfirm,
+}: {
+  shift: Shift | null;
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string, attachments: Attachment[]) => Promise<void> | void;
+}) {
+  const [reason, setReason] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const reset = () => {
+    setReason("");
+    setAttachments([]);
+    setSubmitting(false);
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await onConfirm(reason, attachments);
+      reset();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reject this shift?</DialogTitle>
+          <DialogDescription>
+            {shift ? (
+              <>
+                <span className="font-medium">{shift.tourName}</span> · {shift.date} {shift.startTime}–{shift.endTime}
+              </>
+            ) : null}
+            <div className="mt-1">The shift will go back to the unassigned pool and admins will be notified.</div>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="reject-reason">Reason (optional)</Label>
+            <Textarea
+              id="reject-reason"
+              placeholder="Sick today, double-booked, vehicle issue…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Visible to admins (and the next guide) in the booking notes thread.
+            </p>
+          </div>
+          <AttachmentPicker attachments={attachments} onChange={setAttachments} maxFiles={3} />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { reset(); onClose(); }} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            <XCircle className="h-3.5 w-3.5 mr-1" />
+            {submitting ? "Rejecting…" : "Reject shift"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
