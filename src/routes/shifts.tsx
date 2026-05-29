@@ -159,10 +159,12 @@ function ShiftsPage() {
     toast.success("Note sent to admins", { description: "They've been notified in the activity feed." });
   };
 
+  const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
-  const upcomingShifts = shifts.filter((s) => !isPast(s));
-  const pastShifts = shifts.filter(isPast);
+  const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
+  const upcomingShifts = filteredShifts.filter((s) => !isPast(s));
+  const pastShifts = filteredShifts.filter(isPast);
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
