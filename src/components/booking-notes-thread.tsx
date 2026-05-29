@@ -64,15 +64,16 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
     if (!user || !message.trim()) return;
     setPosting(true);
     try {
-      const { error } = await supabase.from("booking_notes" as never).insert({
+      const payload = {
         shift_id: shiftId,
         author_profile_id: user.id,
         author_name: profile?.display_name || user.email || "User",
         author_role: isAdmin ? "admin" : "guide",
         message: message.trim(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        attachments: attachments as any,
-      });
+        attachments,
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from("booking_notes" as never) as any).insert(payload);
       if (error) throw error;
       setMessage("");
       setAttachments([]);
