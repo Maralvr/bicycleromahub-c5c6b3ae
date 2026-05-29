@@ -38,17 +38,30 @@ export const processBokunImportChunkFn = createServerFn({ method: "POST" })
     return processBokunImportChunk(data.runId);
   });
 
-/** Cron: import March 2026 onward, one page per tick. */
+/** Cron: import March 2026 onward. Skips if a previous cron run is still in flight. */
 export const syncBokunCronImport = createServerFn({ method: "POST" })
   .handler(async () => {
+    // Skip overlap: if a cron run started in the last 30 min and never finished, bail.
+    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: inflight } = await supabaseAdmin
+      .from("bokun_import_runs")
+      .select("id, started_at")
+      .eq("trigger", "cron")
+      .is("finished_at", null)
+      .gte("started_at", cutoff)
+      .limit(1);
+    if (inflight && inflight.length > 0) {
+      return { skipped: true, reason: "previous cron run still in flight", inflightRunId: inflight[0].id };
+    }
+
     const today = new Date();
-    // Fixed start: March 1, 2026. End: today + 365 days to cover future bookings.
     const from = "2026-03-01";
     const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     return runBokunImport(from, to, "cron", { maxPages: 40 });
   });
+
 
 
 /** Get the current Bokun cron schedule status and last run time. */
