@@ -805,6 +805,8 @@ export type Database = {
         | "broadcast"
         | "reminder"
         | "task"
+        | "shift_accepted"
+        | "shift_rejected"
       shift_source: "manual" | "bokun"
       shift_status: "unassigned" | "pending" | "accepted" | "rejected"
       staff_role: "guide" | "rental" | "mechanic" | "admin"
@@ -956,6 +958,8 @@ export const Constants = {
         "broadcast",
         "reminder",
         "task",
+        "shift_accepted",
+        "shift_rejected",
       ],
       shift_source: ["manual", "bokun"],
       shift_status: ["unassigned", "pending", "accepted", "rejected"],
