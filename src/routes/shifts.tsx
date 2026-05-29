@@ -34,6 +34,7 @@ import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -159,10 +160,12 @@ function ShiftsPage() {
     toast.success("Note sent to admins", { description: "They've been notified in the activity feed." });
   };
 
+  const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
-  const upcomingShifts = shifts.filter((s) => !isPast(s));
-  const pastShifts = shifts.filter(isPast);
+  const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
+  const upcomingShifts = filteredShifts.filter((s) => !isPast(s));
+  const pastShifts = filteredShifts.filter(isPast);
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
@@ -390,6 +393,13 @@ function ShiftsPage() {
         }
       />
 
+      <ShiftFilters
+        value={filters}
+        onChange={setFilters}
+        resultCount={filteredShifts.length}
+        totalCount={shifts.length}
+      />
+
       <Tabs defaultValue="calendar" key={role + staffId} className="mb-6">
         {isAdmin && (
           <TabsList className="bg-muted">
@@ -409,7 +419,7 @@ function ShiftsPage() {
         )}
         <TabsContent value="calendar" className="mt-5">
           <ShiftsCalendar
-            shifts={isAdmin ? shifts : shifts.filter((s) => s.assignedStaffId === staffId)}
+            shifts={isAdmin ? filteredShifts : filteredShifts.filter((s) => s.assignedStaffId === staffId)}
             staff={staff}
             showRates={isAdmin}
             onAssign={isAdmin ? assignStaff : undefined}
