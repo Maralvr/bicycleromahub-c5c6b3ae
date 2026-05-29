@@ -5,6 +5,7 @@ import {
   runBokunImport,
   startBokunImport,
   processBokunImportChunk,
+  continueBokunImport,
   assertAdmin,
 } from "./bokun-import.server";
 
@@ -38,20 +39,20 @@ export const processBokunImportChunkFn = createServerFn({ method: "POST" })
     return processBokunImportChunk(data.runId);
   });
 
-/** Cron: import March 2026 onward. Skips if a previous cron run is still in flight. */
+/** Cron: import March 2026 onward. Resumes the existing cron run before starting a new one. */
 export const syncBokunCronImport = createServerFn({ method: "POST" })
   .handler(async () => {
-    // Skip overlap: if a cron run started in the last 30 min and never finished, bail.
-    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const { data: inflight } = await supabaseAdmin
+    const { data: inflight, error: inflightError } = await supabaseAdmin
       .from("bokun_import_runs")
-      .select("id, started_at")
+      .select("id, started_at, total_seen, next_page")
       .eq("trigger", "cron")
       .is("finished_at", null)
-      .gte("started_at", cutoff)
-      .limit(1);
-    if (inflight && inflight.length > 0) {
-      return { skipped: true, reason: "previous cron run still in flight", inflightRunId: inflight[0].id };
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (inflightError) throw new Error(`Could not check in-flight Bokun run: ${inflightError.message}`);
+    if (inflight) {
+      return continueBokunImport(inflight.id, { maxPages: 1 });
     }
 
     const today = new Date();
@@ -59,7 +60,7 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
     const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
-    return runBokunImport(from, to, "cron", { maxPages: 5 });
+    return runBokunImport(from, to, "cron", { maxPages: 1 });
   });
 
 
