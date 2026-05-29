@@ -23,6 +23,7 @@ import { useRentalPoints } from "@/lib/rental-points";
 import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
 import { useRequireAdmin } from "@/lib/require-admin";
+import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 
 
 
