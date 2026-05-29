@@ -198,6 +198,22 @@ function ShiftsPage() {
         });
       }
     }
+  const handleUnassign = async (id: string) => {
+    const prev = shifts.find((s) => s.id === id);
+    await assignShift(id, null);
+    toast.success("Guide unassigned", { description: "Shift is back in the unassigned pool." });
+    if (prev?.assignedStaffId) {
+      notifyGuide({
+        staffId: prev.assignedStaffId,
+        type: "unassigned",
+        title: "Shift removed from your schedule",
+        body: `${shiftSummary({ ...prev, assignedStaffId: null })} — unassigned by admin.`,
+        shiftId: id,
+        link: "/shifts",
+      });
+    }
+  };
+
     toast.success(`Assigned to ${staffName}`, {
       description: note ? "Note sent to guide — awaiting accept/reject." : "Notified in-app — awaiting accept/reject.",
     });
