@@ -150,23 +150,40 @@ function RootComponent() {
       ) : (
         <AuthProvider>
           <AuthGate>
-            <StaffStoreProvider>
-              <CurrentUserProvider>
-                <ShiftsStoreProvider>
-                  <NotesStoreProvider>
-                    <TasksStoreProvider>
-                      <TaskUpdatesStoreProvider>
-                        <Outlet />
-                        <Toaster />
-                      </TaskUpdatesStoreProvider>
-                    </TasksStoreProvider>
-                  </NotesStoreProvider>
-                </ShiftsStoreProvider>
-              </CurrentUserProvider>
-            </StaffStoreProvider>
+            <AuthenticatedDataProviders />
           </AuthGate>
         </AuthProvider>
       )}
     </I18nProvider>
+  );
+}
+
+function AuthenticatedDataProviders() {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Outlet />
+        <Toaster />
+      </>
+    );
+  }
+
+  return (
+    <StaffStoreProvider>
+      <CurrentUserProvider>
+        <ShiftsStoreProvider>
+          <NotesStoreProvider>
+            <TasksStoreProvider>
+              <TaskUpdatesStoreProvider>
+                <Outlet />
+                <Toaster />
+              </TaskUpdatesStoreProvider>
+            </TasksStoreProvider>
+          </NotesStoreProvider>
+        </ShiftsStoreProvider>
+      </CurrentUserProvider>
+    </StaffStoreProvider>
   );
 }
