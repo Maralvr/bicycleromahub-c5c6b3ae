@@ -116,18 +116,10 @@ function NotificationsPage() {
         : `Shared ${attachments.length} files`);
 
     try {
-      // Broadcast goes to everyone active on the team (excluding the sender).
-      const { data: recipients, error: recipientsErr } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("active", true);
-      if (recipientsErr) {
-        toast.error("Couldn't load recipients", { description: recipientsErr.message });
-        return;
-      }
-      const recipientIds = (recipients ?? [])
-        .map((s: { id: string }) => s.id)
-        .filter((id) => id !== staffId);
+      // Broadcast goes to every active person in the team.
+      const recipientIds = staff
+        .filter((s) => s.active !== false)
+        .map((s) => s.id);
       if (recipientIds.length === 0) {
         toast.error("No active staff to notify");
         return;
@@ -209,7 +201,7 @@ function NotificationsPage() {
               <div>
                 <h2 className="font-semibold leading-tight">{t.notifications.broadcast}</h2>
                 <div className="text-xs text-muted-foreground">
-                  Reaches {staff.filter((s) => s.role === "guide").length} guides
+                  Reaches {staff.filter((s) => s.active !== false).length} team members
                 </div>
               </div>
             </div>
