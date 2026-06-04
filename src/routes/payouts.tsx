@@ -75,7 +75,7 @@ function PayoutsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("shifts")
-      .select("id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at")
+      .select("id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, adults, teens, infants")
       .gte("date", format(from, "yyyy-MM-dd"))
       .lte("date", format(to, "yyyy-MM-dd"))
       .not("assigned_staff_id", "is", null)
