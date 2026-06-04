@@ -71,154 +71,145 @@ function RentalPointsPage() {
   );
   if (!ready) return null;
 
-  if (activePoint) {
-    return (
-      <AppShell>
-        <PageHeader
-          title={activePoint.name}
-          subtitle={activePoint.address ?? "Rental bookings for this location."}
-          actions={
-            <Button
-              variant="outline"
-              onClick={() => navigate({ search: { point: undefined, tab: undefined }, replace: true })}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" /> All rental points
-            </Button>
-          }
-        />
-        <RentalBookingsView
-          points={points}
-          pointId={activePoint.id}
-          tab={search.tab ?? "calendar"}
-          onTabChange={(t) =>
-            navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true })
-          }
-        />
-        <Footer
-          creating={creating}
-          editing={editing}
-          confirmDelete={confirmDelete}
-          setCreating={setCreating}
-          setEditing={setEditing}
-          setConfirmDelete={setConfirmDelete}
-          create={create}
-          update={update}
-          remove={remove}
-        />
-      </AppShell>
-    );
-  }
+  const onTabChange = (t: RentalTab) =>
+    navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true });
 
   return (
     <AppShell>
-      <PageHeader
-        title="Rental points"
-        subtitle="Pickup & return locations across Rome."
-        actions={
-          <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> Add point
-          </Button>
-        }
-      />
-
-      {error && (
-        <Card className="p-4 mb-4 border-destructive/40 bg-destructive/5 text-sm text-destructive">
-          {error}
-        </Card>
-      )}
-
-      {loading ? (
-        <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
-      ) : points.length === 0 ? (
-        <Card className="p-10 text-center border-dashed">
-          <MapPin className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
-          <h3 className="font-semibold text-foreground">No rental points yet</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add your first pickup location to get started.
-          </p>
-          <Button onClick={() => setCreating(true)} className="mt-4">
-            <Plus className="h-4 w-4 mr-1" /> Add point
-          </Button>
-        </Card>
+      {activePoint ? (
+        <>
+          <PageHeader
+            title={activePoint.name}
+            subtitle={activePoint.address ?? "Rental bookings for this location."}
+            actions={
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigate({ search: { point: undefined, tab: undefined }, replace: true })
+                }
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" /> All rental points
+              </Button>
+            }
+          />
+          <RentalBookingsView
+            points={points}
+            pointId={activePoint.id}
+            tab={search.tab ?? "calendar"}
+            onTabChange={onTabChange}
+          />
+        </>
       ) : (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {points.map((p) => (
-            <Card key={p.id} className="p-5 border-border/60 hover:border-primary/30 transition-all">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to="/rental-points"
-                    search={{ point: p.id, tab: "calendar" }}
-                    className="font-semibold text-foreground truncate hover:text-primary block"
-                  >
-                    {p.name}
-                  </Link>
-                  {p.city && <div className="text-xs text-muted-foreground">{p.city}</div>}
-                </div>
-                {p.active ? (
-                  <Badge variant="secondary" className="bg-success/15 text-success border-0">Active</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>
-                )}
-              </div>
-              <div className="space-y-1.5 text-xs text-muted-foreground">
-                {p.address && (
-                  <div className="flex items-start gap-1.5">
-                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <span className="text-foreground/80">{p.address}</span>
-                  </div>
-                )}
-                {p.phone && (
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="h-3 w-3 flex-shrink-0" />
-                    <a href={`tel:${p.phone}`} className="hover:text-primary">{p.phone}</a>
-                  </div>
-                )}
-                {p.opening_hours && (
-                  <div className="flex items-start gap-1.5">
-                    <Clock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <span>{p.opening_hours}</span>
-                  </div>
-                )}
-              </div>
-              {p.notes && (
-                <p className="text-xs text-muted-foreground/80 mt-3 pt-3 border-t border-border/60 italic">
-                  {p.notes}
-                </p>
-              )}
-              <div className="flex gap-2 mt-4 pt-3 border-t border-border/60">
-                <Button size="sm" asChild className="flex-1">
-                  <Link to="/rental-points" search={{ point: p.id, tab: "calendar" }}>
-                    <CalendarDays className="h-3 w-3 mr-1" /> View bookings
-                  </Link>
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setEditing(p)}>
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setConfirmDelete(p)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
+        <>
+          <PageHeader
+            title="Rental points"
+            subtitle="Pickup & return locations across Rome."
+            actions={
+              <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
+                <Plus className="h-4 w-4 mr-1" /> Add point
+              </Button>
+            }
+          />
+
+          {error && (
+            <Card className="p-4 mb-4 border-destructive/40 bg-destructive/5 text-sm text-destructive">
+              {error}
             </Card>
-          ))}
-        </div>
+          )}
+
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
+          ) : points.length === 0 ? (
+            <Card className="p-10 text-center border-dashed">
+              <MapPin className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
+              <h3 className="font-semibold text-foreground">No rental points yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add your first pickup location to get started.
+              </p>
+              <Button onClick={() => setCreating(true)} className="mt-4">
+                <Plus className="h-4 w-4 mr-1" /> Add point
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {points.map((p) => (
+                <Card key={p.id} className="p-5 border-border/60 hover:border-primary/30 transition-all">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        to="/rental-points"
+                        search={{ point: p.id, tab: "calendar" }}
+                        className="font-semibold text-foreground truncate hover:text-primary block"
+                      >
+                        {p.name}
+                      </Link>
+                      {p.city && <div className="text-xs text-muted-foreground">{p.city}</div>}
+                    </div>
+                    {p.active ? (
+                      <Badge variant="secondary" className="bg-success/15 text-success border-0">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 text-xs text-muted-foreground">
+                    {p.address && (
+                      <div className="flex items-start gap-1.5">
+                        <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <span className="text-foreground/80">{p.address}</span>
+                      </div>
+                    )}
+                    {p.phone && (
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3 flex-shrink-0" />
+                        <a href={`tel:${p.phone}`} className="hover:text-primary">{p.phone}</a>
+                      </div>
+                    )}
+                    {p.opening_hours && (
+                      <div className="flex items-start gap-1.5">
+                        <Clock className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <span>{p.opening_hours}</span>
+                      </div>
+                    )}
+                  </div>
+                  {p.notes && (
+                    <p className="text-xs text-muted-foreground/80 mt-3 pt-3 border-t border-border/60 italic">
+                      {p.notes}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-4 pt-3 border-t border-border/60">
+                    <Button size="sm" asChild className="flex-1">
+                      <Link to="/rental-points" search={{ point: p.id, tab: "calendar" }}>
+                        <CalendarDays className="h-3 w-3 mr-1" /> View bookings
+                      </Link>
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditing(p)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setConfirmDelete(p)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {points.length > 0 && (
+            <RentalBookingsView
+              points={points}
+              pointId={null}
+              tab={search.tab ?? "calendar"}
+              onTabChange={onTabChange}
+            />
+          )}
+        </>
       )}
 
-      {points.length > 0 && (
-        <RentalBookingsView
-          points={points}
-          pointId={null}
-          tab={search.tab ?? "calendar"}
-          onTabChange={(t) =>
-            navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true })
-          }
-        />
-      )}
 
       <RentalPointDialog
         open={creating || !!editing}
