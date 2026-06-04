@@ -140,6 +140,8 @@ function RentalPointsPage() {
         </div>
       )}
 
+      {points.length > 0 && <RentalBookingsByLocation points={points} />}
+
       <RentalPointDialog
         open={creating || !!editing}
         initial={editing}
