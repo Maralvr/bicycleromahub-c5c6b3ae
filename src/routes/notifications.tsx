@@ -121,8 +121,8 @@ function NotificationsPage() {
 
     // Insert one notification row per recipient. Await so we can surface errors.
     const { error: notifErr } = await supabase.from("guide_notifications").insert(
-      recipientIds.map((staffId) => ({
-        staff_id: staffId,
+      recipientIds.map((rid: string) => ({
+        staff_id: rid,
         type: "broadcast" as const,
         title: "Broadcast from admins",
         body: message,
