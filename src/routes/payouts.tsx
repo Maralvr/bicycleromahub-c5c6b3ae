@@ -39,7 +39,15 @@ type PayoutShift = {
   payout_tier: number | null;
   payout_paid: boolean;
   payout_paid_at: string | null;
+  adults: number | null;
+  teens: number | null;
+  infants: number | null;
 };
+
+const LARGE_GROUP_BONUS = 20;
+const LARGE_GROUP_THRESHOLD = 8;
+const paxOf = (s: PayoutShift) => (s.adults ?? 0) + (s.teens ?? 0) + (s.infants ?? 0);
+
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
