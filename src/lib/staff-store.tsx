@@ -147,21 +147,29 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
   }, [rows, unavail]);
 
   const setUnavailability: StaffStoreContextValue["setUnavailability"] = async (id, list) => {
-    // Replace all rows for this staff
+    // Optimistic local update
+    setUnavail((prev) => prev.filter((u) => u.staff_id !== id));
     await supabase.from("staff_unavailability").delete().eq("staff_id", id);
     if (list.length > 0) {
-      await supabase.from("staff_unavailability").insert(
-        list.map((u) => ({
-          staff_id: id,
-          date: u.date,
-          all_day: u.allDay,
-          from_time: u.from ? `${u.from}:00` : null,
-          to_time: u.to ? `${u.to}:00` : null,
-          reason: u.reason ?? null,
-        })),
-      );
+      const payload = list.map((u) => ({
+        staff_id: id,
+        date: u.date,
+        all_day: u.allDay,
+        from_time: u.from ? `${u.from}:00` : null,
+        to_time: u.to ? `${u.to}:00` : null,
+        reason: u.reason ?? null,
+      }));
+      const { data, error: err } = await supabase
+        .from("staff_unavailability")
+        .insert(payload)
+        .select();
+      if (err) {
+        setError(err.message);
+        void fetchAll();
+        return;
+      }
+      setUnavail((prev) => [...prev, ...((data ?? []) as UnavailRow[])]);
     }
-    await fetchAll();
   };
 
   const getList = (id: string): Staff["unavailability"] =>
@@ -186,18 +194,32 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const clearDate: StaffStoreContextValue["clearDate"] = async (id, date) => {
-    await supabase.from("staff_unavailability").delete().eq("staff_id", id).eq("date", date);
-    await fetchAll();
+    setUnavail((prev) => prev.filter((u) => !(u.staff_id === id && u.date === date)));
+    const { error: err } = await supabase
+      .from("staff_unavailability")
+      .delete()
+      .eq("staff_id", id)
+      .eq("date", date);
+    if (err) {
+      setError(err.message);
+      void fetchAll();
+    }
   };
 
   const clearMonth: StaffStoreContextValue["clearMonth"] = async (id, yearMonth) => {
-    await supabase
+    setUnavail((prev) =>
+      prev.filter((u) => !(u.staff_id === id && u.date.startsWith(yearMonth))),
+    );
+    const { error: err } = await supabase
       .from("staff_unavailability")
       .delete()
       .eq("staff_id", id)
       .gte("date", `${yearMonth}-01`)
       .lte("date", `${yearMonth}-31`);
-    await fetchAll();
+    if (err) {
+      setError(err.message);
+      void fetchAll();
+    }
   };
 
   const updateProfile: StaffStoreContextValue["updateProfile"] = async (id, patch) => {
@@ -206,9 +228,16 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     if (patch.languages !== undefined) dbPatch.languages = patch.languages;
     if (patch.licenses !== undefined) dbPatch.licenses = patch.licenses;
     if (patch.phone !== undefined) dbPatch.phone = patch.phone;
+    // Optimistic update
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? ({ ...r, ...(dbPatch as Partial<StaffRow>) }) : r)),
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await supabase.from("staff").update(dbPatch as any).eq("id", id);
-    await fetchAll();
+    const { error: err } = await supabase.from("staff").update(dbPatch as any).eq("id", id);
+    if (err) {
+      setError(err.message);
+      void fetchAll();
+    }
   };
 
   const addStaff: StaffStoreContextValue["addStaff"] = async (input) => {
@@ -233,8 +262,8 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
       setError(err.message);
       return null;
     }
-    await fetchAll();
     const r = data as StaffRow;
+    setRows((prev) => (prev.some((x) => x.id === r.id) ? prev : [...prev, r]));
     return {
       id: r.id,
       profileId: r.profile_id,
@@ -252,9 +281,13 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteStaff: StaffStoreContextValue["deleteStaff"] = async (id) => {
+    const prevRows = rows;
+    setRows((prev) => prev.filter((r) => r.id !== id));
     const { error: err } = await supabase.from("staff").delete().eq("id", id);
-    if (err) setError(err.message);
-    await fetchAll();
+    if (err) {
+      setError(err.message);
+      setRows(prevRows);
+    }
   };
 
   return (

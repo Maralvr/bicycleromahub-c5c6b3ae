@@ -197,24 +197,37 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       setError(err.message);
       return null;
     }
-    await fetchAll();
-    return rowToShift(data as ShiftRow);
+    const inserted = data as ShiftRow;
+    setRows((prev) => (prev.some((r) => r.id === inserted.id) ? prev : [...prev, inserted]));
+    return rowToShift(inserted);
   };
 
   const updateShift: ShiftsStoreContextValue["updateShift"] = async (id, patch) => {
+    const dbPatch = shiftToDbPatch(patch);
+    // Optimistic local update — realtime will reconcile authoritative values.
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? ({ ...r, ...(dbPatch as Partial<ShiftRow>) }) : r)),
+    );
     const { error: err } = await supabase
       .from("shifts")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .update(shiftToDbPatch(patch) as any)
+      .update(dbPatch as any)
       .eq("id", id);
-    if (err) setError(err.message);
-    await fetchAll();
+    if (err) {
+      setError(err.message);
+      // Roll back by refetching authoritative state
+      void fetchAll();
+    }
   };
 
   const deleteShift: ShiftsStoreContextValue["deleteShift"] = async (id) => {
+    const prevRows = rows;
+    setRows((prev) => prev.filter((r) => r.id !== id));
     const { error: err } = await supabase.from("shifts").delete().eq("id", id);
-    if (err) setError(err.message);
-    await fetchAll();
+    if (err) {
+      setError(err.message);
+      setRows(prevRows);
+    }
   };
 
   const setStatus: ShiftsStoreContextValue["setStatus"] = async (id, status) => {
