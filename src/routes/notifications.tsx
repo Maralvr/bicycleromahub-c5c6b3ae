@@ -54,8 +54,7 @@ function NotificationsPage() {
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
-  const { feed, addFieldUpdate, notifyGuides, notifications, markAllRead, markRead } =
-    useNotesStore();
+  const { feed, notifications, markAllRead, markRead } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const unread = myNotifs.filter((n) => !n.read).length;
   // Guides only see broadcasts (sent to everyone) or their own field updates.
@@ -95,6 +94,15 @@ function NotificationsPage() {
   const removeAttachment = (id: string) =>
     setAttachments((prev) => prev.filter((a) => a.id !== id));
 
+  const attachmentsForNotification = (notificationId: string, body: string) => {
+    const notification = notifications.find((n) => n.id === notificationId);
+    if (notification?.attachments?.some((a) => a.dataUrl)) return notification.attachments;
+    const matchingBroadcast = feed.find(
+      (u) => u.type === "broadcast" && u.message === body && u.attachments?.length,
+    );
+    return matchingBroadcast?.attachments ?? notification?.attachments?.filter((a) => a.dataUrl) ?? [];
+  };
+
   const send = async () => {
     if (!msg.trim() && attachments.length === 0) return;
     const message =
@@ -107,7 +115,8 @@ function NotificationsPage() {
       const { data: recipients, error: recipientsErr } = await supabase
         .from("staff")
         .select("id")
-        .eq("active", true);
+        .eq("active", true)
+        .eq("role", "guide");
       if (recipientsErr) {
         toast.error("Couldn't load recipients", { description: recipientsErr.message });
         return;
@@ -127,6 +136,23 @@ function NotificationsPage() {
         size: a.size,
       }));
 
+      if (!staffId) {
+        toast.error("Couldn't send broadcast", { description: "No sender profile is selected." });
+        return;
+      }
+
+      const { error: fuErr } = await supabase.from("field_updates").insert({
+        author_id: staffId,
+        message,
+        type: "broadcast",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        attachments: attachments.length ? attachments : [],
+      });
+      if (fuErr) {
+        toast.error("Couldn't post broadcast", { description: fuErr.message });
+        return;
+      }
+
       const { error: notifErr } = await supabase.from("guide_notifications").insert(
         recipientIds.map((rid: string) => ({
           staff_id: rid,
@@ -141,18 +167,6 @@ function NotificationsPage() {
       if (notifErr) {
         toast.error("Couldn't send broadcast", { description: notifErr.message });
         return;
-      }
-
-      if (staffId) {
-        const { error: fuErr } = await addFieldUpdate({
-          authorId: staffId,
-          message,
-          type: "broadcast",
-          attachments: attachments.length ? attachments : undefined,
-        });
-        if (fuErr) {
-          toast.error("Couldn't post to activity", { description: fuErr.message });
-        }
       }
 
       setMsg("");
@@ -306,6 +320,7 @@ function NotificationsPage() {
                             ? ListChecks
                             : CalendarRange;
                   const isOpen = expandedNotif === n.id;
+                  const visibleAttachments = attachmentsForNotification(n.id, n.body);
                   return (
                     <div
                       key={n.id}
@@ -332,16 +347,16 @@ function NotificationsPage() {
                         <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>
                           {n.body}
                         </div>
-                        {!isOpen && n.attachments && n.attachments.length > 0 && (
+                        {!isOpen && visibleAttachments.length > 0 && (
                           <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
                             <Paperclip className="h-2.5 w-2.5" />
-                            {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                            {visibleAttachments.length} attachment{visibleAttachments.length > 1 ? "s" : ""}
                           </div>
                         )}
                       </button>
-                      {isOpen && n.attachments && n.attachments.length > 0 && (
+                      {isOpen && visibleAttachments.length > 0 && (
                         <div className="px-2.5 pb-2.5">
-                          <AttachmentList attachments={n.attachments} />
+                          <AttachmentList attachments={visibleAttachments} />
                         </div>
                       )}
                       {isOpen && n.link && (

@@ -42,12 +42,12 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     const myRow = staff.find((s) => s.profileId === user.id);
-    if (myRow && !staffId) {
+    if (myRow && (!isAdmin || !staffId)) {
       setStaffIdState(myRow.id);
     } else if (!staffId && staff[0]) {
       setStaffIdState(staff[0].id);
     }
-  }, [user, staff, staffId]);
+  }, [user, staff, staffId, isAdmin]);
 
   const persist = (next: { role: ViewRole | null; staffId: string }) => {
     try {
