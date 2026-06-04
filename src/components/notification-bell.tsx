@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle } from "lucide-react";
+import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle, Paperclip } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +93,12 @@ export function NotificationBell({ staffId }: { staffId: string }) {
                       </div>
                       <div className="text-xs font-semibold text-foreground mt-1">{n.title}</div>
                       <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</div>
+                      {n.attachments && n.attachments.length > 0 && (
+                        <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-primary">
+                          <Paperclip className="h-2.5 w-2.5" />
+                          {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
