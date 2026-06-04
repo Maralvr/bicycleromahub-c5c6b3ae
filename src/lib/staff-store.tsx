@@ -37,6 +37,8 @@ type StaffRow = {
   name: string;
   avatar: string;
   role: Staff["role"];
+  email: string | null;
+  active: boolean;
   status: Staff["status"];
   phone: string | null;
   tags: string[] | null;
@@ -65,7 +67,7 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     const [staffRes, unavailRes] = await Promise.all([
       supabase
         .from("staff")
-        .select("id, profile_id, name, avatar, role, status, phone, tags, languages, licenses")
+        .select("id, profile_id, name, avatar, role, email, active, status, phone, tags, languages, licenses")
         .order("name", { ascending: true }),
       supabase
         .from("staff_unavailability")
@@ -117,6 +119,8 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
       name: r.name,
       avatar: r.avatar,
       role: r.role,
+      email: r.email,
+      active: r.active,
       tags: r.tags ?? [],
       languages: r.languages ?? [],
       licenses: r.licenses ?? [],
