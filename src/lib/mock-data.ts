@@ -7,6 +7,8 @@ export type Staff = {
   name: string;
   avatar: string;
   role: "guide" | "rental" | "mechanic" | "admin";
+  email?: string | null;
+  active?: boolean;
   tags: string[];
   languages: string[];
   licenses: string[];
