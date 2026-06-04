@@ -478,11 +478,8 @@ function NotificationsPage() {
                       return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
                     return `Week of ${new Date(d.getTime() - ((d.getDay() + 6) % 7) * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
                   };
-                  const broadcastIso = (u: (typeof updates)[number]) => {
-                    // FieldUpdate row in this store keeps `time` only; pull created from feed array order isn't reliable.
-                    // Best-effort: use today's date for "time" string fallback; broadcasts include time string only.
-                    return new Date().toISOString();
-                  };
+                  const broadcastIso = (u: (typeof updates)[number]) =>
+                    u.createdAt ?? new Date().toISOString();
                   // Field updates remain in their own "Recent" bucket; broadcasts get grouped.
                   const broadcasts = updates.filter((u) => u.type === "broadcast");
                   const fields = updates.filter((u) => u.type !== "broadcast");
