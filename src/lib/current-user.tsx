@@ -41,13 +41,16 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   // unless the admin has manually impersonated someone.
   useEffect(() => {
     if (!user) return;
-    const myRow = staff.find((s) => s.profileId === user.id);
-    if (myRow && (!isAdmin || !staffId)) {
+    const profileStaffId = profile?.staff_id;
+    const myRow = staff.find((s) => s.profileId === user.id || (profileStaffId && s.id === profileStaffId));
+    if (profileStaffId && (!isAdmin || !staffId)) {
+      setStaffIdState(profileStaffId);
+    } else if (myRow && (!isAdmin || !staffId)) {
       setStaffIdState(myRow.id);
     } else if (!staffId && staff[0]) {
       setStaffIdState(staff[0].id);
     }
-  }, [user, staff, staffId, isAdmin]);
+  }, [user, profile?.staff_id, staff, staffId, isAdmin]);
 
   const persist = (next: { role: ViewRole | null; staffId: string }) => {
     try {
