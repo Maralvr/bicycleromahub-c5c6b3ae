@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isExcludedBokunProductId, isExcludedTourName } from "./excluded-bokun-products";
+import { rentalLocationForProductId } from "./rental-products";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
   adult: "adults", adults: "adults", person: "adults", people: "adults", participant: "adults", participants: "adults", pax: "adults",
@@ -224,13 +225,15 @@ interface BokunBookingFull {
   }>;
 }
 
-function mapToShiftRow(raw: BokunBookingFull) {
+function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, string> = new Map()) {
   const a0 = raw.activityBookings?.[0];
   const detailActivity = raw.activityBookings?.find((a) => String(a.bookingId ?? a.productConfirmationCode ?? "") === String(raw.id ?? raw.bookingId ?? raw.productConfirmationCode ?? "")) ?? a0;
   const activity = detailActivity ?? a0;
   const productTitle = activity?.product?.title ?? activity?.activity?.title ?? activity?.title ?? raw.product?.title ?? raw.productTitle ?? raw.title ?? "Bokun booking";
   const productId = activity?.product?.id ?? raw.product?.id;
   if (isExcludedBokunProductId(productId) || isExcludedTourName(productTitle)) return null;
+  const rentalLocation = rentalLocationForProductId(productId);
+  const rentalPointId = rentalLocation ? rentalPointIdByName.get(rentalLocation.toLowerCase()) ?? null : null;
   const startDateTime = activity?.startDateTime ?? raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
   if (!startDateTime) return null;
   const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
@@ -272,6 +275,7 @@ function mapToShiftRow(raw: BokunBookingFull) {
 
   return {
     source: "bokun" as const,
+    rental_point_id: rentalPointId,
     booking_id: bookingIdStr,
     channel_booking_ref: channelRef,
     external_booking_ref: externalRef,
@@ -355,6 +359,15 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
   try {
     const fromMs = Date.parse(`${run.from_date}T00:00:00Z`);
     const toMs = Date.parse(`${run.to_date}T23:59:59Z`);
+
+    // Build name → id map of rental points so rental bookings can be routed.
+    const { data: rpRows } = await supabaseAdmin
+      .from("rental_points")
+      .select("id, name");
+    const rentalPointIdByName = new Map<string, string>(
+      (rpRows ?? []).map((r) => [r.name.toLowerCase(), r.id]),
+    );
+
     const searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
       bookingRole: "SELLER",
       startDateRange: { from: fromMs, to: toMs },
@@ -402,7 +415,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
 
       const rows: ReturnType<typeof mapToShiftRow>[] = [];
       for (const full of fullBookings) {
-        const row = mapToShiftRow(full);
+        const row = mapToShiftRow(full, rentalPointIdByName);
         if (!row || !row.booking_id) { skipped++; continue; }
         rows.push(row);
       }

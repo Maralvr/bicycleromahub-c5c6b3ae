@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -138,6 +139,8 @@ function RentalPointsPage() {
           ))}
         </div>
       )}
+
+      {points.length > 0 && <RentalBookingsByLocation points={points} />}
 
       <RentalPointDialog
         open={creating || !!editing}
@@ -346,5 +349,130 @@ function RentalPointDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type RentalShift = {
+  id: string;
+  rental_point_id: string | null;
+  tour_name: string;
+  booking_id: string | null;
+  date: string;
+  start_time: string;
+  end_time: string;
+  customer_name: string | null;
+  customer_phone: string | null;
+  adults: number;
+  teens: number;
+  infants: number;
+  rate_title: string | null;
+};
+
+function RentalBookingsByLocation({ points }: { points: RentalPoint[] }) {
+  const [rows, setRows] = useState<RentalShift[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("shifts")
+        .select(
+          "id, rental_point_id, tour_name, booking_id, date, start_time, end_time, customer_name, customer_phone, adults, teens, infants, rate_title",
+        )
+        .not("rental_point_id", "is", null)
+        .gte("date", today)
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+      if (active) {
+        setRows((data ?? []) as RentalShift[]);
+        setLoading(false);
+      }
+    };
+    void load();
+    const channel = supabase
+      .channel(`rental-bookings-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => void load())
+      .subscribe();
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const byPoint = useMemo(() => {
+    const map = new Map<string, RentalShift[]>();
+    for (const r of rows) {
+      if (!r.rental_point_id) continue;
+      const arr = map.get(r.rental_point_id) ?? [];
+      arr.push(r);
+      map.set(r.rental_point_id, arr);
+    }
+    return map;
+  }, [rows]);
+
+  const rentalPoints = points.filter((p) => byPoint.has(p.id));
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-lg font-semibold text-foreground">Rentals by location</h2>
+        <span className="text-xs text-muted-foreground">
+          {loading ? "Loading…" : `${rows.length} upcoming`}
+        </span>
+      </div>
+      {!loading && rentalPoints.length === 0 ? (
+        <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
+          No upcoming rental bookings.
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {rentalPoints.map((p) => {
+            const list = byPoint.get(p.id) ?? [];
+            return (
+              <div key={p.id}>
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-foreground">{p.name}</h3>
+                  <Badge variant="secondary" className="ml-1">{list.length}</Badge>
+                </div>
+                <Card className="divide-y divide-border/60 overflow-hidden">
+                  {list.map((s) => {
+                    const pax = s.adults + s.teens + s.infants;
+                    return (
+                      <div key={s.id} className="p-3 grid grid-cols-12 gap-3 items-center text-sm">
+                        <div className="col-span-3 sm:col-span-2 font-medium text-foreground">
+                          {s.date} · {s.start_time.slice(0, 5)}
+                        </div>
+                        <div className="col-span-5 sm:col-span-5 min-w-0">
+                          <div className="truncate text-foreground">{s.tour_name}</div>
+                          {s.rate_title && (
+                            <div className="text-xs text-muted-foreground truncate">{s.rate_title}</div>
+                          )}
+                        </div>
+                        <div className="col-span-3 sm:col-span-3 min-w-0">
+                          <div className="truncate">{s.customer_name ?? "—"}</div>
+                          {s.customer_phone && (
+                            <div className="text-xs text-muted-foreground truncate">{s.customer_phone}</div>
+                          )}
+                        </div>
+                        <div className="col-span-1 sm:col-span-1 text-right text-muted-foreground">
+                          {pax} pax
+                        </div>
+                        <div className="hidden sm:block sm:col-span-1 text-right text-xs text-muted-foreground">
+                          {s.booking_id ?? ""}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

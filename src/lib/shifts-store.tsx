@@ -39,6 +39,7 @@ type ShiftRow = {
   assigned_staff_id: string | null;
   status: Shift["status"];
   required_tags: string[] | null;
+  rental_point_id: string | null;
 };
 
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
@@ -135,7 +136,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id",
         )
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
@@ -169,7 +170,10 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   }, [fetchAll]);
 
   const shifts = useMemo<Shift[]>(
-    () => rows.filter((r) => !isExcludedTourName(r.tour_name)).map(rowToShift),
+    () =>
+      rows
+        .filter((r) => !isExcludedTourName(r.tour_name) && !r.rental_point_id)
+        .map(rowToShift),
     [rows],
   );
 
