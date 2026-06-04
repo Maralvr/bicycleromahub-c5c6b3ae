@@ -87,11 +87,27 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
     void fetchAll();
     const channel = supabase
       .channel("staff-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, () => {
-        void fetchAll();
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, (payload) => {
+        const newRow = payload.new as StaffRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          setRows((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r)));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "staff_unavailability" }, () => {
-        void fetchAll();
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff_unavailability" }, (payload) => {
+        const newRow = payload.new as UnavailRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          setUnavail((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          setUnavail((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r)));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setUnavail((prev) => prev.filter((r) => r.id !== oldRow.id));
+        }
       })
       .subscribe();
     return () => {
