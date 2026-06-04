@@ -154,67 +154,106 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       .from("field_updates")
       .select("*")
       .order("created_at", { ascending: false });
-    if (!error) setFeed(((data ?? []) as FieldUpdateRow[]).map(fieldUpdateFromRow));
+    if (!error) {
+      setFeed(((data ?? []) as FieldUpdateRow[]).map(fieldUpdateFromRow));
+      return;
+    }
+
+    console.error("[notes] fetchFeed failed", error);
   }, []);
 
   const fetchNotifications = useCallback(async (staffId?: string | null) => {
     let query = supabase.from("guide_notifications").select("*");
     if (staffId) query = query.eq("staff_id", staffId);
     const { data, error } = await query.order("created_at", { ascending: false });
-    if (!error) setNotifications(((data ?? []) as GuideNotificationRow[]).map(notificationFromRow));
+    if (!error) {
+      setNotifications(((data ?? []) as GuideNotificationRow[]).map(notificationFromRow));
+      return;
+    }
+
+    console.error("[notes] fetchNotifications failed", error);
   }, []);
 
   useEffect(() => {
-    void fetchNotes();
-    void fetchFeed();
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const channel = supabase
-      .channel("notes-feed-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
-        const newRow = payload.new as GuideNoteRow | null;
-        const oldRow = payload.old as { id?: string; shift_id?: string } | null;
-        if (payload.eventType === "INSERT" && newRow) {
-          const note = noteFromRow(newRow);
-          setNotesByShift((prev) => {
-            const existing = prev[note.shiftId] ?? [];
-            if (existing.some((n) => n.id === note.id)) return prev;
-            return { ...prev, [note.shiftId]: [note, ...existing] };
-          });
-        } else if (payload.eventType === "UPDATE" && newRow) {
-          const note = noteFromRow(newRow);
-          setNotesByShift((prev) => ({
-            ...prev,
-            [note.shiftId]: (prev[note.shiftId] ?? []).map((n) => (n.id === note.id ? note : n)),
-          }));
-        } else if (payload.eventType === "DELETE" && oldRow?.id) {
-          setNotesByShift((prev) => {
-            const next: Record<string, GuideNote[]> = {};
-            for (const [k, v] of Object.entries(prev)) {
-              next[k] = v.filter((n) => n.id !== oldRow.id);
-            }
-            return next;
-          });
-        }
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, (payload) => {
-        const newRow = payload.new as FieldUpdateRow | null;
-        const oldRow = payload.old as { id?: string } | null;
-        if (payload.eventType === "INSERT" && newRow) {
-          const u = fieldUpdateFromRow(newRow);
-          setFeed((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
-        } else if (payload.eventType === "UPDATE" && newRow) {
-          const u = fieldUpdateFromRow(newRow);
-          setFeed((prev) => prev.map((x) => (x.id === u.id ? u : x)));
-        } else if (payload.eventType === "DELETE" && oldRow?.id) {
-          setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
-        }
-      })
-      .subscribe();
+    const loadInitial = () => {
+      void fetchNotes();
+      void fetchFeed();
+    };
+
+    const startRealtime = async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) await supabase.realtime.setAuth(token);
+      if (cancelled) return;
+
+      loadInitial();
+      channel = supabase
+        .channel(`notes-feed-live-${data.session?.user?.id ?? "guest"}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
+          const newRow = payload.new as GuideNoteRow | null;
+          const oldRow = payload.old as { id?: string; shift_id?: string } | null;
+          if (payload.eventType === "INSERT" && newRow) {
+            const note = noteFromRow(newRow);
+            setNotesByShift((prev) => {
+              const existing = prev[note.shiftId] ?? [];
+              if (existing.some((n) => n.id === note.id)) return prev;
+              return { ...prev, [note.shiftId]: [note, ...existing] };
+            });
+          } else if (payload.eventType === "UPDATE" && newRow) {
+            const note = noteFromRow(newRow);
+            setNotesByShift((prev) => ({
+              ...prev,
+              [note.shiftId]: (prev[note.shiftId] ?? []).map((n) => (n.id === note.id ? note : n)),
+            }));
+          } else if (payload.eventType === "DELETE" && oldRow?.id) {
+            setNotesByShift((prev) => {
+              const next: Record<string, GuideNote[]> = {};
+              for (const [k, v] of Object.entries(prev)) {
+                next[k] = v.filter((n) => n.id !== oldRow.id);
+              }
+              return next;
+            });
+          }
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, (payload) => {
+          const newRow = payload.new as FieldUpdateRow | null;
+          const oldRow = payload.old as { id?: string } | null;
+          if (payload.eventType === "INSERT" && newRow) {
+            const u = fieldUpdateFromRow(newRow);
+            setFeed((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
+          } else if (payload.eventType === "UPDATE" && newRow) {
+            const u = fieldUpdateFromRow(newRow);
+            setFeed((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+          } else if (payload.eventType === "DELETE" && oldRow?.id) {
+            setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
+          }
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            loadInitial();
+          }
+        });
+    };
+
+    void startRealtime();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void supabase.realtime.setAuth(session.access_token);
+      loadInitial();
+    });
+
+    const fallback = window.setInterval(loadInitial, 10000);
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+      window.clearInterval(fallback);
+      if (channel) void supabase.removeChannel(channel);
     };
-  }, [fetchFeed, fetchNotes]);
+  }, [fetchFeed, fetchNotes, user?.id]);
 
   // Separate channel for guide_notifications, filtered to just this user's
   // staff row so each client only receives its own notifications.
