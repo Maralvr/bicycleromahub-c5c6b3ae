@@ -31,7 +31,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   );
   const effectiveStaffId = isAdmin
     ? staffId || ownStaffId || staff[0]?.id || ""
-    : ownStaffId || staffId;
+    : ownStaffId;
 
   useEffect(() => {
     try {
