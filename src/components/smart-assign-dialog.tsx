@@ -28,7 +28,7 @@ type Props = {
 export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, onOverride }: Props) {
   const { staff } = useStaffStore();
   const [sortMode, setSortMode] = useState<SortMode>("score");
-  const [showIneligible, setShowIneligible] = useState(false);
+  const [showIneligible, setShowIneligible] = useState(true);
   const [search, setSearch] = useState("");
   const [note, setNote] = useState("");
   const [rate, setRate] = useState<string>("");
