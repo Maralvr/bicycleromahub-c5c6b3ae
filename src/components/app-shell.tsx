@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
             <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
           </div>
-          {role === "staff" && staffId && <NotificationBell staffId={staffId} />}
+          {staffId && <NotificationBell staffId={staffId} />}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
