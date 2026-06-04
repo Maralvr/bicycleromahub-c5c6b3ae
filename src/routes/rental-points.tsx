@@ -34,7 +34,7 @@ import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-poi
 import { useRequireAdmin } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
-import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { ShiftsCalendar } from "@/components/shifts-calendar";
 
 type RentalTab = "calendar" | "list";
 
