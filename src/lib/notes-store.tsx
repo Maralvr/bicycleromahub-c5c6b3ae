@@ -408,20 +408,34 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (error) console.error("[notifyGuides] insert failed", error);
   }, []);
 
-  const markRead = useCallback((id: string) => {
-    void supabase.from("guide_notifications").update({ read: true }).eq("id", id);
+  const markRead = useCallback(async (id: string) => {
+    locallyReadNotificationIds.current.add(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+
+    const { error } = await supabase.from("guide_notifications").update({ read: true }).eq("id", id);
+    if (error) console.error("[markRead] failed", error);
   }, []);
 
-  const markAllRead = useCallback((staffId: string) => {
-    void supabase
+  const markAllRead = useCallback(async (staffId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => {
+        if (n.staffId !== staffId || n.archivedAt) return n;
+        locallyReadNotificationIds.current.add(n.id);
+        return { ...n, read: true };
+      }),
+    );
+
+    const { data, error } = await supabase
       .from("guide_notifications")
       .update({ read: true })
       .eq("staff_id", staffId)
-      .is("archived_at", null);
-    setNotifications((prev) =>
-      prev.map((n) => (n.staffId === staffId && !n.archivedAt ? { ...n, read: true } : n)),
-    );
+      .is("archived_at", null)
+      .select("id");
+    if (error) {
+      console.error("[markAllRead] failed", error);
+      return;
+    }
+    for (const row of data ?? []) locallyReadNotificationIds.current.add(row.id);
   }, []);
 
   const archiveNotification = useCallback(async (id: string) => {
