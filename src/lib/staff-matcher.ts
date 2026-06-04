@@ -230,29 +230,21 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Re-derive the disqualification reason for display
-      const matchedTags = shift.requiredTags.filter((tag) => s.tags.includes(tag));
-      const isRentalShift = shift.requiredTags.some((t) => t.toLowerCase().includes("rental"));
-      const isMaintenanceShift = shift.requiredTags.some((t) => t.toLowerCase().includes("maintenance"));
-      let reason = "Not a fit";
-      if (matchedTags.length === 0 && shift.requiredTags.length > 0) reason = `Missing required skill: ${shift.requiredTags.join(", ")}`;
-      else if (isRentalShift && s.role !== "rental") reason = "Wrong role (rental shift)";
-      else if (isMaintenanceShift && s.role !== "mechanic") reason = "Wrong role (maintenance)";
+      // Only availability-based hard blocks remain
+      let reason = "Unavailable";
+      const conflict = findUnavailabilityConflict(s, shift);
+      if (conflict) reason = conflict;
       else {
-        const conflict = findUnavailabilityConflict(s, shift);
-        if (conflict) reason = conflict;
-        else {
-          const overlap = allShifts.find(
-            (o) =>
-              o.id !== shift.id &&
-              o.assignedStaffId === s.id &&
-              o.date === shift.date &&
-              o.status !== "rejected" &&
-              toMinutes(shift.startTime) < toMinutes(o.endTime) &&
-              toMinutes(shift.endTime) > toMinutes(o.startTime),
-          );
-          if (overlap) reason = `Double-booked at ${overlap.startTime}`;
-        }
+        const overlap = allShifts.find(
+          (o) =>
+            o.id !== shift.id &&
+            o.assignedStaffId === s.id &&
+            o.date === shift.date &&
+            o.status !== "rejected" &&
+            toMinutes(shift.startTime) < toMinutes(o.endTime) &&
+            toMinutes(shift.endTime) > toMinutes(o.startTime),
+        );
+        if (overlap) reason = `Double-booked at ${overlap.startTime}`;
       }
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
     })
