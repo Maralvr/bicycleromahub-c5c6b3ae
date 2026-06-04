@@ -34,6 +34,8 @@ function timeAgo(iso: string): string {
 
 export function NotificationBell({ staffId }: { staffId: string }) {
   const { notifications, unreadCountFor, markRead, markAllRead } = useNotesStore();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const unread = unreadCountFor(staffId);
   const mine = notifications.filter((n) => n.staffId === staffId).slice(0, 30);
 
