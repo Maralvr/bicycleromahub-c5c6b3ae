@@ -173,7 +173,7 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
         patch.pending_expires_at = null;
         patch.requested_by = null;
       }
-      const { error } = await supabase.from("shifts").update(patch).eq("id", id);
+      const { error } = await supabase.from("shifts").update(patch as never).eq("id", id);
       if (error) throw error;
       await fetchAll();
     },
