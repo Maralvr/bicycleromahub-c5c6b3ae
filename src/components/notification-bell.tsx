@@ -40,7 +40,7 @@ export function NotificationBell({ staffId }: { staffId: string }) {
   const mine = notifications.filter((n) => n.staffId === staffId).slice(0, 30);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           className="relative h-9 w-9 rounded-lg flex items-center justify-center bg-muted hover:bg-accent transition-colors"
