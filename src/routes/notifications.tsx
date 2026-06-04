@@ -116,16 +116,18 @@ function NotificationsPage() {
         : `Shared ${attachments.length} files`);
 
     try {
+      // Broadcast goes to everyone active on the team (excluding the sender).
       const { data: recipients, error: recipientsErr } = await supabase
         .from("staff")
         .select("id")
-        .eq("active", true)
-        .eq("role", "guide");
+        .eq("active", true);
       if (recipientsErr) {
         toast.error("Couldn't load recipients", { description: recipientsErr.message });
         return;
       }
-      const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
+      const recipientIds = (recipients ?? [])
+        .map((s: { id: string }) => s.id)
+        .filter((id) => id !== staffId);
       if (recipientIds.length === 0) {
         toast.error("No active staff to notify");
         return;
@@ -145,15 +147,19 @@ function NotificationsPage() {
         return;
       }
 
-      const { error: fuErr } = await supabase.from("field_updates").insert({
-        author_id: staffId,
-        message,
-        type: "broadcast",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        attachments: attachments.length ? attachments : [],
-      });
-      if (fuErr) {
-        toast.error("Couldn't post broadcast", { description: fuErr.message });
+      const { data: fuInserted, error: fuErr } = await supabase
+        .from("field_updates")
+        .insert({
+          author_id: staffId,
+          message,
+          type: "broadcast",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          attachments: attachments.length ? attachments : [],
+        })
+        .select("id")
+        .single();
+      if (fuErr || !fuInserted) {
+        toast.error("Couldn't post broadcast", { description: fuErr?.message ?? "Unknown error" });
         return;
       }
 
@@ -165,6 +171,7 @@ function NotificationsPage() {
           body: message,
           link: "/notifications",
           attachments: attachmentMeta,
+          field_update_id: fuInserted.id,
           read: false,
         })),
       );
