@@ -312,7 +312,7 @@ function ShiftsPage() {
     await assignShift(id, null);
     toast.success("Guide unassigned", { description: "Shift is back in the unassigned pool." });
     if (prev?.assignedStaffId) {
-      notifyGuide({
+      await notifyGuide({
         staffId: prev.assignedStaffId,
         type: "unassigned",
         title: "Shift removed from your schedule",
