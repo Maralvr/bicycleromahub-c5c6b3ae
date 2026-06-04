@@ -106,7 +106,8 @@ function PayoutsPage() {
   const amountFor = (s: PayoutShift): number => {
     const r = findRate(s);
     if (!r) return 0;
-    return s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
+    const base = s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
+    return base + (paxOf(s) >= LARGE_GROUP_THRESHOLD ? LARGE_GROUP_BONUS : 0);
   };
 
   // Guide-grouped + filtered
