@@ -320,6 +320,7 @@ function NotificationsPage() {
                             ? ListChecks
                             : CalendarRange;
                   const isOpen = expandedNotif === n.id;
+                  const visibleAttachments = attachmentsForNotification(n.id, n.body);
                   return (
                     <div
                       key={n.id}
@@ -346,16 +347,16 @@ function NotificationsPage() {
                         <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>
                           {n.body}
                         </div>
-                        {!isOpen && n.attachments && n.attachments.length > 0 && (
+                        {!isOpen && visibleAttachments.length > 0 && (
                           <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
                             <Paperclip className="h-2.5 w-2.5" />
-                            {n.attachments.length} attachment{n.attachments.length > 1 ? "s" : ""}
+                            {visibleAttachments.length} attachment{visibleAttachments.length > 1 ? "s" : ""}
                           </div>
                         )}
                       </button>
-                      {isOpen && n.attachments && n.attachments.length > 0 && (
+                      {isOpen && visibleAttachments.length > 0 && (
                         <div className="px-2.5 pb-2.5">
-                          <AttachmentList attachments={n.attachments} />
+                          <AttachmentList attachments={visibleAttachments} />
                         </div>
                       )}
                       {isOpen && n.link && (
