@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/app-shell";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -28,12 +29,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Phone, Clock, Plus, Pencil, Trash2 } from "lucide-react";
+import { MapPin, Phone, Clock, Plus, Pencil, Trash2, CalendarDays, List as ListIcon, ArrowLeft, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-points";
 import { useRequireAdmin } from "@/lib/require-admin";
+import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
+import { useStaffStore } from "@/lib/staff-store";
+import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+
+type RentalTab = "calendar" | "list";
 
 export const Route = createFileRoute("/rental-points")({
+  validateSearch: (search: Record<string, unknown>): { point?: string; tab?: RentalTab } => {
+    const tab = search.tab as string | undefined;
+    const point = search.point as string | undefined;
+    return {
+      point: typeof point === "string" && point.length > 0 ? point : undefined,
+      tab: tab === "calendar" || tab === "list" ? tab : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { title: "Rental points — Bicycle Roma" },
