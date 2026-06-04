@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
+import { supabase } from "@/integrations/supabase/client";
 import {
   processFiles,
   DEFAULT_MAX_FILES,
@@ -94,30 +95,63 @@ function NotificationsPage() {
   const removeAttachment = (id: string) =>
     setAttachments((prev) => prev.filter((a) => a.id !== id));
 
-  const send = () => {
+  const send = async () => {
     if (!msg.trim() && attachments.length === 0) return;
     const message =
       msg ||
       (attachments.length === 1
         ? `Shared ${attachments[0].name}`
         : `Shared ${attachments.length} files`);
-    addFieldUpdate({
-      authorId: "admin",
-      message,
-      type: "broadcast",
-      attachments: attachments.length ? attachments : undefined,
-    });
-    const guideIds = staff.filter((s) => s.role === "guide").map((s) => s.id);
-    notifyGuides(guideIds, {
-      type: "broadcast",
-      title: "Broadcast from admins",
-      body: message,
-      link: "/notifications",
-      attachments: attachments.length ? attachments : undefined,
-    });
+
+    // Fetch all active staff (guides + admins) directly from DB so we don't
+    // depend on a possibly-stale staff store.
+    const { data: recipients, error: recipientsErr } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("active", true);
+    if (recipientsErr) {
+      toast.error("Couldn't load recipients", { description: recipientsErr.message });
+      return;
+    }
+    const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
+    if (recipientIds.length === 0) {
+      toast.error("No active staff to notify");
+      return;
+    }
+
+    // Insert one notification row per recipient. Await so we can surface errors.
+    const { error: notifErr } = await supabase.from("guide_notifications").insert(
+      recipientIds.map((rid: string) => ({
+        staff_id: rid,
+        type: "broadcast" as const,
+        title: "Broadcast from admins",
+        body: message,
+        link: "/notifications",
+        attachments: attachments.length ? attachments : [],
+        read: false,
+      })),
+    );
+    if (notifErr) {
+      toast.error("Couldn't send broadcast", { description: notifErr.message });
+      return;
+    }
+
+    // Add to the shared activity feed. author_id must be a uuid → use the
+    // sender's staff id when available, otherwise their first admin staff row.
+    if (staffId) {
+      addFieldUpdate({
+        authorId: staffId,
+        message,
+        type: "broadcast",
+        attachments: attachments.length ? attachments : undefined,
+      });
+    }
+
     setMsg("");
     setAttachments([]);
-    toast.success(`Notified ${guideIds.length} guides in-app`, { description: "They'll see it in their notification bell." });
+    toast.success(`Broadcast sent to ${recipientIds.length} ${recipientIds.length === 1 ? "person" : "people"}`, {
+      description: "They'll see it in their notification bell.",
+    });
   };
 
   return (
