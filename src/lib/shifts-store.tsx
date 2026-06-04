@@ -160,8 +160,16 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     void fetchAll();
     const channel = supabase
       .channel("shifts-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => {
-        void fetchAll();
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
+        const newRow = payload.new as ShiftRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          setRows((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r)));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+        }
       })
       .subscribe();
     return () => {

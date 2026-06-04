@@ -61,8 +61,18 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
     void fetchUpdates();
     const channel = supabase
       .channel("task-updates-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_updates" }, () => {
-        void fetchUpdates();
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_updates" }, (payload) => {
+        const newRow = payload.new as TaskUpdateRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          setUpdates((prev) =>
+            prev.some((u) => u.id === newRow.id) ? prev : [fromRow(newRow), ...prev],
+          );
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          setUpdates((prev) => prev.map((u) => (u.id === newRow.id ? fromRow(newRow) : u)));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setUpdates((prev) => prev.filter((u) => u.id !== oldRow.id));
+        }
       })
       .subscribe();
 

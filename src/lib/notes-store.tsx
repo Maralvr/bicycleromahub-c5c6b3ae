@@ -166,17 +166,60 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
     const channel = supabase
       .channel("notes-notifications-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, () => {
-        void fetchNotes();
+      .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
+        const newRow = payload.new as GuideNoteRow | null;
+        const oldRow = payload.old as { id?: string; shift_id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          const note = noteFromRow(newRow);
+          setNotesByShift((prev) => {
+            const existing = prev[note.shiftId] ?? [];
+            if (existing.some((n) => n.id === note.id)) return prev;
+            return { ...prev, [note.shiftId]: [note, ...existing] };
+          });
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          const note = noteFromRow(newRow);
+          setNotesByShift((prev) => ({
+            ...prev,
+            [note.shiftId]: (prev[note.shiftId] ?? []).map((n) => (n.id === note.id ? note : n)),
+          }));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setNotesByShift((prev) => {
+            const next: Record<string, GuideNote[]> = {};
+            for (const [k, v] of Object.entries(prev)) {
+              next[k] = v.filter((n) => n.id !== oldRow.id);
+            }
+            return next;
+          });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, () => {
-        void fetchFeed();
+      .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, (payload) => {
+        const newRow = payload.new as FieldUpdateRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          const u = fieldUpdateFromRow(newRow);
+          setFeed((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          const u = fieldUpdateFromRow(newRow);
+          setFeed((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
+        }
       })
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "guide_notifications" },
-        () => {
-          void fetchNotifications();
+        (payload) => {
+          const newRow = payload.new as GuideNotificationRow | null;
+          const oldRow = payload.old as { id?: string } | null;
+          if (payload.eventType === "INSERT" && newRow) {
+            const n = notificationFromRow(newRow);
+            setNotifications((prev) => (prev.some((x) => x.id === n.id) ? prev : [n, ...prev]));
+          } else if (payload.eventType === "UPDATE" && newRow) {
+            const n = notificationFromRow(newRow);
+            setNotifications((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+          } else if (payload.eventType === "DELETE" && oldRow?.id) {
+            setNotifications((prev) => prev.filter((x) => x.id !== oldRow.id));
+          }
         },
       )
       .subscribe();
