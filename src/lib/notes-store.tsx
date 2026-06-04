@@ -119,6 +119,8 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
   attachments: row.attachments ?? undefined,
   read: row.read,
   createdAt: row.created_at,
+  archivedAt: row.archived_at ?? undefined,
+  fieldUpdateId: row.field_update_id ?? undefined,
 });
 
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
