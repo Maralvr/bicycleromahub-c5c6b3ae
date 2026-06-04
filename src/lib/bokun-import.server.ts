@@ -279,6 +279,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     booking_id: bookingIdStr,
     channel_booking_ref: channelRef,
     external_booking_ref: externalRef,
+    bokun_product_id: productId != null ? String(productId) : null,
     tour_name: productTitle,
     date: dateOnly(startDateTime),
     start_time: fmtTime(startDateTime),
