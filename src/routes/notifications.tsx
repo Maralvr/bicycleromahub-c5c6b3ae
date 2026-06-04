@@ -113,7 +113,7 @@ function NotificationsPage() {
       toast.error("Couldn't load recipients", { description: recipientsErr.message });
       return;
     }
-    const recipientIds = (recipients ?? []).map((s) => s.id);
+    const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
     if (recipientIds.length === 0) {
       toast.error("No active staff to notify");
       return;
