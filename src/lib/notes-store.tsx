@@ -32,11 +32,11 @@ type NotesStore = {
   addNote: (note: GuideNote, tourName: string) => void;
   addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => Promise<{ error: { message: string } | null }>;
   notifications: GuideNotification[];
-  notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => void;
+  notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => Promise<void>;
   notifyGuides: (
     staffIds: string[],
     n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">,
-  ) => void;
+  ) => Promise<void>;
   markRead: (id: string) => void;
   markAllRead: (staffId: string) => void;
   clearForGuide: (staffId: string) => void;
