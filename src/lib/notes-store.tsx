@@ -1,4 +1,13 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { GuideNote, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
@@ -34,7 +43,9 @@ type NotesStore = {
   notesByShift: Record<string, GuideNote[]>;
   feed: FieldUpdate[];
   addNote: (note: GuideNote, tourName: string) => void;
-  addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => Promise<{ error: { message: string } | null }>;
+  addFieldUpdate: (
+    update: Omit<FieldUpdate, "id" | "time">,
+  ) => Promise<{ error: { message: string } | null }>;
   deleteFieldUpdate: (id: string) => Promise<{ error: { message: string } | null }>;
   notifications: GuideNotification[];
   notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => Promise<void>;
@@ -42,8 +53,8 @@ type NotesStore = {
     staffIds: string[],
     n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">,
   ) => Promise<void>;
-  markRead: (id: string) => void;
-  markAllRead: (staffId: string) => void;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: (staffId: string) => Promise<void>;
   archiveNotification: (id: string) => Promise<void>;
   unarchiveNotification: (id: string) => Promise<void>;
   clearForGuide: (staffId: string) => void;
@@ -126,17 +137,27 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
   fieldUpdateId: row.field_update_id ?? undefined,
 });
 
+const applyLocalReadState = (
+  notification: GuideNotification,
+  locallyReadIds: Set<string>,
+): GuideNotification =>
+  locallyReadIds.has(notification.id) ? { ...notification, read: true } : notification;
+
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
   const { user, profile } = useAuth();
   const { staffId: currentStaffId } = useCurrentUser();
   const myStaffId = useMemo(
-    () => currentStaffId || profile?.staff_id || (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    () =>
+      currentStaffId ||
+      profile?.staff_id ||
+      (user ? (staff.find((s) => s.profileId === user.id)?.id ?? null) : null),
     [currentStaffId, profile?.staff_id, user, staff],
   );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
   const [feed, setFeed] = useState<FieldUpdate[]>([]);
   const [notifications, setNotifications] = useState<GuideNotification[]>([]);
+  const locallyReadNotificationIds = useRef(new Set<string>());
 
   const fetchNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -169,7 +190,11 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (staffId) query = query.eq("staff_id", staffId);
     const { data, error } = await query.order("created_at", { ascending: false });
     if (!error) {
-      setNotifications(((data ?? []) as GuideNotificationRow[]).map(notificationFromRow));
+      setNotifications(
+        ((data ?? []) as GuideNotificationRow[]).map((row) => {
+          return applyLocalReadState(notificationFromRow(row), locallyReadNotificationIds.current);
+        }),
+      );
       return;
     }
 
@@ -193,46 +218,58 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
       loadInitial();
       channel = supabase
-        .channel(`notes-feed-live-${data.session?.user?.id ?? "guest"}-${Math.random().toString(36).slice(2)}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
-          const newRow = payload.new as GuideNoteRow | null;
-          const oldRow = payload.old as { id?: string; shift_id?: string } | null;
-          if (payload.eventType === "INSERT" && newRow) {
-            const note = noteFromRow(newRow);
-            setNotesByShift((prev) => {
-              const existing = prev[note.shiftId] ?? [];
-              if (existing.some((n) => n.id === note.id)) return prev;
-              return { ...prev, [note.shiftId]: [note, ...existing] };
-            });
-          } else if (payload.eventType === "UPDATE" && newRow) {
-            const note = noteFromRow(newRow);
-            setNotesByShift((prev) => ({
-              ...prev,
-              [note.shiftId]: (prev[note.shiftId] ?? []).map((n) => (n.id === note.id ? note : n)),
-            }));
-          } else if (payload.eventType === "DELETE" && oldRow?.id) {
-            setNotesByShift((prev) => {
-              const next: Record<string, GuideNote[]> = {};
-              for (const [k, v] of Object.entries(prev)) {
-                next[k] = v.filter((n) => n.id !== oldRow.id);
-              }
-              return next;
-            });
-          }
-        })
-        .on("postgres_changes", { event: "*", schema: "public", table: "field_updates" }, (payload) => {
-          const newRow = payload.new as FieldUpdateRow | null;
-          const oldRow = payload.old as { id?: string } | null;
-          if (payload.eventType === "INSERT" && newRow) {
-            const u = fieldUpdateFromRow(newRow);
-            setFeed((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
-          } else if (payload.eventType === "UPDATE" && newRow) {
-            const u = fieldUpdateFromRow(newRow);
-            setFeed((prev) => prev.map((x) => (x.id === u.id ? u : x)));
-          } else if (payload.eventType === "DELETE" && oldRow?.id) {
-            setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
-          }
-        })
+        .channel(
+          `notes-feed-live-${data.session?.user?.id ?? "guest"}-${Math.random().toString(36).slice(2)}`,
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "guide_notes" },
+          (payload) => {
+            const newRow = payload.new as GuideNoteRow | null;
+            const oldRow = payload.old as { id?: string; shift_id?: string } | null;
+            if (payload.eventType === "INSERT" && newRow) {
+              const note = noteFromRow(newRow);
+              setNotesByShift((prev) => {
+                const existing = prev[note.shiftId] ?? [];
+                if (existing.some((n) => n.id === note.id)) return prev;
+                return { ...prev, [note.shiftId]: [note, ...existing] };
+              });
+            } else if (payload.eventType === "UPDATE" && newRow) {
+              const note = noteFromRow(newRow);
+              setNotesByShift((prev) => ({
+                ...prev,
+                [note.shiftId]: (prev[note.shiftId] ?? []).map((n) =>
+                  n.id === note.id ? note : n,
+                ),
+              }));
+            } else if (payload.eventType === "DELETE" && oldRow?.id) {
+              setNotesByShift((prev) => {
+                const next: Record<string, GuideNote[]> = {};
+                for (const [k, v] of Object.entries(prev)) {
+                  next[k] = v.filter((n) => n.id !== oldRow.id);
+                }
+                return next;
+              });
+            }
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "field_updates" },
+          (payload) => {
+            const newRow = payload.new as FieldUpdateRow | null;
+            const oldRow = payload.old as { id?: string } | null;
+            if (payload.eventType === "INSERT" && newRow) {
+              const u = fieldUpdateFromRow(newRow);
+              setFeed((prev) => (prev.some((x) => x.id === u.id) ? prev : [u, ...prev]));
+            } else if (payload.eventType === "UPDATE" && newRow) {
+              const u = fieldUpdateFromRow(newRow);
+              setFeed((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+            } else if (payload.eventType === "DELETE" && oldRow?.id) {
+              setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
+            }
+          },
+        )
         .subscribe((status) => {
           if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
             loadInitial();
@@ -291,11 +328,17 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
             const oldRow = payload.old as { id?: string } | null;
             if (payload.eventType === "INSERT" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
-              const n = notificationFromRow(newRow);
+              const n = applyLocalReadState(
+                notificationFromRow(newRow),
+                locallyReadNotificationIds.current,
+              );
               setNotifications((prev) => (prev.some((x) => x.id === n.id) ? prev : [n, ...prev]));
             } else if (payload.eventType === "UPDATE" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
-              const n = notificationFromRow(newRow);
+              const n = applyLocalReadState(
+                notificationFromRow(newRow),
+                locallyReadNotificationIds.current,
+              );
               setNotifications((prev) => prev.map((x) => (x.id === n.id ? n : x)));
             } else if (payload.eventType === "DELETE" && oldRow?.id) {
               setNotifications((prev) => prev.filter((x) => x.id !== oldRow.id));
@@ -400,20 +443,37 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (error) console.error("[notifyGuides] insert failed", error);
   }, []);
 
-  const markRead = useCallback((id: string) => {
-    void supabase.from("guide_notifications").update({ read: true }).eq("id", id);
+  const markRead = useCallback(async (id: string) => {
+    locallyReadNotificationIds.current.add(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+
+    const { error } = await supabase
+      .from("guide_notifications")
+      .update({ read: true })
+      .eq("id", id);
+    if (error) console.error("[markRead] failed", error);
   }, []);
 
-  const markAllRead = useCallback((staffId: string) => {
-    void supabase
+  const markAllRead = useCallback(async (staffId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => {
+        if (n.staffId !== staffId || n.archivedAt) return n;
+        locallyReadNotificationIds.current.add(n.id);
+        return { ...n, read: true };
+      }),
+    );
+
+    const { data, error } = await supabase
       .from("guide_notifications")
       .update({ read: true })
       .eq("staff_id", staffId)
-      .is("archived_at", null);
-    setNotifications((prev) =>
-      prev.map((n) => (n.staffId === staffId && !n.archivedAt ? { ...n, read: true } : n)),
-    );
+      .is("archived_at", null)
+      .select("id");
+    if (error) {
+      console.error("[markAllRead] failed", error);
+      return;
+    }
+    for (const row of data ?? []) locallyReadNotificationIds.current.add(row.id);
   }, []);
 
   const archiveNotification = useCallback(async (id: string) => {
