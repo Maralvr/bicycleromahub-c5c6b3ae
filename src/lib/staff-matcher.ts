@@ -74,27 +74,22 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
   const warnings: string[] = [];
   let score = 0;
 
-  // --- 1. Tag matching (most important) ---
+  // --- 1. Tag matching (soft — boosts score, never disqualifies) ---
   const matchedTags = shift.requiredTags.filter((tag) => staff.tags.includes(tag));
   const tagMatchRatio = shift.requiredTags.length > 0 ? matchedTags.length / shift.requiredTags.length : 0;
 
-  // Hard requirement: must match at least one required tag
-  if (matchedTags.length === 0 && shift.requiredTags.length > 0) return null;
-
   score += matchedTags.length * 25;
-  if (tagMatchRatio === 1) {
+  if (shift.requiredTags.length > 0 && tagMatchRatio === 1) {
     score += 15;
     reasons.push(`All ${matchedTags.length} required skills match`);
   } else if (matchedTags.length > 0) {
     reasons.push(`${matchedTags.length}/${shift.requiredTags.length} skills match`);
+  } else if (shift.requiredTags.length > 0) {
+    warnings.push(`Missing skill: ${shift.requiredTags.join(", ")}`);
   }
 
-  // --- 2. Role fit ---
-  const isRentalShift = shift.requiredTags.some((t) => t.toLowerCase().includes("rental"));
-  const isMaintenanceShift = shift.requiredTags.some((t) => t.toLowerCase().includes("maintenance"));
-  if (isRentalShift && staff.role !== "rental") return null;
-  if (isMaintenanceShift && staff.role !== "mechanic") return null;
-  if (!isRentalShift && !isMaintenanceShift && staff.role === "guide") {
+  // --- 2. Role fit (soft) ---
+  if (staff.role === "guide") {
     score += 10;
     reasons.push("Guide role");
   }
