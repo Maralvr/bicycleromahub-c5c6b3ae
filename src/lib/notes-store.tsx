@@ -127,10 +127,10 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
 
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const myStaffId = useMemo(
-    () => (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
-    [user, staff],
+    () => profile?.staff_id ?? (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    [profile?.staff_id, user, staff],
   );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
   const [feed, setFeed] = useState<FieldUpdate[]>([]);
@@ -157,18 +157,16 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (!error) setFeed(((data ?? []) as FieldUpdateRow[]).map(fieldUpdateFromRow));
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("guide_notifications")
-      .select("*")
-      .order("created_at", { ascending: false });
+  const fetchNotifications = useCallback(async (staffId?: string | null) => {
+    let query = supabase.from("guide_notifications").select("*");
+    if (staffId) query = query.eq("staff_id", staffId);
+    const { data, error } = await query.order("created_at", { ascending: false });
     if (!error) setNotifications(((data ?? []) as GuideNotificationRow[]).map(notificationFromRow));
   }, []);
 
   useEffect(() => {
     void fetchNotes();
     void fetchFeed();
-    void fetchNotifications();
 
     const channel = supabase
       .channel("notes-feed-live")
@@ -216,12 +214,16 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [fetchFeed, fetchNotes, fetchNotifications]);
+  }, [fetchFeed, fetchNotes]);
 
   // Separate channel for guide_notifications, filtered to just this user's
   // staff row so each client only receives its own notifications.
   useEffect(() => {
-    if (!myStaffId) return;
+    if (!myStaffId) {
+      setNotifications([]);
+      return;
+    }
+    void fetchNotifications(myStaffId);
     const channel = supabase
       .channel(`guide-notifications-${myStaffId}`)
       .on(
@@ -246,12 +248,21 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          void fetchNotifications(myStaffId);
+        }
+      });
+
+    const fallback = window.setInterval(() => {
+      void fetchNotifications(myStaffId);
+    }, 5000);
 
     return () => {
+      window.clearInterval(fallback);
       void supabase.removeChannel(channel);
     };
-  }, [myStaffId]);
+  }, [fetchNotifications, myStaffId]);
 
   const addNote = useCallback<NotesStore["addNote"]>(
     (note, tourName) => {
