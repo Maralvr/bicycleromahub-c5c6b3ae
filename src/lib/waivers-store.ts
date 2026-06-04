@@ -34,7 +34,25 @@ export function useWaiverSignatures() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "waiver_signatures" },
-        () => void fetchAll(),
+        (payload) => {
+          const newRow = payload.new as WaiverSignature | null;
+          const oldRow = payload.old as { id?: string } | null;
+          setSignatures((prev) => {
+            if (payload.eventType === "INSERT" && newRow) {
+              if (prev.some((s) => s.id === newRow.id)) return prev;
+              return [newRow, ...prev].sort(
+                (a, b) => (a.signed_at < b.signed_at ? 1 : -1),
+              );
+            }
+            if (payload.eventType === "UPDATE" && newRow) {
+              return prev.map((s) => (s.id === newRow.id ? { ...s, ...newRow } : s));
+            }
+            if (payload.eventType === "DELETE" && oldRow?.id) {
+              return prev.filter((s) => s.id !== oldRow.id);
+            }
+            return prev;
+          });
+        },
       )
       .subscribe();
     return () => {
