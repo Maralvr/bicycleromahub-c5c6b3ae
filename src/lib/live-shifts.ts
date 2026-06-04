@@ -162,15 +162,24 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
 
   const assign = useCallback(
     async (id: string, staffId: string | null) => {
-      const { error } = await supabase
-        .from("shifts")
-        .update({ assigned_staff_id: staffId, status: staffId ? "pending" : "unassigned" })
-        .eq("id", id);
+      const patch: Record<string, unknown> = {
+        assigned_staff_id: staffId,
+        status: staffId ? "pending" : "unassigned",
+      };
+      if (staffId) {
+        // 2-hour window for the guide to accept/reject
+        patch.pending_expires_at = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+      } else {
+        patch.pending_expires_at = null;
+        patch.requested_by = null;
+      }
+      const { error } = await supabase.from("shifts").update(patch as never).eq("id", id);
       if (error) throw error;
       await fetchAll();
     },
     [fetchAll],
   );
+
 
   const setStatus = useCallback(
     async (id: string, status: LiveShift["status"]) => {

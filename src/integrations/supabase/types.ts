@@ -431,9 +431,11 @@ export type Database = {
           payout_paid_at: string | null
           payout_paid_by: string | null
           payout_tier: number | null
+          pending_expires_at: string | null
           rate: number | null
           rate_title: string | null
           rental_point_id: string | null
+          requested_by: string | null
           required_tags: string[]
           seller: string | null
           source: Database["public"]["Enums"]["shift_source"]
@@ -470,9 +472,11 @@ export type Database = {
           payout_paid_at?: string | null
           payout_paid_by?: string | null
           payout_tier?: number | null
+          pending_expires_at?: string | null
           rate?: number | null
           rate_title?: string | null
           rental_point_id?: string | null
+          requested_by?: string | null
           required_tags?: string[]
           seller?: string | null
           source?: Database["public"]["Enums"]["shift_source"]
@@ -509,9 +513,11 @@ export type Database = {
           payout_paid_at?: string | null
           payout_paid_by?: string | null
           payout_tier?: number | null
+          pending_expires_at?: string | null
           rate?: number | null
           rate_title?: string | null
           rental_point_id?: string | null
+          requested_by?: string | null
           required_tags?: string[]
           seller?: string | null
           source?: Database["public"]["Enums"]["shift_source"]
@@ -818,6 +824,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_shift_request: {
+        Args: { _reason?: string; _shift_id: string }
+        Returns: undefined
+      }
+      expire_shift_requests: { Args: never; Returns: number }
       get_bokun_cron_status: { Args: never; Returns: Json }
       has_role: {
         Args: {
