@@ -79,7 +79,13 @@ export function NotificationBell({ staffId }: { staffId: string }) {
                 return (
                   <button
                     key={n.id}
-                    onClick={() => markRead(n.id)}
+                    onClick={() => {
+                      if (!n.read) markRead(n.id);
+                      if (n.link) {
+                        setOpen(false);
+                        navigate({ to: n.link });
+                      }
+                    }}
                     className={cn(
                       "w-full text-left p-3 hover:bg-muted/50 transition-colors flex gap-2.5",
                       !n.read && "bg-primary/5"
