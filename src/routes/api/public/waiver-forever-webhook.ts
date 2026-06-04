@@ -79,9 +79,36 @@ function extractFromPayload(payload: Record<string, unknown>) {
   };
 }
 
+/** Normalize a person name for fuzzy comparison: lowercase, strip accents/punct, sort tokens. */
+function normalizeName(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(" ");
+}
+
+/** Two names "match" if one normalized token set is contained in the other (handles middle names, order). */
+function namesMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const ta = new Set(a.split(" "));
+  const tb = new Set(b.split(" "));
+  // require at least 2 shared tokens (first + last) OR full containment
+  const shared = [...ta].filter((t) => tb.has(t)).length;
+  return shared >= 2;
+}
+
 async function findMatchingShiftId(
   bookingId: string | null,
   email: string | null,
+  signerName: string | null,
+  signedAt: string,
 ): Promise<string | null> {
   // 1. Booking ID match (strongest)
   if (bookingId) {
@@ -93,11 +120,60 @@ async function findMatchingShiftId(
     if (data?.id) return data.id;
   }
 
-  // 2. Email fallback — match on customer_name? shifts table doesn't have customer_email yet.
-  // Once email is added to shifts, swap this to .ilike on customer_email.
-  // For now, no fallback possible without an email field. (Returns null.)
+  // 2. Email match (exact, case-insensitive) — restrict to a ±14 day window around signing.
+  const signedDate = new Date(signedAt);
+  const windowFrom = new Date(signedDate.getTime() - 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const windowTo = new Date(signedDate.getTime() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
   if (email) {
-    // Placeholder: future enhancement once shifts.customer_email exists.
+    const { data } = await supabaseAdmin
+      .from("shifts")
+      .select("id, date")
+      .ilike("customer_email", email)
+      .gte("date", windowFrom)
+      .lte("date", windowTo)
+      .order("date", { ascending: true });
+    if (data && data.length > 0) {
+      // Prefer the shift closest to signedAt
+      const best = data.reduce((a, b) =>
+        Math.abs(new Date(a.date).getTime() - signedDate.getTime()) <=
+        Math.abs(new Date(b.date).getTime() - signedDate.getTime())
+          ? a
+          : b,
+      );
+      return best.id;
+    }
+  }
+
+  // 3. Name match — main booker's name vs shift.customer_name, within ±14 days.
+  if (signerName) {
+    const normalizedSigner = normalizeName(signerName);
+    if (normalizedSigner) {
+      const { data } = await supabaseAdmin
+        .from("shifts")
+        .select("id, date, customer_name")
+        .not("customer_name", "is", null)
+        .gte("date", windowFrom)
+        .lte("date", windowTo);
+      const candidates = (data ?? []).filter((s) =>
+        namesMatch(normalizedSigner, normalizeName(s.customer_name)),
+      );
+      if (candidates.length === 1) return candidates[0].id;
+      if (candidates.length > 1) {
+        // Multiple matches — pick the one closest in time to signedAt
+        const best = candidates.reduce((a, b) =>
+          Math.abs(new Date(a.date).getTime() - signedDate.getTime()) <=
+          Math.abs(new Date(b.date).getTime() - signedDate.getTime())
+            ? a
+            : b,
+        );
+        return best.id;
+      }
+    }
   }
 
   return null;
