@@ -139,12 +139,15 @@ function NotificationsPage() {
     // Add to the shared activity feed. author_id must be a uuid → use the
     // sender's staff id when available, otherwise their first admin staff row.
     if (staffId) {
-      addFieldUpdate({
+      const { error: fuErr } = await addFieldUpdate({
         authorId: staffId,
         message,
         type: "broadcast",
         attachments: attachments.length ? attachments : undefined,
       });
+      if (fuErr) {
+        toast.error("Couldn't post to activity", { description: fuErr.message });
+      }
     }
 
     setMsg("");
