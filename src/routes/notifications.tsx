@@ -100,7 +100,7 @@ function NotificationsPage() {
     const matchingBroadcast = feed.find(
       (u) => u.type === "broadcast" && u.message === body && u.attachments?.length,
     );
-    return matchingBroadcast?.attachments ?? notification?.attachments ?? [];
+    return matchingBroadcast?.attachments ?? notification?.attachments?.filter((a) => a.dataUrl) ?? [];
   };
 
   const send = async () => {
