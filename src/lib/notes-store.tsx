@@ -79,6 +79,8 @@ type GuideNotificationRow = {
   attachments: Attachment[] | null;
   read: boolean;
   created_at: string;
+  archived_at?: string | null;
+  field_update_id?: string | null;
 };
 
 const NotesContext = createContext<NotesStore | null>(null);
