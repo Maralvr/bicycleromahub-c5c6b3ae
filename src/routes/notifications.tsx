@@ -54,9 +54,11 @@ function NotificationsPage() {
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
-  const { feed, notifications, markAllRead, markRead } = useNotesStore();
+  const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
-  const unread = myNotifs.filter((n) => !n.read).length;
+  const myActiveNotifs = myNotifs.filter((n) => !n.archivedAt);
+  const myArchivedNotifs = myNotifs.filter((n) => n.archivedAt);
+  const unread = myActiveNotifs.filter((n) => !n.read).length;
   // Guides only see broadcasts (sent to everyone) or their own field updates.
   const updates = isAdmin
     ? feed
@@ -67,6 +69,8 @@ function NotificationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedNotif, setExpandedNotif] = useState<string | null>(null);
   const [expandedFeed, setExpandedFeed] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+  const [broadcastGroup, setBroadcastGroup] = useState<"all" | "day" | "week" | "month">("all");
   const toggleFeed = (id: string) =>
     setExpandedFeed((prev) => {
       const next = new Set(prev);
@@ -112,16 +116,18 @@ function NotificationsPage() {
         : `Shared ${attachments.length} files`);
 
     try {
+      // Broadcast goes to everyone active on the team (excluding the sender).
       const { data: recipients, error: recipientsErr } = await supabase
         .from("staff")
         .select("id")
-        .eq("active", true)
-        .eq("role", "guide");
+        .eq("active", true);
       if (recipientsErr) {
         toast.error("Couldn't load recipients", { description: recipientsErr.message });
         return;
       }
-      const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
+      const recipientIds = (recipients ?? [])
+        .map((s: { id: string }) => s.id)
+        .filter((id) => id !== staffId);
       if (recipientIds.length === 0) {
         toast.error("No active staff to notify");
         return;
@@ -141,15 +147,19 @@ function NotificationsPage() {
         return;
       }
 
-      const { error: fuErr } = await supabase.from("field_updates").insert({
-        author_id: staffId,
-        message,
-        type: "broadcast",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        attachments: attachments.length ? attachments : [],
-      });
-      if (fuErr) {
-        toast.error("Couldn't post broadcast", { description: fuErr.message });
+      const { data: fuInserted, error: fuErr } = await supabase
+        .from("field_updates")
+        .insert({
+          author_id: staffId,
+          message,
+          type: "broadcast",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          attachments: attachments.length ? attachments : [],
+        })
+        .select("id")
+        .single();
+      if (fuErr || !fuInserted) {
+        toast.error("Couldn't post broadcast", { description: fuErr?.message ?? "Unknown error" });
         return;
       }
 
@@ -161,6 +171,7 @@ function NotificationsPage() {
           body: message,
           link: "/notifications",
           attachments: attachmentMeta,
+          field_update_id: fuInserted.id,
           read: false,
         })),
       );
@@ -302,13 +313,31 @@ function NotificationsPage() {
                 </Button>
               )}
             </div>
-            {myNotifs.length === 0 ? (
+            <div className="mb-3 flex items-center gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setShowArchived(false)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${!showArchived ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                Active ({myActiveNotifs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowArchived(true)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${showArchived ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                Archived ({myArchivedNotifs.length})
+              </button>
+            </div>
+            {(showArchived ? myArchivedNotifs : myActiveNotifs).length === 0 ? (
               <div className="text-xs text-muted-foreground italic py-6 text-center">
-                You'll see schedule changes, broadcasts and updates here.
+                {showArchived
+                  ? "Nothing archived yet."
+                  : "You'll see schedule changes, broadcasts and updates here."}
               </div>
             ) : (
               <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                {myNotifs.slice(0, 20).map((n) => {
+                {(showArchived ? myArchivedNotifs : myActiveNotifs).slice(0, 50).map((n) => {
                   const Icon =
                     n.type === "broadcast"
                       ? Megaphone
@@ -324,7 +353,7 @@ function NotificationsPage() {
                   return (
                     <div
                       key={n.id}
-                      className={`rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
+                      className={`rounded-lg border text-xs transition-colors ${n.archivedAt ? "bg-muted/40 border-border/60 opacity-80" : n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
                     >
                       <button
                         type="button"
@@ -337,11 +366,11 @@ function NotificationsPage() {
                         <div className="flex items-center gap-1.5 mb-1">
                           <Icon className="h-3 w-3 text-primary" />
                           <span className="font-semibold text-foreground">{n.title}</span>
-                          {!n.read && (
+                          {!n.read && !n.archivedAt && (
                             <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
                           )}
                           <ChevronDown
-                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read ? "ml-auto" : ""}`}
+                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read || n.archivedAt ? "ml-auto" : ""}`}
                           />
                         </div>
                         <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>
@@ -359,16 +388,39 @@ function NotificationsPage() {
                           <AttachmentList attachments={visibleAttachments} />
                         </div>
                       )}
-                      {isOpen && n.link && (
-                        <div className="px-2.5 pb-2.5">
+                      <div className="px-2.5 pb-2.5 flex items-center gap-2 flex-wrap">
+                        {isOpen && n.link && (
                           <Link
                             to={n.link as string}
                             className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                           >
                             Open <ChevronDown className="h-3 w-3 -rotate-90" />
                           </Link>
-                        </div>
-                      )}
+                        )}
+                        {n.archivedAt ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void unarchiveNotification(n.id);
+                            }}
+                            className="ml-auto text-[11px] text-primary hover:underline"
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void archiveNotification(n.id);
+                            }}
+                            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                          >
+                            Archive
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -378,110 +430,191 @@ function NotificationsPage() {
         )}
 
         <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="font-semibold">Activity feed</h2>
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Live
             </span>
           </div>
+          <div className="mb-5 flex items-center gap-1.5 text-[11px] flex-wrap">
+            <span className="text-muted-foreground mr-1">Group broadcasts:</span>
+            {(["all", "day", "week", "month"] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setBroadcastGroup(g)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${broadcastGroup === g ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                {g === "all" ? "All" : g === "day" ? "Daily" : g === "week" ? "Weekly" : "Monthly"}
+              </button>
+            ))}
+          </div>
           <div className="relative">
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-border" />
             <div className="space-y-5">
-              {updates.map((u) => {
-                const author = staff.find((s) => s.id === u.authorId);
-                const isLong = u.message.length > 180;
-                const isOpen = expandedFeed.has(u.id);
-                return (
-                  <div key={u.id} className="flex gap-3 relative">
-                    <div className="relative z-10">
-                      <Avatar
-                        name={author?.name || "Admin"}
-                        initials={author?.avatar || "AD"}
-                        size="md"
-                        className="ring-4 ring-card"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-foreground">
-                          {author?.name || "Admin"}
-                        </span>
-                        <Badge
-                          variant={u.type === "broadcast" ? "default" : "outline"}
-                          className="text-[10px] font-semibold"
-                        >
-                          {u.type === "broadcast" ? (
-                            <>
-                              <Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast
-                            </>
-                          ) : (
-                            <>
-                              <MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}
-                            </>
-                          )}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">· {u.time}</span>
+              {(() => {
+                // Group broadcasts by selected granularity; field updates stay inline.
+                const groups: Array<{ key: string; label: string | null; items: typeof updates }> = [];
+                if (broadcastGroup === "all") {
+                  groups.push({ key: "all", label: null, items: updates });
+                } else {
+                  const bucket = (iso: string) => {
+                    const d = new Date(iso);
+                    if (broadcastGroup === "day") return d.toISOString().slice(0, 10);
+                    if (broadcastGroup === "month") return d.toISOString().slice(0, 7);
+                    // week: ISO year-week
+                    const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                    const dayNum = tmp.getUTCDay() || 7;
+                    tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+                    const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+                    const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+                    return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+                  };
+                  const labelFor = (key: string, sample: string) => {
+                    const d = new Date(sample);
+                    if (broadcastGroup === "day")
+                      return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                    if (broadcastGroup === "month")
+                      return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+                    return `Week of ${new Date(d.getTime() - ((d.getDay() + 6) % 7) * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+                  };
+                  const broadcastIso = (u: (typeof updates)[number]) =>
+                    u.createdAt ?? new Date().toISOString();
+                  // Field updates remain in their own "Recent" bucket; broadcasts get grouped.
+                  const broadcasts = updates.filter((u) => u.type === "broadcast");
+                  const fields = updates.filter((u) => u.type !== "broadcast");
+                  const map = new Map<string, typeof updates>();
+                  for (const u of broadcasts) {
+                    const key = bucket(broadcastIso(u));
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key)!.push(u);
+                  }
+                  for (const [key, items] of map.entries()) {
+                    groups.push({ key, label: labelFor(key, broadcastIso(items[0])), items });
+                  }
+                  if (fields.length) groups.push({ key: "field", label: "Field updates", items: fields });
+                }
+                return groups.map((group) => (
+                  <div key={group.key} className="space-y-5">
+                    {group.label && (
+                      <div className="ml-12 -mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label} · {group.items.length}
                       </div>
-                      <div
-                        onClick={() => isLong && toggleFeed(u.id)}
-                        className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
-                      >
-                        <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
-                        {isLong && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFeed(u.id);
-                            }}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-                          >
-                            {isOpen ? "Show less" : "Show more"}
-                            <ChevronDown
-                              className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    )}
+                    {group.items.map((u) => {
+                      const author = staff.find((s) => s.id === u.authorId);
+                      const isLong = u.message.length > 180;
+                      const isOpen = expandedFeed.has(u.id);
+                      const isMine = u.authorId === staffId || isAdmin;
+                      const canDelete = u.type === "broadcast" && isMine;
+                      return (
+                        <div key={u.id} className="flex gap-3 relative">
+                          <div className="relative z-10">
+                            <Avatar
+                              name={author?.name || "Admin"}
+                              initials={author?.avatar || "AD"}
+                              size="md"
+                              className="ring-4 ring-card"
                             />
-                          </button>
-                        )}
-                        {u.attachments && u.attachments.length > 0 && (
-                          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {u.attachments.map((a) => (
-                              <a
-                                key={a.id}
-                                href={a.dataUrl}
-                                download={a.name}
-                                className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
-                              >
-                                {a.mime.startsWith("image/") ? (
-                                  <img
-                                    src={a.dataUrl}
-                                    alt={a.name}
-                                    className="h-10 w-10 rounded object-cover shrink-0"
-                                  />
-                                ) : (
-                                  <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
-                                    {a.mime.startsWith("image/") ? (
-                                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                    ) : (
-                                      <FileText className="h-4 w-4 text-muted-foreground" />
-                                    )}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="truncate text-xs font-medium">{a.name}</div>
-                                  <div className="text-[10px] text-muted-foreground">
-                                    {(a.size / 1024).toFixed(1)} KB
-                                  </div>
-                                </div>
-                                <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </a>
-                            ))}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-foreground">
+                                {author?.name || "Admin"}
+                              </span>
+                              <Badge
+                                variant={u.type === "broadcast" ? "default" : "outline"}
+                                className="text-[10px] font-semibold"
+                              >
+                                {u.type === "broadcast" ? (
+                                  <>
+                                    <Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}
+                                  </>
+                                )}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">· {u.time}</span>
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm("Delete this broadcast for everyone?")) return;
+                                    const { error } = await deleteFieldUpdate(u.id);
+                                    if (error) toast.error("Couldn't delete", { description: error.message });
+                                    else toast.success("Broadcast deleted");
+                                  }}
+                                  className="ml-auto text-[11px] text-destructive hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                            <div
+                              onClick={() => isLong && toggleFeed(u.id)}
+                              className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
+                            >
+                              <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFeed(u.id);
+                                  }}
+                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                                >
+                                  {isOpen ? "Show less" : "Show more"}
+                                  <ChevronDown
+                                    className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                  />
+                                </button>
+                              )}
+                              {u.attachments && u.attachments.length > 0 && (
+                                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {u.attachments.map((a) => (
+                                    <a
+                                      key={a.id}
+                                      href={a.dataUrl}
+                                      download={a.name}
+                                      className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
+                                    >
+                                      {a.mime.startsWith("image/") ? (
+                                        <img
+                                          src={a.dataUrl}
+                                          alt={a.name}
+                                          className="h-10 w-10 rounded object-cover shrink-0"
+                                        />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                                          {a.mime.startsWith("image/") ? (
+                                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="truncate text-xs font-medium">{a.name}</div>
+                                        <div className="text-[10px] text-muted-foreground">
+                                          {(a.size / 1024).toFixed(1)} KB
+                                        </div>
+                                      </div>
+                                      <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           </div>
         </Card>

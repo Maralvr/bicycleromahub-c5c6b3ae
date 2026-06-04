@@ -181,9 +181,11 @@ export type Database = {
       }
       guide_notifications: {
         Row: {
+          archived_at: string | null
           attachments: Json
           body: string
           created_at: string
+          field_update_id: string | null
           id: string
           link: string | null
           read: boolean
@@ -193,9 +195,11 @@ export type Database = {
           type: Database["public"]["Enums"]["notification_type"]
         }
         Insert: {
+          archived_at?: string | null
           attachments?: Json
           body: string
           created_at?: string
+          field_update_id?: string | null
           id?: string
           link?: string | null
           read?: boolean
@@ -205,9 +209,11 @@ export type Database = {
           type: Database["public"]["Enums"]["notification_type"]
         }
         Update: {
+          archived_at?: string | null
           attachments?: Json
           body?: string
           created_at?: string
+          field_update_id?: string | null
           id?: string
           link?: string | null
           read?: boolean

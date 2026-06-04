@@ -37,7 +37,7 @@ export function NotificationBell({ staffId }: { staffId: string }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const unread = unreadCountFor(staffId);
-  const mine = notifications.filter((n) => n.staffId === staffId).slice(0, 30);
+  const mine = notifications.filter((n) => n.staffId === staffId && !n.archivedAt).slice(0, 30);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
