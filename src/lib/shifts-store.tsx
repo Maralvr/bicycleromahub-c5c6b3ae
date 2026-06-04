@@ -9,6 +9,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Shift } from "./mock-data";
+import { isExcludedTourName } from "./excluded-bokun-products";
 
 type ShiftRow = {
   id: string;
