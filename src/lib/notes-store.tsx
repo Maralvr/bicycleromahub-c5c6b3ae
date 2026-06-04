@@ -223,7 +223,70 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       setNotifications([]);
       return;
     }
-    void fetchNotifications(myStaffId);
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let fallback: number | null = null;
+
+    const startRealtime = async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token || cancelled) return;
+
+      await supabase.realtime.setAuth(token);
+      if (cancelled) return;
+
+      void fetchNotifications(myStaffId);
+      channel = supabase
+        .channel(`guide-notifications-${myStaffId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "guide_notifications",
+            filter: `staff_id=eq.${myStaffId}`,
+          },
+          (payload) => {
+            const newRow = payload.new as GuideNotificationRow | null;
+            const oldRow = payload.old as { id?: string } | null;
+            if (payload.eventType === "INSERT" && newRow) {
+              const n = notificationFromRow(newRow);
+              setNotifications((prev) => (prev.some((x) => x.id === n.id) ? prev : [n, ...prev]));
+            } else if (payload.eventType === "UPDATE" && newRow) {
+              const n = notificationFromRow(newRow);
+              setNotifications((prev) => prev.map((x) => (x.id === n.id ? n : x)));
+            } else if (payload.eventType === "DELETE" && oldRow?.id) {
+              setNotifications((prev) => prev.filter((x) => x.id !== oldRow.id));
+            }
+          },
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            void fetchNotifications(myStaffId);
+          }
+        });
+
+      fallback = window.setInterval(() => {
+        void fetchNotifications(myStaffId);
+      }, 5000);
+    };
+
+    void startRealtime();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void supabase.realtime.setAuth(session.access_token);
+    });
+
+    return () => {
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+      if (fallback) window.clearInterval(fallback);
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [fetchNotifications, myStaffId]);
+
+  useEffect(() => {
+    if (!myStaffId) return;
     const channel = supabase
       .channel(`guide-notifications-${myStaffId}`)
       .on(
