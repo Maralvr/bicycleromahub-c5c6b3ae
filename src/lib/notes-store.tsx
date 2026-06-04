@@ -219,14 +219,15 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback((update) => {
-    void supabase.from("field_updates").insert({
+  const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback(async (update) => {
+    const { error } = await supabase.from("field_updates").insert({
       author_id: update.authorId,
       message: update.message,
       type: update.type,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       attachments: update.attachments ?? [],
     });
+    return { error: error ? { message: error.message } : null };
   }, []);
 
   const notifyGuides: NotesStore["notifyGuides"] = useCallback((staffIds, n) => {
