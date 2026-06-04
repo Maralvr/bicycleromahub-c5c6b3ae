@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { useShiftsStore } from "@/lib/shifts-store";
+import { useNotesStore } from "@/lib/notes-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { Navigate } from "@tanstack/react-router";
 
