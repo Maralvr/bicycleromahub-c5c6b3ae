@@ -60,9 +60,15 @@ export const Route = createFileRoute("/rental-points")({
 function RentalPointsPage() {
   const { ready } = useRequireAdmin();
   const { points, loading, error, create, update, remove } = useRentalPoints();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [editing, setEditing] = useState<RentalPoint | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<RentalPoint | null>(null);
+  const activePoint = useMemo(
+    () => (search.point ? points.find((p) => p.id === search.point) ?? null : null),
+    [points, search.point],
+  );
   if (!ready) return null;
 
   return (
