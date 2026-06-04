@@ -23,6 +23,8 @@ export type GuideNotification = {
   link?: string;
   createdAt: string;
   read: boolean;
+  archivedAt?: string;
+  fieldUpdateId?: string;
   attachments?: Attachment[];
 };
 
