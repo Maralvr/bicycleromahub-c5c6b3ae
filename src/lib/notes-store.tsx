@@ -3,6 +3,7 @@ import { GuideNote, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/current-user";
 
 export type GuideNotification = {
   id: string;
@@ -128,9 +129,10 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
   const { user, profile } = useAuth();
+  const { staffId: currentStaffId } = useCurrentUser();
   const myStaffId = useMemo(
-    () => profile?.staff_id ?? (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
-    [profile?.staff_id, user, staff],
+    () => currentStaffId || profile?.staff_id ?? (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    [currentStaffId, profile?.staff_id, user, staff],
   );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
   const [feed, setFeed] = useState<FieldUpdate[]>([]);
