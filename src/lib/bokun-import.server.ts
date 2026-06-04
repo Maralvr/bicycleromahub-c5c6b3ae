@@ -359,6 +359,15 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
   try {
     const fromMs = Date.parse(`${run.from_date}T00:00:00Z`);
     const toMs = Date.parse(`${run.to_date}T23:59:59Z`);
+
+    // Build name → id map of rental points so rental bookings can be routed.
+    const { data: rpRows } = await supabaseAdmin
+      .from("rental_points")
+      .select("id, name");
+    const rentalPointIdByName = new Map<string, string>(
+      (rpRows ?? []).map((r) => [r.name.toLowerCase(), r.id]),
+    );
+
     const searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
       bookingRole: "SELLER",
       startDateRange: { from: fromMs, to: toMs },
