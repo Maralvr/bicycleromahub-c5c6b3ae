@@ -130,70 +130,43 @@ function RentalPointsPage() {
               </Button>
             </Card>
           ) : (
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="flex flex-wrap gap-2">
               {points.map((p) => (
-                <Card key={p.id} className="p-5 border-border/60 hover:border-primary/30 transition-all">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        to="/rental-points"
-                        search={{ point: p.id, tab: "calendar" }}
-                        className="font-semibold text-foreground truncate hover:text-primary block"
-                      >
-                        {p.name}
-                      </Link>
-                      {p.city && <div className="text-xs text-muted-foreground">{p.city}</div>}
-                    </div>
-                    {p.active ? (
-                      <Badge variant="secondary" className="bg-success/15 text-success border-0">Active</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>
+                <div
+                  key={p.id}
+                  className="group inline-flex items-center gap-1 rounded-full border border-border/60 bg-card hover:border-primary/40 hover:bg-accent/40 transition-colors pl-3 pr-1 py-1"
+                >
+                  <Link
+                    to="/rental-points"
+                    search={{ point: p.id, tab: "calendar" }}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
+                    title={p.address ?? p.name}
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    {p.name}
+                    {!p.active && (
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">(inactive)</span>
                     )}
-                  </div>
-                  <div className="space-y-1.5 text-xs text-muted-foreground">
-                    {p.address && (
-                      <div className="flex items-start gap-1.5">
-                        <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                        <span className="text-foreground/80">{p.address}</span>
-                      </div>
-                    )}
-                    {p.phone && (
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="h-3 w-3 flex-shrink-0" />
-                        <a href={`tel:${p.phone}`} className="hover:text-primary">{p.phone}</a>
-                      </div>
-                    )}
-                    {p.opening_hours && (
-                      <div className="flex items-start gap-1.5">
-                        <Clock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                        <span>{p.opening_hours}</span>
-                      </div>
-                    )}
-                  </div>
-                  {p.notes && (
-                    <p className="text-xs text-muted-foreground/80 mt-3 pt-3 border-t border-border/60 italic">
-                      {p.notes}
-                    </p>
-                  )}
-                  <div className="flex gap-2 mt-4 pt-3 border-t border-border/60">
-                    <Button size="sm" asChild className="flex-1">
-                      <Link to="/rental-points" search={{ point: p.id, tab: "calendar" }}>
-                        <CalendarDays className="h-3 w-3 mr-1" /> View bookings
-                      </Link>
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditing(p)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => setConfirmDelete(p)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </Card>
+                  </Link>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setEditing(p)}
+                    aria-label="Edit"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setConfirmDelete(p)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               ))}
             </div>
           )}
