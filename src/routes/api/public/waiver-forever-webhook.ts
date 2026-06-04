@@ -213,7 +213,12 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
         }
 
         const extracted = extractFromPayload(payload);
-        const matchedShiftId = await findMatchingShiftId(extracted.bookingId, extracted.email);
+        const matchedShiftId = await findMatchingShiftId(
+          extracted.bookingId,
+          extracted.email,
+          extracted.signerName,
+          extracted.signedAt,
+        );
 
         const row = {
           external_signature_id: extracted.externalId,
