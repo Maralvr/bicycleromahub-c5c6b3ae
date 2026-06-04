@@ -72,7 +72,7 @@ function RentalPointsPage() {
   if (!ready) return null;
 
   const onTabChange = (t: RentalTab) =>
-    navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true });
+    navigate({ search: (prev: { point?: string; tab?: RentalTab }) => ({ ...prev, tab: t }), replace: true });
 
   return (
     <AppShell>
