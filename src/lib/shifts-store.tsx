@@ -39,6 +39,7 @@ type ShiftRow = {
   assigned_staff_id: string | null;
   status: Shift["status"];
   required_tags: string[] | null;
+  rental_point_id: string | null;
 };
 
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
