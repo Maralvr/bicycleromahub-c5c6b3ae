@@ -97,7 +97,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
