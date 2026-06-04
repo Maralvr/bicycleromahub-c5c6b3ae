@@ -34,16 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserData = async (userId: string) => {
     try {
-      const [{ data: profileRow }, { data: roleRows, error: roleErr }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, display_name, avatar_initials, phone, staff_id")
-          .eq("id", userId)
-          .maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", userId),
-      ]);
-      console.log("[auth] loadUserData", { userId, roleRows, roleErr });
+      const profileRequest = supabase
+        .from("profiles")
+        .select("id, display_name, avatar_initials, phone, staff_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const rolesRequest = supabase.from("user_roles").select("role").eq("user_id", userId);
+
+      const { data: profileRow } = await profileRequest;
       setProfile((profileRow as Profile) ?? null);
+
+      const { data: roleRows, error: roleErr } = await rolesRequest;
+      console.log("[auth] loadUserData", { userId, roleRows, roleErr });
       setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
     } finally {
       // Roles are now known — safe to release the AuthGate. Releasing earlier
