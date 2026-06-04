@@ -313,7 +313,8 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       await supabase.realtime.setAuth(token);
       if (cancelled) return;
 
-      void fetchNotifications(myStaffId);
+      await fetchNotifications(myStaffId);
+      if (cancelled) return;
       channel = supabase
         .channel(`guide-notifications-${myStaffId}-${Math.random().toString(36).slice(2)}`)
         .on(
@@ -360,6 +361,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.access_token) void supabase.realtime.setAuth(session.access_token);
+      void fetchNotifications(myStaffId);
     });
 
     return () => {
