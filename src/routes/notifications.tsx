@@ -313,13 +313,31 @@ function NotificationsPage() {
                 </Button>
               )}
             </div>
-            {myNotifs.length === 0 ? (
+            <div className="mb-3 flex items-center gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setShowArchived(false)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${!showArchived ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                Active ({myActiveNotifs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowArchived(true)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${showArchived ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                Archived ({myArchivedNotifs.length})
+              </button>
+            </div>
+            {(showArchived ? myArchivedNotifs : myActiveNotifs).length === 0 ? (
               <div className="text-xs text-muted-foreground italic py-6 text-center">
-                You'll see schedule changes, broadcasts and updates here.
+                {showArchived
+                  ? "Nothing archived yet."
+                  : "You'll see schedule changes, broadcasts and updates here."}
               </div>
             ) : (
               <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                {myNotifs.slice(0, 20).map((n) => {
+                {(showArchived ? myArchivedNotifs : myActiveNotifs).slice(0, 50).map((n) => {
                   const Icon =
                     n.type === "broadcast"
                       ? Megaphone
@@ -335,7 +353,7 @@ function NotificationsPage() {
                   return (
                     <div
                       key={n.id}
-                      className={`rounded-lg border text-xs transition-colors ${n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
+                      className={`rounded-lg border text-xs transition-colors ${n.archivedAt ? "bg-muted/40 border-border/60 opacity-80" : n.read ? "bg-card border-border/60" : "bg-primary/5 border-primary/30"}`}
                     >
                       <button
                         type="button"
@@ -348,11 +366,11 @@ function NotificationsPage() {
                         <div className="flex items-center gap-1.5 mb-1">
                           <Icon className="h-3 w-3 text-primary" />
                           <span className="font-semibold text-foreground">{n.title}</span>
-                          {!n.read && (
+                          {!n.read && !n.archivedAt && (
                             <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
                           )}
                           <ChevronDown
-                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read ? "ml-auto" : ""}`}
+                            className={`h-3 w-3 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""} ${n.read || n.archivedAt ? "ml-auto" : ""}`}
                           />
                         </div>
                         <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>
@@ -370,16 +388,39 @@ function NotificationsPage() {
                           <AttachmentList attachments={visibleAttachments} />
                         </div>
                       )}
-                      {isOpen && n.link && (
-                        <div className="px-2.5 pb-2.5">
+                      <div className="px-2.5 pb-2.5 flex items-center gap-2 flex-wrap">
+                        {isOpen && n.link && (
                           <Link
                             to={n.link as string}
                             className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                           >
                             Open <ChevronDown className="h-3 w-3 -rotate-90" />
                           </Link>
-                        </div>
-                      )}
+                        )}
+                        {n.archivedAt ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void unarchiveNotification(n.id);
+                            }}
+                            className="ml-auto text-[11px] text-primary hover:underline"
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void archiveNotification(n.id);
+                            }}
+                            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                          >
+                            Archive
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
