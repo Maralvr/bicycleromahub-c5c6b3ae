@@ -126,6 +126,12 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
   fieldUpdateId: row.field_update_id ?? undefined,
 });
 
+const applyLocalReadState = (
+  notification: GuideNotification,
+  locallyReadIds: Set<string>,
+): GuideNotification =>
+  locallyReadIds.has(notification.id) ? { ...notification, read: true } : notification;
+
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
   const { user, profile } = useAuth();
@@ -172,10 +178,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (!error) {
       setNotifications(
         ((data ?? []) as GuideNotificationRow[]).map((row) => {
-          const notification = notificationFromRow(row);
-          return locallyReadNotificationIds.current.has(notification.id)
-            ? { ...notification, read: true }
-            : notification;
+          return applyLocalReadState(notificationFromRow(row), locallyReadNotificationIds.current);
         }),
       );
       return;
