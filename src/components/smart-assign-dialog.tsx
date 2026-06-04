@@ -207,7 +207,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
         </div>
 
         {/* Candidates list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-background">
+        <div className="p-4 space-y-2 bg-background">
           {candidates.length === 0 ? (
             <div className="text-sm text-muted-foreground italic flex items-center gap-2 p-6 justify-center">
               <AlertTriangle className="h-4 w-4 text-warning" />
