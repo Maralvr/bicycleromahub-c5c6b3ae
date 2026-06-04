@@ -421,127 +421,186 @@ function RentalPointDialog({
   );
 }
 
-type RentalShift = {
-  id: string;
-  rental_point_id: string | null;
-  tour_name: string;
-  booking_id: string | null;
-  date: string;
-  start_time: string;
-  end_time: string;
-  customer_name: string | null;
-  customer_phone: string | null;
-  adults: number;
-  teens: number;
-  infants: number;
-  rate_title: string | null;
-};
+function RentalBookingsView({
+  points,
+  pointId,
+  tab,
+  onTabChange,
+}: {
+  points: RentalPoint[];
+  pointId: string | null;
+  tab: RentalTab;
+  onTabChange: (t: RentalTab) => void;
+}) {
+  const { shifts, loading, updateShift, assignShift } = useRentalShifts();
+  const { staff } = useStaffStore();
 
-function RentalBookingsByLocation({ points }: { points: RentalPoint[] }) {
-  const [rows, setRows] = useState<RentalShift[]>([]);
-  const [loading, setLoading] = useState(true);
+  const scoped = useMemo(
+    () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
+    [shifts, pointId],
+  );
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      const today = new Date().toISOString().slice(0, 10);
-      const { data } = await supabase
-        .from("shifts")
-        .select(
-          "id, rental_point_id, tour_name, booking_id, date, start_time, end_time, customer_name, customer_phone, adults, teens, infants, rate_title",
-        )
-        .not("rental_point_id", "is", null)
-        .gte("date", today)
-        .order("date", { ascending: true })
-        .order("start_time", { ascending: true });
-      if (active) {
-        setRows((data ?? []) as RentalShift[]);
-        setLoading(false);
-      }
-    };
-    void load();
-    const channel = supabase
-      .channel(`rental-bookings-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => void load())
-      .subscribe();
-    return () => {
-      active = false;
-      void supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const byPoint = useMemo(() => {
-    const map = new Map<string, RentalShift[]>();
-    for (const r of rows) {
-      if (!r.rental_point_id) continue;
-      const arr = map.get(r.rental_point_id) ?? [];
-      arr.push(r);
-      map.set(r.rental_point_id, arr);
+  const handleAssign = async (shiftId: string, staffId: string) => {
+    try {
+      await assignShift(shiftId, staffId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign");
     }
-    return map;
-  }, [rows]);
+  };
 
-  const rentalPoints = points.filter((p) => byPoint.has(p.id));
+  const handleUpdateDeparture = async (
+    shiftId: string,
+    patch: {
+      startTime?: string;
+      endTime?: string;
+      meetingPoint?: string;
+      rate?: number | null;
+      rateTitle?: string | null;
+    },
+  ) => {
+    try {
+      await updateShift(shiftId, patch);
+      toast.success("Booking updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
 
   return (
-    <div className="mt-10">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-lg font-semibold text-foreground">Rentals by location</h2>
-        <span className="text-xs text-muted-foreground">
-          {loading ? "Loading…" : `${rows.length} upcoming`}
-        </span>
-      </div>
-      {!loading && rentalPoints.length === 0 ? (
-        <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
-          No upcoming rental bookings.
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {rentalPoints.map((p) => {
-            const list = byPoint.get(p.id) ?? [];
-            return (
-              <div key={p.id}>
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-foreground">{p.name}</h3>
-                  <Badge variant="secondary" className="ml-1">{list.length}</Badge>
-                </div>
-                <Card className="divide-y divide-border/60 overflow-hidden">
-                  {list.map((s) => {
-                    const pax = s.adults + s.teens + s.infants;
-                    return (
-                      <div key={s.id} className="p-3 grid grid-cols-12 gap-3 items-center text-sm">
-                        <div className="col-span-3 sm:col-span-2 font-medium text-foreground">
-                          {s.date} · {s.start_time.slice(0, 5)}
-                        </div>
-                        <div className="col-span-5 sm:col-span-5 min-w-0">
-                          <div className="truncate text-foreground">{s.tour_name}</div>
-                          {s.rate_title && (
-                            <div className="text-xs text-muted-foreground truncate">{s.rate_title}</div>
-                          )}
-                        </div>
-                        <div className="col-span-3 sm:col-span-3 min-w-0">
-                          <div className="truncate">{s.customer_name ?? "—"}</div>
-                          {s.customer_phone && (
-                            <div className="text-xs text-muted-foreground truncate">{s.customer_phone}</div>
-                          )}
-                        </div>
-                        <div className="col-span-1 sm:col-span-1 text-right text-muted-foreground">
-                          {pax} pax
-                        </div>
-                        <div className="hidden sm:block sm:col-span-1 text-right text-xs text-muted-foreground">
-                          {s.booking_id ?? ""}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </Card>
-              </div>
-            );
-          })}
+    <div className="mt-8">
+      <Tabs value={tab} onValueChange={(v) => onTabChange(v as RentalTab)}>
+        <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold text-foreground">
+            {pointId ? "Bookings" : "Rental bookings"}
+          </h2>
+          <TabsList>
+            <TabsTrigger value="calendar">
+              <CalendarDays className="h-4 w-4 mr-1" /> Calendar
+            </TabsTrigger>
+            <TabsTrigger value="list">
+              <ListIcon className="h-4 w-4 mr-1" /> List
+            </TabsTrigger>
+          </TabsList>
         </div>
-      )}
+
+        <TabsContent value="calendar" className="mt-0">
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
+          ) : scoped.length === 0 ? (
+            <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
+              No rental bookings.
+            </Card>
+          ) : (
+            <ShiftsCalendar
+              shifts={scoped}
+              staff={staff}
+              onAssign={handleAssign}
+              onUpdateDeparture={handleUpdateDeparture}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-0">
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
+function RentalBookingsList({
+  rows,
+  points,
+  loading,
+  pointId,
+}: {
+  rows: RentalShift[];
+  points: RentalPoint[];
+  loading: boolean;
+  pointId: string | null;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = useMemo(() => rows.filter((r) => r.date >= today), [rows, today]);
+
+  const byPoint = useMemo(() => {
+    const map = new Map<string, RentalShift[]>();
+    for (const r of upcoming) {
+      const key = r.rentalPointId ?? "__none__";
+      const arr = map.get(key) ?? [];
+      arr.push(r);
+      map.set(key, arr);
+    }
+    return map;
+  }, [upcoming]);
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
+  }
+
+  if (upcoming.length === 0) {
+    return (
+      <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
+        No upcoming rental bookings.
+      </Card>
+    );
+  }
+
+  const renderRow = (s: RentalShift) => {
+    const pax = (s.participants?.adults ?? 0) + (s.participants?.teens ?? 0) + (s.participants?.infants ?? 0);
+    return (
+      <div key={s.id} className="p-3 grid grid-cols-12 gap-3 items-center text-sm">
+        <div className="col-span-4 sm:col-span-2 font-medium text-foreground">
+          {s.date} · {s.startTime}
+        </div>
+        <div className="col-span-8 sm:col-span-5 min-w-0">
+          <div className="truncate text-foreground">{s.tourName}</div>
+          {s.rateTitle && (
+            <div className="text-xs text-muted-foreground truncate">{s.rateTitle}</div>
+          )}
+        </div>
+        <div className="col-span-7 sm:col-span-3 min-w-0">
+          <div className="truncate">{s.customer?.name ?? "—"}</div>
+          {s.customer?.phone && (
+            <div className="text-xs text-muted-foreground truncate">{s.customer.phone}</div>
+          )}
+        </div>
+        <div className="col-span-2 sm:col-span-1 text-right text-muted-foreground flex items-center justify-end gap-1">
+          <Users className="h-3 w-3" /> {pax}
+        </div>
+        <div className="col-span-3 sm:col-span-1 text-right text-xs text-muted-foreground truncate">
+          {s.bookingId ?? ""}
+        </div>
+      </div>
+    );
+  };
+
+  if (pointId) {
+    return <Card className="divide-y divide-border/60 overflow-hidden">{upcoming.map(renderRow)}</Card>;
+  }
+
+  const rentalPoints = points.filter((p) => byPoint.has(p.id));
+  return (
+    <div className="space-y-6">
+      {rentalPoints.map((p) => {
+        const list = byPoint.get(p.id) ?? [];
+        return (
+          <div key={p.id}>
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <Link
+                to="/rental-points"
+                search={{ point: p.id, tab: "list" }}
+                className="font-semibold text-foreground hover:text-primary"
+              >
+                {p.name}
+              </Link>
+              <Badge variant="secondary" className="ml-1">{list.length}</Badge>
+            </div>
+            <Card className="divide-y divide-border/60 overflow-hidden">{list.map(renderRow)}</Card>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
