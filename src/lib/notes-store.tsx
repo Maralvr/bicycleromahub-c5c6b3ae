@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from "react";
 import { GuideNote, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
+import { useAuth } from "@/lib/auth";
 
 export type GuideNotification = {
   id: string;
@@ -126,6 +127,11 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
 
 export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
+  const { user } = useAuth();
+  const myStaffId = useMemo(
+    () => (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    [user, staff],
+  );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
   const [feed, setFeed] = useState<FieldUpdate[]>([]);
   const [notifications, setNotifications] = useState<GuideNotification[]>([]);
@@ -165,7 +171,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     void fetchNotifications();
 
     const channel = supabase
-      .channel("notes-notifications-live")
+      .channel("notes-feed-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
         const newRow = payload.new as GuideNoteRow | null;
         const oldRow = payload.old as { id?: string; shift_id?: string } | null;
@@ -205,9 +211,27 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
           setFeed((prev) => prev.filter((x) => x.id !== oldRow.id));
         }
       })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchFeed, fetchNotes, fetchNotifications]);
+
+  // Separate channel for guide_notifications, filtered to just this user's
+  // staff row so each client only receives its own notifications.
+  useEffect(() => {
+    if (!myStaffId) return;
+    const channel = supabase
+      .channel(`guide-notifications-${myStaffId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "guide_notifications" },
+        {
+          event: "*",
+          schema: "public",
+          table: "guide_notifications",
+          filter: `staff_id=eq.${myStaffId}`,
+        },
         (payload) => {
           const newRow = payload.new as GuideNotificationRow | null;
           const oldRow = payload.old as { id?: string } | null;
@@ -227,7 +251,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [fetchFeed, fetchNotes, fetchNotifications]);
+  }, [myStaffId]);
 
   const addNote = useCallback<NotesStore["addNote"]>(
     (note, tourName) => {
