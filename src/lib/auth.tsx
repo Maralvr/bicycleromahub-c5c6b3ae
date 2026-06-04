@@ -38,8 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("profiles")
         .select("id, display_name, avatar_initials, phone, staff_id")
         .eq("id", userId)
-        .maybeSingle();
-      const rolesRequest = supabase.from("user_roles").select("role").eq("user_id", userId);
+        .maybeSingle()
+        .then((res) => res);
+      const rolesRequest = supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .then((res) => res);
 
       const { data: profileRow } = await profileRequest;
       setProfile((profileRow as Profile) ?? null);
