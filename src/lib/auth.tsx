@@ -132,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", onFocus);
       if (rolesChannel) void supabase.removeChannel(rolesChannel);
     };
-
   }, []);
 
   const value: AuthContextValue = {

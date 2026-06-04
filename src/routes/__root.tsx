@@ -174,9 +174,7 @@ function AuthenticatedDataProviders({ children }: { children: React.ReactNode })
         <ShiftsStoreProvider>
           <NotesStoreProvider>
             <TasksStoreProvider>
-              <TaskUpdatesStoreProvider>
-                {children}
-              </TaskUpdatesStoreProvider>
+              <TaskUpdatesStoreProvider>{children}</TaskUpdatesStoreProvider>
             </TasksStoreProvider>
           </NotesStoreProvider>
         </ShiftsStoreProvider>
