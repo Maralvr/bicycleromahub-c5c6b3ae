@@ -97,7 +97,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -207,7 +207,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
         </div>
 
         {/* Candidates list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-background">
+        <div className="p-4 space-y-2 bg-background">
           {candidates.length === 0 ? (
             <div className="text-sm text-muted-foreground italic flex items-center gap-2 p-6 justify-center">
               <AlertTriangle className="h-4 w-4 text-warning" />
@@ -222,7 +222,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
           )}
         </div>
 
-        <DialogFooter className="p-4 border-t border-border/60 bg-card">
+        <DialogFooter className="p-4 border-t border-border/60 bg-card sticky bottom-0">
           <div className="flex items-center justify-between gap-2 w-full flex-wrap">
             <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
             <div className="flex gap-2">
