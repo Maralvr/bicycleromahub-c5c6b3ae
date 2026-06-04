@@ -170,7 +170,10 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   }, [fetchAll]);
 
   const shifts = useMemo<Shift[]>(
-    () => rows.filter((r) => !isExcludedTourName(r.tour_name)).map(rowToShift),
+    () =>
+      rows
+        .filter((r) => !isExcludedTourName(r.tour_name) && !r.rental_point_id)
+        .map(rowToShift),
     [rows],
   );
 
