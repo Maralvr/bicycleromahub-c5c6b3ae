@@ -275,6 +275,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
 
   return {
     source: "bokun" as const,
+    rental_point_id: rentalPointId,
     booking_id: bookingIdStr,
     channel_booking_ref: channelRef,
     external_booking_ref: externalRef,
