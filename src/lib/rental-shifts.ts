@@ -111,8 +111,29 @@ export function useRentalShifts() {
     void fetchAll();
     const channel = supabase
       .channel("rental-shifts-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, () => {
-        void fetchAll();
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
+        const newRow = payload.new as Row | null;
+        const oldRow = payload.old as { id?: string } | null;
+        setRows((prev) => {
+          if (payload.eventType === "INSERT" && newRow) {
+            if (!newRow.rental_point_id) return prev;
+            if (prev.some((r) => r.id === newRow.id)) return prev;
+            return [...prev, newRow];
+          }
+          if (payload.eventType === "UPDATE" && newRow) {
+            // Row may have moved in/out of rental scope
+            const exists = prev.some((r) => r.id === newRow.id);
+            if (!newRow.rental_point_id) {
+              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
+            }
+            if (!exists) return [...prev, newRow];
+            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
+          }
+          if (payload.eventType === "DELETE" && oldRow?.id) {
+            return prev.filter((r) => r.id !== oldRow.id);
+          }
+          return prev;
+        });
       })
       .subscribe();
     return () => {
