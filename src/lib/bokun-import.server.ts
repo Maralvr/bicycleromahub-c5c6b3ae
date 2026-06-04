@@ -415,7 +415,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
 
       const rows: ReturnType<typeof mapToShiftRow>[] = [];
       for (const full of fullBookings) {
-        const row = mapToShiftRow(full);
+        const row = mapToShiftRow(full, rentalPointIdByName);
         if (!row || !row.booking_id) { skipped++; continue; }
         rows.push(row);
       }
