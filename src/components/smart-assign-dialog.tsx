@@ -222,7 +222,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
           )}
         </div>
 
-        <DialogFooter className="p-4 border-t border-border/60 bg-card">
+        <DialogFooter className="p-4 border-t border-border/60 bg-card sticky bottom-0">
           <div className="flex items-center justify-between gap-2 w-full flex-wrap">
             <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
             <div className="flex gap-2">
