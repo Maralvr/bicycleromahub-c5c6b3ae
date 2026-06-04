@@ -105,6 +105,7 @@ const fieldUpdateFromRow = (row: FieldUpdateRow): FieldUpdate => ({
     (row.created_at
       ? new Date(row.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       : ""),
+  createdAt: row.created_at ?? undefined,
   attachments: row.attachments ?? undefined,
 });
 
