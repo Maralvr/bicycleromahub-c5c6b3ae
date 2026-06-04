@@ -33,6 +33,7 @@ type NotesStore = {
   feed: FieldUpdate[];
   addNote: (note: GuideNote, tourName: string) => void;
   addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => Promise<{ error: { message: string } | null }>;
+  deleteFieldUpdate: (id: string) => Promise<{ error: { message: string } | null }>;
   notifications: GuideNotification[];
   notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => Promise<void>;
   notifyGuides: (
@@ -41,6 +42,8 @@ type NotesStore = {
   ) => Promise<void>;
   markRead: (id: string) => void;
   markAllRead: (staffId: string) => void;
+  archiveNotification: (id: string) => Promise<void>;
+  unarchiveNotification: (id: string) => Promise<void>;
   clearForGuide: (staffId: string) => void;
   unreadCountFor: (staffId: string) => number;
 };
