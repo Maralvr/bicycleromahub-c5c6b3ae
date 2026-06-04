@@ -30,7 +30,7 @@ type NotesStore = {
   notesByShift: Record<string, GuideNote[]>;
   feed: FieldUpdate[];
   addNote: (note: GuideNote, tourName: string) => void;
-  addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => void;
+  addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => Promise<{ error: { message: string } | null }>;
   notifications: GuideNotification[];
   notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => void;
   notifyGuides: (
