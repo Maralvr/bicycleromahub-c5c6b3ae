@@ -233,6 +233,33 @@ export type Database = {
           },
         ]
       }
+      guide_payout_rates: {
+        Row: {
+          created_at: string
+          product_id: string
+          tier1: number
+          tier2: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+          tier1: number
+          tier2: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+          tier1?: number
+          tier2?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           created_at: string
@@ -383,6 +410,7 @@ export type Database = {
           adults: number
           assigned_staff_id: string | null
           bokun_created_at: string | null
+          bokun_product_id: string | null
           booking_channel: string | null
           booking_id: string | null
           channel_booking_ref: string | null
@@ -399,6 +427,10 @@ export type Database = {
           notes: string | null
           operations_notes: string | null
           participants: Json
+          payout_paid: boolean
+          payout_paid_at: string | null
+          payout_paid_by: string | null
+          payout_tier: number | null
           rate: number | null
           rate_title: string | null
           rental_point_id: string | null
@@ -417,6 +449,7 @@ export type Database = {
           adults?: number
           assigned_staff_id?: string | null
           bokun_created_at?: string | null
+          bokun_product_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
           channel_booking_ref?: string | null
@@ -433,6 +466,10 @@ export type Database = {
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
+          payout_paid?: boolean
+          payout_paid_at?: string | null
+          payout_paid_by?: string | null
+          payout_tier?: number | null
           rate?: number | null
           rate_title?: string | null
           rental_point_id?: string | null
@@ -451,6 +488,7 @@ export type Database = {
           adults?: number
           assigned_staff_id?: string | null
           bokun_created_at?: string | null
+          bokun_product_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
           channel_booking_ref?: string | null
@@ -467,6 +505,10 @@ export type Database = {
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
+          payout_paid?: boolean
+          payout_paid_at?: string | null
+          payout_paid_by?: string | null
+          payout_tier?: number | null
           rate?: number | null
           rate_title?: string | null
           rental_point_id?: string | null
