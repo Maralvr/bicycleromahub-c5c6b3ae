@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
             <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
           </div>
-          {role === "staff" && staffId && <NotificationBell staffId={staffId} />}
+          {staffId && <NotificationBell staffId={staffId} />}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -164,7 +164,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {role === "staff" && staffId && <NotificationBell staffId={staffId} />}
+              {staffId && <NotificationBell staffId={staffId} />}
               <div className="flex gap-1 p-0.5 bg-muted rounded-md">
                 {(["en", "it"] as const).map((l) => (
                   <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
