@@ -75,6 +75,7 @@ export type FieldUpdate = {
   message: string;
   type: "broadcast" | "field";
   time: string;
+  createdAt?: string;
   attachments?: Attachment[];
 };
 
