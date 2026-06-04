@@ -131,7 +131,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
   const { staffId: currentStaffId } = useCurrentUser();
   const myStaffId = useMemo(
-    () => currentStaffId || profile?.staff_id ?? (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    () => currentStaffId || profile?.staff_id || (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
     [currentStaffId, profile?.staff_id, user, staff],
   );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
