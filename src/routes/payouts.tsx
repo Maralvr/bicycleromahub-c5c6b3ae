@@ -39,7 +39,15 @@ type PayoutShift = {
   payout_tier: number | null;
   payout_paid: boolean;
   payout_paid_at: string | null;
+  adults: number | null;
+  teens: number | null;
+  infants: number | null;
 };
+
+const LARGE_GROUP_BONUS = 20;
+const LARGE_GROUP_THRESHOLD = 8;
+const paxOf = (s: PayoutShift) => (s.adults ?? 0) + (s.teens ?? 0) + (s.infants ?? 0);
+
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
@@ -67,7 +75,7 @@ function PayoutsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("shifts")
-      .select("id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at")
+      .select("id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, adults, teens, infants")
       .gte("date", format(from, "yyyy-MM-dd"))
       .lte("date", format(to, "yyyy-MM-dd"))
       .not("assigned_staff_id", "is", null)
@@ -98,7 +106,8 @@ function PayoutsPage() {
   const amountFor = (s: PayoutShift): number => {
     const r = findRate(s);
     if (!r) return 0;
-    return s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
+    const base = s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
+    return base + (paxOf(s) >= LARGE_GROUP_THRESHOLD ? LARGE_GROUP_BONUS : 0);
   };
 
   // Guide-grouped + filtered
@@ -241,10 +250,14 @@ function PayoutsPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-medium text-sm truncate">{s.tour_name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {format(parseISO(s.date), "EEE d MMM yyyy")} · {s.start_time.slice(0, 5)}
+                              {format(parseISO(s.date), "EEE d MMM yyyy")} · {s.start_time.slice(0, 5)} · {paxOf(s)} pax
+                              {paxOf(s) >= LARGE_GROUP_THRESHOLD && (
+                                <span className="ml-2 text-primary font-medium">+€{LARGE_GROUP_BONUS} large group</span>
+                              )}
                               {!rate && <span className="ml-2 text-warning">· no rate matched</span>}
                             </div>
                           </div>
+
 
                           <div className="flex items-center gap-1 rounded-md border bg-muted/30 p-0.5">
                             <Button
