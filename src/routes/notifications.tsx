@@ -54,9 +54,11 @@ function NotificationsPage() {
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
-  const { feed, notifications, markAllRead, markRead } = useNotesStore();
+  const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
-  const unread = myNotifs.filter((n) => !n.read).length;
+  const myActiveNotifs = myNotifs.filter((n) => !n.archivedAt);
+  const myArchivedNotifs = myNotifs.filter((n) => n.archivedAt);
+  const unread = myActiveNotifs.filter((n) => !n.read).length;
   // Guides only see broadcasts (sent to everyone) or their own field updates.
   const updates = isAdmin
     ? feed
@@ -67,6 +69,8 @@ function NotificationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedNotif, setExpandedNotif] = useState<string | null>(null);
   const [expandedFeed, setExpandedFeed] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
+  const [broadcastGroup, setBroadcastGroup] = useState<"all" | "day" | "week" | "month">("all");
   const toggleFeed = (id: string) =>
     setExpandedFeed((prev) => {
       const next = new Set(prev);
