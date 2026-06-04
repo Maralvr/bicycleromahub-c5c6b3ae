@@ -251,6 +251,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         shift_id: n.shiftId ?? null,
         link: n.link ?? null,
         attachments: n.attachments ?? [],
+        field_update_id: n.fieldUpdateId ?? null,
         read: false,
       })),
     );
@@ -263,8 +264,54 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markAllRead = useCallback((staffId: string) => {
-    void supabase.from("guide_notifications").update({ read: true }).eq("staff_id", staffId);
-    setNotifications((prev) => prev.map((n) => (n.staffId === staffId ? { ...n, read: true } : n)));
+    void supabase
+      .from("guide_notifications")
+      .update({ read: true })
+      .eq("staff_id", staffId)
+      .is("archived_at", null);
+    setNotifications((prev) =>
+      prev.map((n) => (n.staffId === staffId && !n.archivedAt ? { ...n, read: true } : n)),
+    );
+  }, []);
+
+  const archiveNotification = useCallback(async (id: string) => {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("guide_notifications")
+      .update({ archived_at: now, read: true })
+      .eq("id", id);
+    if (error) {
+      console.error("[archiveNotification] failed", error);
+      return;
+    }
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, archivedAt: now, read: true } : n)),
+    );
+  }, []);
+
+  const unarchiveNotification = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from("guide_notifications")
+      .update({ archived_at: null })
+      .eq("id", id);
+    if (error) {
+      console.error("[unarchiveNotification] failed", error);
+      return;
+    }
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, archivedAt: undefined } : n)),
+    );
+  }, []);
+
+  const deleteFieldUpdate: NotesStore["deleteFieldUpdate"] = useCallback(async (id) => {
+    // Cascade: remove all notifications that referenced this broadcast
+    await supabase.from("guide_notifications").delete().eq("field_update_id", id);
+    const { error } = await supabase.from("field_updates").delete().eq("id", id);
+    if (!error) {
+      setFeed((prev) => prev.filter((u) => u.id !== id));
+      setNotifications((prev) => prev.filter((n) => n.fieldUpdateId !== id));
+    }
+    return { error: error ? { message: error.message } : null };
   }, []);
 
   const clearForGuide = useCallback((staffId: string) => {
@@ -273,7 +320,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const unreadCountFor = (staffId: string) =>
-    notifications.filter((n) => n.staffId === staffId && !n.read).length;
+    notifications.filter((n) => n.staffId === staffId && !n.read && !n.archivedAt).length;
 
   return (
     <NotesContext.Provider
