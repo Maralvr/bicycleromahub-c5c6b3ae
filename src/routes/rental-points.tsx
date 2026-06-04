@@ -71,6 +71,44 @@ function RentalPointsPage() {
   );
   if (!ready) return null;
 
+  if (activePoint) {
+    return (
+      <AppShell>
+        <PageHeader
+          title={activePoint.name}
+          subtitle={activePoint.address ?? "Rental bookings for this location."}
+          actions={
+            <Button
+              variant="outline"
+              onClick={() => navigate({ search: { point: undefined, tab: undefined }, replace: true })}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" /> All rental points
+            </Button>
+          }
+        />
+        <RentalBookingsView
+          points={points}
+          pointId={activePoint.id}
+          tab={search.tab ?? "calendar"}
+          onTabChange={(t) =>
+            navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true })
+          }
+        />
+        <Footer
+          creating={creating}
+          editing={editing}
+          confirmDelete={confirmDelete}
+          setCreating={setCreating}
+          setEditing={setEditing}
+          setConfirmDelete={setConfirmDelete}
+          create={create}
+          update={update}
+          remove={remove}
+        />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -108,7 +146,13 @@ function RentalPointsPage() {
             <Card key={p.id} className="p-5 border-border/60 hover:border-primary/30 transition-all">
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-foreground truncate">{p.name}</h3>
+                  <Link
+                    to="/rental-points"
+                    search={{ point: p.id, tab: "calendar" }}
+                    className="font-semibold text-foreground truncate hover:text-primary block"
+                  >
+                    {p.name}
+                  </Link>
                   {p.city && <div className="text-xs text-muted-foreground">{p.city}</div>}
                 </div>
                 {p.active ? (
@@ -143,8 +187,13 @@ function RentalPointsPage() {
                 </p>
               )}
               <div className="flex gap-2 mt-4 pt-3 border-t border-border/60">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(p)}>
-                  <Pencil className="h-3 w-3 mr-1" /> Edit
+                <Button size="sm" asChild className="flex-1">
+                  <Link to="/rental-points" search={{ point: p.id, tab: "calendar" }}>
+                    <CalendarDays className="h-3 w-3 mr-1" /> View bookings
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditing(p)}>
+                  <Pencil className="h-3 w-3" />
                 </Button>
                 <Button
                   size="sm"
@@ -160,7 +209,16 @@ function RentalPointsPage() {
         </div>
       )}
 
-      {points.length > 0 && <RentalBookingsByLocation points={points} />}
+      {points.length > 0 && (
+        <RentalBookingsView
+          points={points}
+          pointId={null}
+          tab={search.tab ?? "calendar"}
+          onTabChange={(t) =>
+            navigate({ search: (prev) => ({ ...prev, tab: t }), replace: true })
+          }
+        />
+      )}
 
       <RentalPointDialog
         open={creating || !!editing}
