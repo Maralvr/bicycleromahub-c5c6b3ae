@@ -328,11 +328,17 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
             const oldRow = payload.old as { id?: string } | null;
             if (payload.eventType === "INSERT" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
-              const n = notificationFromRow(newRow);
+              const n = applyLocalReadState(
+                notificationFromRow(newRow),
+                locallyReadNotificationIds.current,
+              );
               setNotifications((prev) => (prev.some((x) => x.id === n.id) ? prev : [n, ...prev]));
             } else if (payload.eventType === "UPDATE" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
-              const n = notificationFromRow(newRow);
+              const n = applyLocalReadState(
+                notificationFromRow(newRow),
+                locallyReadNotificationIds.current,
+              );
               setNotifications((prev) => prev.map((x) => (x.id === n.id ? n : x)));
             } else if (payload.eventType === "DELETE" && oldRow?.id) {
               setNotifications((prev) => prev.filter((x) => x.id !== oldRow.id));
