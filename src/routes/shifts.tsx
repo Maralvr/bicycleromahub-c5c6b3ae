@@ -282,7 +282,7 @@ function ShiftsPage() {
       const baseBody = shiftSummary(updated);
       const body = note ? `${baseBody}\n\n📝 Note: ${note}` : baseBody;
       // Notify the newly assigned guide
-      notifyGuide({
+      await notifyGuide({
         staffId: assignedStaffId,
         type: reassigning ? "reassigned" : "assigned",
         title: reassigning ? "Shift reassigned to you" : "New shift assigned",
@@ -292,7 +292,7 @@ function ShiftsPage() {
       });
       // If reassigned away from previous guide, notify them too
       if (reassigning && prevShift.assignedStaffId) {
-        notifyGuide({
+        await notifyGuide({
           staffId: prevShift.assignedStaffId,
           type: "unassigned",
           title: "Shift removed from your schedule",
@@ -312,7 +312,7 @@ function ShiftsPage() {
     await assignShift(id, null);
     toast.success("Guide unassigned", { description: "Shift is back in the unassigned pool." });
     if (prev?.assignedStaffId) {
-      notifyGuide({
+      await notifyGuide({
         staffId: prev.assignedStaffId,
         type: "unassigned",
         title: "Shift removed from your schedule",
@@ -338,7 +338,7 @@ function ShiftsPage() {
       if (top) {
         working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
         await assignShift(sh.id, top.staff.id);
-        notifyGuide({
+        await notifyGuide({
           staffId: top.staff.id,
           type: "assigned",
           title: "New shift assigned",

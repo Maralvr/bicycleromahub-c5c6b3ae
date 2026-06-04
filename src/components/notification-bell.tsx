@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle, Paperclip } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -33,11 +34,13 @@ function timeAgo(iso: string): string {
 
 export function NotificationBell({ staffId }: { staffId: string }) {
   const { notifications, unreadCountFor, markRead, markAllRead } = useNotesStore();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const unread = unreadCountFor(staffId);
   const mine = notifications.filter((n) => n.staffId === staffId).slice(0, 30);
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           className="relative h-9 w-9 rounded-lg flex items-center justify-center bg-muted hover:bg-accent transition-colors"
@@ -76,7 +79,13 @@ export function NotificationBell({ staffId }: { staffId: string }) {
                 return (
                   <button
                     key={n.id}
-                    onClick={() => markRead(n.id)}
+                    onClick={() => {
+                      if (!n.read) markRead(n.id);
+                      if (n.link) {
+                        setOpen(false);
+                        navigate({ to: n.link as string });
+                      }
+                    }}
                     className={cn(
                       "w-full text-left p-3 hover:bg-muted/50 transition-colors flex gap-2.5",
                       !n.read && "bg-primary/5"

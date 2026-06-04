@@ -32,11 +32,11 @@ type NotesStore = {
   addNote: (note: GuideNote, tourName: string) => void;
   addFieldUpdate: (update: Omit<FieldUpdate, "id" | "time">) => Promise<{ error: { message: string } | null }>;
   notifications: GuideNotification[];
-  notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => void;
+  notifyGuide: (n: Omit<GuideNotification, "id" | "createdAt" | "read">) => Promise<void>;
   notifyGuides: (
     staffIds: string[],
     n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">,
-  ) => void;
+  ) => Promise<void>;
   markRead: (id: string) => void;
   markAllRead: (staffId: string) => void;
   clearForGuide: (staffId: string) => void;
@@ -206,8 +206,8 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     [staff],
   );
 
-  const notifyGuide: NotesStore["notifyGuide"] = useCallback((n) => {
-    void supabase.from("guide_notifications").insert({
+  const notifyGuide: NotesStore["notifyGuide"] = useCallback(async (n) => {
+    const { error } = await supabase.from("guide_notifications").insert({
       staff_id: n.staffId,
       type: n.type,
       title: n.title,
@@ -217,6 +217,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       attachments: n.attachments ?? [],
       read: false,
     });
+    if (error) console.error("[notifyGuide] insert failed", error);
   }, []);
 
   const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback(async (update) => {
@@ -230,9 +231,9 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     return { error: error ? { message: error.message } : null };
   }, []);
 
-  const notifyGuides: NotesStore["notifyGuides"] = useCallback((staffIds, n) => {
+  const notifyGuides: NotesStore["notifyGuides"] = useCallback(async (staffIds, n) => {
     if (staffIds.length === 0) return;
-    void supabase.from("guide_notifications").insert(
+    const { error } = await supabase.from("guide_notifications").insert(
       staffIds.map((staffId) => ({
         staff_id: staffId,
         type: n.type,
@@ -244,6 +245,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         read: false,
       })),
     );
+    if (error) console.error("[notifyGuides] insert failed", error);
   }, []);
 
   const markRead = useCallback((id: string) => {

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
@@ -361,12 +361,12 @@ function NotificationsPage() {
                       )}
                       {isOpen && n.link && (
                         <div className="px-2.5 pb-2.5">
-                          <a
-                            href={n.link}
+                          <Link
+                            to={n.link as string}
                             className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                           >
                             Open <ChevronDown className="h-3 w-3 -rotate-90" />
-                          </a>
+                          </Link>
                         </div>
                       )}
                     </div>
