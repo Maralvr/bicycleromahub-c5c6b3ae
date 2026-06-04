@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isExcludedTourName } from "./excluded-bokun-products";
 
 export type Participant = { name: string; category: string };
 
@@ -84,7 +85,10 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     const { data, error } = await q;
     if (error) setError(error.message);
     else {
-      setShifts((data ?? []) as unknown as LiveShift[]);
+      const rows = ((data ?? []) as unknown as LiveShift[]).filter(
+        (r) => !isExcludedTourName(r.tour_name),
+      );
+      setShifts(rows);
       setError(null);
     }
     setLoading(false);

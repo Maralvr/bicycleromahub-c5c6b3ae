@@ -9,6 +9,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Shift } from "./mock-data";
+import { isExcludedTourName } from "./excluded-bokun-products";
 
 type ShiftRow = {
   id: string;
@@ -167,7 +168,10 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchAll]);
 
-  const shifts = useMemo<Shift[]>(() => rows.map(rowToShift), [rows]);
+  const shifts = useMemo<Shift[]>(
+    () => rows.filter((r) => !isExcludedTourName(r.tour_name)).map(rowToShift),
+    [rows],
+  );
 
   const addShift: ShiftsStoreContextValue["addShift"] = async (input) => {
     const payload = shiftToDbPatch(input);
