@@ -191,7 +191,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
       loadInitial();
       channel = supabase
-        .channel(`notes-feed-live-${data.session?.user?.id ?? "guest"}`)
+        .channel(`notes-feed-live-${data.session?.user?.id ?? "guest"}-${Math.random().toString(36).slice(2)}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "guide_notes" }, (payload) => {
           const newRow = payload.new as GuideNoteRow | null;
           const oldRow = payload.old as { id?: string; shift_id?: string } | null;
@@ -276,7 +276,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
       void fetchNotifications(myStaffId);
       channel = supabase
-        .channel(`guide-notifications-${myStaffId}`)
+        .channel(`guide-notifications-${myStaffId}-${Math.random().toString(36).slice(2)}`)
         .on(
           "postgres_changes",
           {
