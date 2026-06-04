@@ -229,6 +229,8 @@ function mapToShiftRow(raw: BokunBookingFull) {
   const detailActivity = raw.activityBookings?.find((a) => String(a.bookingId ?? a.productConfirmationCode ?? "") === String(raw.id ?? raw.bookingId ?? raw.productConfirmationCode ?? "")) ?? a0;
   const activity = detailActivity ?? a0;
   const productTitle = activity?.product?.title ?? activity?.activity?.title ?? activity?.title ?? raw.product?.title ?? raw.productTitle ?? raw.title ?? "Bokun booking";
+  const productId = activity?.product?.id ?? raw.product?.id;
+  if (isExcludedBokunProductId(productId) || isExcludedTourName(productTitle)) return null;
   const startDateTime = activity?.startDateTime ?? raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
   if (!startDateTime) return null;
   const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
