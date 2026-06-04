@@ -250,10 +250,14 @@ function PayoutsPage() {
                           <div className="min-w-0 flex-1">
                             <div className="font-medium text-sm truncate">{s.tour_name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {format(parseISO(s.date), "EEE d MMM yyyy")} · {s.start_time.slice(0, 5)}
+                              {format(parseISO(s.date), "EEE d MMM yyyy")} · {s.start_time.slice(0, 5)} · {paxOf(s)} pax
+                              {paxOf(s) >= LARGE_GROUP_THRESHOLD && (
+                                <span className="ml-2 text-primary font-medium">+€{LARGE_GROUP_BONUS} large group</span>
+                              )}
                               {!rate && <span className="ml-2 text-warning">· no rate matched</span>}
                             </div>
                           </div>
+
 
                           <div className="flex items-center gap-1 rounded-md border bg-muted/30 p-0.5">
                             <Button
