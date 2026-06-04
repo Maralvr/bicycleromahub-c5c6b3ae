@@ -430,110 +430,194 @@ function NotificationsPage() {
         )}
 
         <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <h2 className="font-semibold">Activity feed</h2>
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Live
             </span>
           </div>
+          <div className="mb-5 flex items-center gap-1.5 text-[11px] flex-wrap">
+            <span className="text-muted-foreground mr-1">Group broadcasts:</span>
+            {(["all", "day", "week", "month"] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setBroadcastGroup(g)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors ${broadcastGroup === g ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                {g === "all" ? "All" : g === "day" ? "Daily" : g === "week" ? "Weekly" : "Monthly"}
+              </button>
+            ))}
+          </div>
           <div className="relative">
             <div className="absolute left-[19px] top-2 bottom-2 w-px bg-border" />
             <div className="space-y-5">
-              {updates.map((u) => {
-                const author = staff.find((s) => s.id === u.authorId);
-                const isLong = u.message.length > 180;
-                const isOpen = expandedFeed.has(u.id);
-                return (
-                  <div key={u.id} className="flex gap-3 relative">
-                    <div className="relative z-10">
-                      <Avatar
-                        name={author?.name || "Admin"}
-                        initials={author?.avatar || "AD"}
-                        size="md"
-                        className="ring-4 ring-card"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-foreground">
-                          {author?.name || "Admin"}
-                        </span>
-                        <Badge
-                          variant={u.type === "broadcast" ? "default" : "outline"}
-                          className="text-[10px] font-semibold"
-                        >
-                          {u.type === "broadcast" ? (
-                            <>
-                              <Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast
-                            </>
-                          ) : (
-                            <>
-                              <MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}
-                            </>
-                          )}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">· {u.time}</span>
+              {(() => {
+                // Group broadcasts by selected granularity; field updates stay inline.
+                const groups: Array<{ key: string; label: string | null; items: typeof updates }> = [];
+                if (broadcastGroup === "all") {
+                  groups.push({ key: "all", label: null, items: updates });
+                } else {
+                  const bucket = (iso: string) => {
+                    const d = new Date(iso);
+                    if (broadcastGroup === "day") return d.toISOString().slice(0, 10);
+                    if (broadcastGroup === "month") return d.toISOString().slice(0, 7);
+                    // week: ISO year-week
+                    const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                    const dayNum = tmp.getUTCDay() || 7;
+                    tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+                    const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+                    const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+                    return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+                  };
+                  const labelFor = (key: string, sample: string) => {
+                    const d = new Date(sample);
+                    if (broadcastGroup === "day")
+                      return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                    if (broadcastGroup === "month")
+                      return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+                    return `Week of ${new Date(d.getTime() - ((d.getDay() + 6) % 7) * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+                  };
+                  const broadcastIso = (u: (typeof updates)[number]) => {
+                    // FieldUpdate row in this store keeps `time` only; pull created from feed array order isn't reliable.
+                    // Best-effort: use today's date for "time" string fallback; broadcasts include time string only.
+                    return new Date().toISOString();
+                  };
+                  // Field updates remain in their own "Recent" bucket; broadcasts get grouped.
+                  const broadcasts = updates.filter((u) => u.type === "broadcast");
+                  const fields = updates.filter((u) => u.type !== "broadcast");
+                  const map = new Map<string, typeof updates>();
+                  for (const u of broadcasts) {
+                    const key = bucket(broadcastIso(u));
+                    if (!map.has(key)) map.set(key, []);
+                    map.get(key)!.push(u);
+                  }
+                  for (const [key, items] of map.entries()) {
+                    groups.push({ key, label: labelFor(key, broadcastIso(items[0])), items });
+                  }
+                  if (fields.length) groups.push({ key: "field", label: "Field updates", items: fields });
+                }
+                return groups.map((group) => (
+                  <div key={group.key} className="space-y-5">
+                    {group.label && (
+                      <div className="ml-12 -mt-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label} · {group.items.length}
                       </div>
-                      <div
-                        onClick={() => isLong && toggleFeed(u.id)}
-                        className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
-                      >
-                        <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
-                        {isLong && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFeed(u.id);
-                            }}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
-                          >
-                            {isOpen ? "Show less" : "Show more"}
-                            <ChevronDown
-                              className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    )}
+                    {group.items.map((u) => {
+                      const author = staff.find((s) => s.id === u.authorId);
+                      const isLong = u.message.length > 180;
+                      const isOpen = expandedFeed.has(u.id);
+                      const isMine = u.authorId === staffId || isAdmin;
+                      const canDelete = u.type === "broadcast" && isMine;
+                      return (
+                        <div key={u.id} className="flex gap-3 relative">
+                          <div className="relative z-10">
+                            <Avatar
+                              name={author?.name || "Admin"}
+                              initials={author?.avatar || "AD"}
+                              size="md"
+                              className="ring-4 ring-card"
                             />
-                          </button>
-                        )}
-                        {u.attachments && u.attachments.length > 0 && (
-                          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {u.attachments.map((a) => (
-                              <a
-                                key={a.id}
-                                href={a.dataUrl}
-                                download={a.name}
-                                className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
-                              >
-                                {a.mime.startsWith("image/") ? (
-                                  <img
-                                    src={a.dataUrl}
-                                    alt={a.name}
-                                    className="h-10 w-10 rounded object-cover shrink-0"
-                                  />
-                                ) : (
-                                  <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
-                                    {a.mime.startsWith("image/") ? (
-                                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                    ) : (
-                                      <FileText className="h-4 w-4 text-muted-foreground" />
-                                    )}
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="truncate text-xs font-medium">{a.name}</div>
-                                  <div className="text-[10px] text-muted-foreground">
-                                    {(a.size / 1024).toFixed(1)} KB
-                                  </div>
-                                </div>
-                                <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </a>
-                            ))}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                          <div className="flex-1 min-w-0 pt-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-foreground">
+                                {author?.name || "Admin"}
+                              </span>
+                              <Badge
+                                variant={u.type === "broadcast" ? "default" : "outline"}
+                                className="text-[10px] font-semibold"
+                              >
+                                {u.type === "broadcast" ? (
+                                  <>
+                                    <Megaphone className="h-2.5 w-2.5 mr-1" /> Broadcast
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="h-2.5 w-2.5 mr-1" /> {t.notifications.fieldUpdate}
+                                  </>
+                                )}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">· {u.time}</span>
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm("Delete this broadcast for everyone?")) return;
+                                    const { error } = await deleteFieldUpdate(u.id);
+                                    if (error) toast.error("Couldn't delete", { description: error.message });
+                                    else toast.success("Broadcast deleted");
+                                  }}
+                                  className="ml-auto text-[11px] text-destructive hover:underline"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                            <div
+                              onClick={() => isLong && toggleFeed(u.id)}
+                              className={`mt-1.5 p-3 rounded-lg text-sm leading-snug transition-colors ${u.type === "broadcast" ? "bg-secondary/5 border border-secondary/20 text-foreground/90" : "bg-muted/50 border border-border/60 text-foreground/85"} ${isLong ? "cursor-pointer hover:border-primary/40" : ""}`}
+                            >
+                              <div className={isLong && !isOpen ? "line-clamp-3" : ""}>{u.message}</div>
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFeed(u.id);
+                                  }}
+                                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                                >
+                                  {isOpen ? "Show less" : "Show more"}
+                                  <ChevronDown
+                                    className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                  />
+                                </button>
+                              )}
+                              {u.attachments && u.attachments.length > 0 && (
+                                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {u.attachments.map((a) => (
+                                    <a
+                                      key={a.id}
+                                      href={a.dataUrl}
+                                      download={a.name}
+                                      className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
+                                    >
+                                      {a.mime.startsWith("image/") ? (
+                                        <img
+                                          src={a.dataUrl}
+                                          alt={a.name}
+                                          className="h-10 w-10 rounded object-cover shrink-0"
+                                        />
+                                      ) : (
+                                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                                          {a.mime.startsWith("image/") ? (
+                                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="truncate text-xs font-medium">{a.name}</div>
+                                        <div className="text-[10px] text-muted-foreground">
+                                          {(a.size / 1024).toFixed(1)} KB
+                                        </div>
+                                      </div>
+                                      <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           </div>
         </Card>
