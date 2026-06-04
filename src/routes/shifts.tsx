@@ -338,7 +338,7 @@ function ShiftsPage() {
       if (top) {
         working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
         await assignShift(sh.id, top.staff.id);
-        notifyGuide({
+        await notifyGuide({
           staffId: top.staff.id,
           type: "assigned",
           title: "New shift assigned",
