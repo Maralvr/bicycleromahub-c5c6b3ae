@@ -105,59 +105,83 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
 
   const create = useCallback(
     async (input: LiveShiftInput) => {
-      const { error } = await supabase.from("shifts").insert({
-        source: input.source ?? "manual",
-        booking_id: input.booking_id ?? null,
-        channel_booking_ref: input.channel_booking_ref ?? null,
-        external_booking_ref: input.external_booking_ref ?? null,
-        tour_name: input.tour_name,
-        date: input.date,
-        start_time: input.start_time,
-        end_time: input.end_time,
-        meeting_point: input.meeting_point ?? "",
-        rental_point_id: input.rental_point_id ?? null,
-        customer_name: input.customer_name ?? null,
-        customer_phone: input.customer_phone ?? null,
-        customer_email: input.customer_email ?? null,
-        adults: input.adults ?? 0,
-        teens: input.teens ?? 0,
-        infants: input.infants ?? 0,
-        trailers: input.trailers ?? 0,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        participants: (input.participants ?? []) as any,
-        rate: input.rate ?? null,
-        rate_title: input.rate_title ?? null,
-        seller: input.seller ?? null,
-        booking_channel: input.booking_channel ?? null,
-        notes: input.notes ?? null,
-        operations_notes: input.operations_notes ?? null,
-        required_tags: input.required_tags ?? [],
-        assigned_staff_id: input.assigned_staff_id ?? null,
-        status: input.status ?? "unassigned",
-      });
+      const { data, error } = await supabase
+        .from("shifts")
+        .insert({
+          source: input.source ?? "manual",
+          booking_id: input.booking_id ?? null,
+          channel_booking_ref: input.channel_booking_ref ?? null,
+          external_booking_ref: input.external_booking_ref ?? null,
+          tour_name: input.tour_name,
+          date: input.date,
+          start_time: input.start_time,
+          end_time: input.end_time,
+          meeting_point: input.meeting_point ?? "",
+          rental_point_id: input.rental_point_id ?? null,
+          customer_name: input.customer_name ?? null,
+          customer_phone: input.customer_phone ?? null,
+          customer_email: input.customer_email ?? null,
+          adults: input.adults ?? 0,
+          teens: input.teens ?? 0,
+          infants: input.infants ?? 0,
+          trailers: input.trailers ?? 0,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          participants: (input.participants ?? []) as any,
+          rate: input.rate ?? null,
+          rate_title: input.rate_title ?? null,
+          seller: input.seller ?? null,
+          booking_channel: input.booking_channel ?? null,
+          notes: input.notes ?? null,
+          operations_notes: input.operations_notes ?? null,
+          required_tags: input.required_tags ?? [],
+          assigned_staff_id: input.assigned_staff_id ?? null,
+          status: input.status ?? "unassigned",
+        })
+        .select()
+        .single();
       if (error) throw error;
-      await fetchAll();
+      if (data) {
+        const row = data as unknown as LiveShift;
+        const include = opts?.rentalPointId
+          ? row.rental_point_id === opts.rentalPointId
+          : !row.rental_point_id;
+        if (include && !isExcludedTourName(row.tour_name)) {
+          setShifts((prev) =>
+            prev.some((s) => s.id === row.id) ? prev : [...prev, row],
+          );
+        }
+      }
     },
-    [fetchAll],
+    [opts?.rentalPointId],
   );
 
   const update = useCallback(
     async (id: string, patch: Partial<LiveShiftInput>) => {
+      const prev = shifts;
+      setShifts((curr) =>
+        curr.map((s) => (s.id === id ? { ...s, ...(patch as Partial<LiveShift>) } : s)),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await supabase.from("shifts").update(patch as any).eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setShifts(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [shifts],
   );
 
   const remove = useCallback(
     async (id: string) => {
+      const prev = shifts;
+      setShifts((curr) => curr.filter((s) => s.id !== id));
       const { error } = await supabase.from("shifts").delete().eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setShifts(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [shifts],
   );
 
   const assign = useCallback(
@@ -167,27 +191,36 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
         status: staffId ? "pending" : "unassigned",
       };
       if (staffId) {
-        // 2-hour window for the guide to accept/reject
         patch.pending_expires_at = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
       } else {
         patch.pending_expires_at = null;
         patch.requested_by = null;
       }
+      const prev = shifts;
+      setShifts((curr) =>
+        curr.map((s) => (s.id === id ? { ...s, ...(patch as Partial<LiveShift>) } : s)),
+      );
       const { error } = await supabase.from("shifts").update(patch as never).eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setShifts(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [shifts],
   );
 
 
   const setStatus = useCallback(
     async (id: string, status: LiveShift["status"]) => {
+      const prev = shifts;
+      setShifts((curr) => curr.map((s) => (s.id === id ? { ...s, status } : s)));
       const { error } = await supabase.from("shifts").update({ status }).eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setShifts(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [shifts],
   );
 
   return { shifts, loading, error, refresh: fetchAll, create, update, remove, assign, setStatus };

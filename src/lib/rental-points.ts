@@ -47,12 +47,27 @@ export function useRentalPoints() {
     void fetchAll();
     const channel = supabase
       .channel(`rental-points-realtime-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "rental_points" }, () => {
-        void fetchAll();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "staff_rental_points" }, () => {
-        void fetchAll();
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rental_points" },
+        (payload) => {
+          const newRow = payload.new as RentalPoint | null;
+          const oldRow = payload.old as { id?: string } | null;
+          setPoints((prev) => {
+            if (payload.eventType === "INSERT" && newRow) {
+              if (prev.some((p) => p.id === newRow.id)) return prev;
+              return [...prev, newRow].sort((a, b) => a.name.localeCompare(b.name));
+            }
+            if (payload.eventType === "UPDATE" && newRow) {
+              return prev.map((p) => (p.id === newRow.id ? { ...p, ...newRow } : p));
+            }
+            if (payload.eventType === "DELETE" && oldRow?.id) {
+              return prev.filter((p) => p.id !== oldRow.id);
+            }
+            return prev;
+          });
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -61,29 +76,49 @@ export function useRentalPoints() {
 
   const create = useCallback(
     async (input: RentalPointInput) => {
-      const { error } = await supabase.from("rental_points").insert(input);
+      const { data, error } = await supabase
+        .from("rental_points")
+        .insert(input)
+        .select()
+        .single();
       if (error) throw error;
-      await fetchAll();
+      if (data) {
+        setPoints((prev) =>
+          prev.some((p) => p.id === (data as RentalPoint).id)
+            ? prev
+            : [...prev, data as RentalPoint].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
     },
-    [fetchAll],
+    [],
   );
 
   const update = useCallback(
     async (id: string, input: Partial<RentalPointInput>) => {
+      const prev = points;
+      setPoints((curr) =>
+        curr.map((p) => (p.id === id ? { ...p, ...(input as Partial<RentalPoint>) } : p)),
+      );
       const { error } = await supabase.from("rental_points").update(input).eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setPoints(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [points],
   );
 
   const remove = useCallback(
     async (id: string) => {
+      const prev = points;
+      setPoints((curr) => curr.filter((p) => p.id !== id));
       const { error } = await supabase.from("rental_points").delete().eq("id", id);
-      if (error) throw error;
-      await fetchAll();
+      if (error) {
+        setPoints(prev);
+        throw error;
+      }
     },
-    [fetchAll],
+    [points],
   );
 
   return { points, loading, error, refresh: fetchAll, create, update, remove };
