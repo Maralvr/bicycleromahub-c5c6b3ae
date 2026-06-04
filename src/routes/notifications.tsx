@@ -103,59 +103,71 @@ function NotificationsPage() {
         ? `Shared ${attachments[0].name}`
         : `Shared ${attachments.length} files`);
 
-    // Fetch all active staff (guides + admins) directly from DB so we don't
-    // depend on a possibly-stale staff store.
-    const { data: recipients, error: recipientsErr } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("active", true);
-    if (recipientsErr) {
-      toast.error("Couldn't load recipients", { description: recipientsErr.message });
-      return;
-    }
-    const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
-    if (recipientIds.length === 0) {
-      toast.error("No active staff to notify");
-      return;
-    }
-
-    // Insert one notification row per recipient. Await so we can surface errors.
-    const { error: notifErr } = await supabase.from("guide_notifications").insert(
-      recipientIds.map((rid: string) => ({
-        staff_id: rid,
-        type: "broadcast" as const,
-        title: "Broadcast from admins",
-        body: message,
-        link: "/notifications",
-        attachments: attachments.length ? attachments : [],
-        read: false,
-      })),
-    );
-    if (notifErr) {
-      toast.error("Couldn't send broadcast", { description: notifErr.message });
-      return;
-    }
-
-    // Add to the shared activity feed. author_id must be a uuid → use the
-    // sender's staff id when available, otherwise their first admin staff row.
-    if (staffId) {
-      const { error: fuErr } = await addFieldUpdate({
-        authorId: staffId,
-        message,
-        type: "broadcast",
-        attachments: attachments.length ? attachments : undefined,
-      });
-      if (fuErr) {
-        toast.error("Couldn't post to activity", { description: fuErr.message });
+    try {
+      const { data: recipients, error: recipientsErr } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("active", true);
+      if (recipientsErr) {
+        toast.error("Couldn't load recipients", { description: recipientsErr.message });
+        return;
       }
-    }
+      const recipientIds = (recipients ?? []).map((s: { id: string }) => s.id);
+      if (recipientIds.length === 0) {
+        toast.error("No active staff to notify");
+        return;
+      }
 
-    setMsg("");
-    setAttachments([]);
-    toast.success(`Broadcast sent to ${recipientIds.length} ${recipientIds.length === 1 ? "person" : "people"}`, {
-      description: "They'll see it in their notification bell.",
-    });
+      // Lightweight attachment metadata for notifications (no base64 payload).
+      // Full attachments live once in the field_updates row below.
+      const attachmentMeta = attachments.map((a) => ({
+        id: a.id,
+        name: a.name,
+        mime: a.mime,
+        size: a.size,
+      }));
+
+      const { error: notifErr } = await supabase.from("guide_notifications").insert(
+        recipientIds.map((rid: string) => ({
+          staff_id: rid,
+          type: "broadcast" as const,
+          title: "Broadcast from admins",
+          body: message,
+          link: "/notifications",
+          attachments: attachmentMeta,
+          read: false,
+        })),
+      );
+      if (notifErr) {
+        toast.error("Couldn't send broadcast", { description: notifErr.message });
+        return;
+      }
+
+      if (staffId) {
+        const { error: fuErr } = await addFieldUpdate({
+          authorId: staffId,
+          message,
+          type: "broadcast",
+          attachments: attachments.length ? attachments : undefined,
+        });
+        if (fuErr) {
+          toast.error("Couldn't post to activity", { description: fuErr.message });
+        }
+      }
+
+      setMsg("");
+      setAttachments([]);
+      toast.success(`Broadcast sent to ${recipientIds.length} ${recipientIds.length === 1 ? "person" : "people"}`, {
+        description: "They'll see it in their notification bell.",
+      });
+    } catch (err) {
+      console.error("[broadcast] send failed", err);
+      toast.error("Couldn't send broadcast", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
   };
+
 
   return (
     <AppShell>
