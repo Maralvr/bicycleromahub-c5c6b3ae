@@ -74,27 +74,22 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
   const warnings: string[] = [];
   let score = 0;
 
-  // --- 1. Tag matching (most important) ---
+  // --- 1. Tag matching (soft — boosts score, never disqualifies) ---
   const matchedTags = shift.requiredTags.filter((tag) => staff.tags.includes(tag));
   const tagMatchRatio = shift.requiredTags.length > 0 ? matchedTags.length / shift.requiredTags.length : 0;
 
-  // Hard requirement: must match at least one required tag
-  if (matchedTags.length === 0 && shift.requiredTags.length > 0) return null;
-
   score += matchedTags.length * 25;
-  if (tagMatchRatio === 1) {
+  if (shift.requiredTags.length > 0 && tagMatchRatio === 1) {
     score += 15;
     reasons.push(`All ${matchedTags.length} required skills match`);
   } else if (matchedTags.length > 0) {
     reasons.push(`${matchedTags.length}/${shift.requiredTags.length} skills match`);
+  } else if (shift.requiredTags.length > 0) {
+    warnings.push(`Missing skill: ${shift.requiredTags.join(", ")}`);
   }
 
-  // --- 2. Role fit ---
-  const isRentalShift = shift.requiredTags.some((t) => t.toLowerCase().includes("rental"));
-  const isMaintenanceShift = shift.requiredTags.some((t) => t.toLowerCase().includes("maintenance"));
-  if (isRentalShift && staff.role !== "rental") return null;
-  if (isMaintenanceShift && staff.role !== "mechanic") return null;
-  if (!isRentalShift && !isMaintenanceShift && staff.role === "guide") {
+  // --- 2. Role fit (soft) ---
+  if (staff.role === "guide") {
     score += 10;
     reasons.push("Guide role");
   }
@@ -235,29 +230,21 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Re-derive the disqualification reason for display
-      const matchedTags = shift.requiredTags.filter((tag) => s.tags.includes(tag));
-      const isRentalShift = shift.requiredTags.some((t) => t.toLowerCase().includes("rental"));
-      const isMaintenanceShift = shift.requiredTags.some((t) => t.toLowerCase().includes("maintenance"));
-      let reason = "Not a fit";
-      if (matchedTags.length === 0 && shift.requiredTags.length > 0) reason = `Missing required skill: ${shift.requiredTags.join(", ")}`;
-      else if (isRentalShift && s.role !== "rental") reason = "Wrong role (rental shift)";
-      else if (isMaintenanceShift && s.role !== "mechanic") reason = "Wrong role (maintenance)";
+      // Only availability-based hard blocks remain
+      let reason = "Unavailable";
+      const conflict = findUnavailabilityConflict(s, shift);
+      if (conflict) reason = conflict;
       else {
-        const conflict = findUnavailabilityConflict(s, shift);
-        if (conflict) reason = conflict;
-        else {
-          const overlap = allShifts.find(
-            (o) =>
-              o.id !== shift.id &&
-              o.assignedStaffId === s.id &&
-              o.date === shift.date &&
-              o.status !== "rejected" &&
-              toMinutes(shift.startTime) < toMinutes(o.endTime) &&
-              toMinutes(shift.endTime) > toMinutes(o.startTime),
-          );
-          if (overlap) reason = `Double-booked at ${overlap.startTime}`;
-        }
+        const overlap = allShifts.find(
+          (o) =>
+            o.id !== shift.id &&
+            o.assignedStaffId === s.id &&
+            o.date === shift.date &&
+            o.status !== "rejected" &&
+            toMinutes(shift.startTime) < toMinutes(o.endTime) &&
+            toMinutes(shift.endTime) > toMinutes(o.startTime),
+        );
+        if (overlap) reason = `Double-booked at ${overlap.startTime}`;
       }
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
     })
