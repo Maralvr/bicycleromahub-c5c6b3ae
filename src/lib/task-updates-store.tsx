@@ -58,26 +58,52 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
   }, []);
 
   useEffect(() => {
-    void fetchUpdates();
-    const channel = supabase
-      .channel("task-updates-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_updates" }, (payload) => {
-        const newRow = payload.new as TaskUpdateRow | null;
-        const oldRow = payload.old as { id?: string } | null;
-        if (payload.eventType === "INSERT" && newRow) {
-          setUpdates((prev) =>
-            prev.some((u) => u.id === newRow.id) ? prev : [fromRow(newRow), ...prev],
-          );
-        } else if (payload.eventType === "UPDATE" && newRow) {
-          setUpdates((prev) => prev.map((u) => (u.id === newRow.id ? fromRow(newRow) : u)));
-        } else if (payload.eventType === "DELETE" && oldRow?.id) {
-          setUpdates((prev) => prev.filter((u) => u.id !== oldRow.id));
-        }
-      })
-      .subscribe();
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const startRealtime = async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) await supabase.realtime.setAuth(token);
+      if (cancelled) return;
+
+      void fetchUpdates();
+      channel = supabase
+        .channel(`task-updates-live-${data.session?.user?.id ?? "guest"}-${Math.random().toString(36).slice(2)}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "task_updates" }, (payload) => {
+          const newRow = payload.new as TaskUpdateRow | null;
+          const oldRow = payload.old as { id?: string } | null;
+          if (payload.eventType === "INSERT" && newRow) {
+            setUpdates((prev) =>
+              prev.some((u) => u.id === newRow.id) ? prev : [fromRow(newRow), ...prev],
+            );
+          } else if (payload.eventType === "UPDATE" && newRow) {
+            setUpdates((prev) => prev.map((u) => (u.id === newRow.id ? fromRow(newRow) : u)));
+          } else if (payload.eventType === "DELETE" && oldRow?.id) {
+            setUpdates((prev) => prev.filter((u) => u.id !== oldRow.id));
+          }
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            void fetchUpdates();
+          }
+        });
+    };
+
+    void startRealtime();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void supabase.realtime.setAuth(session.access_token);
+      void fetchUpdates();
+    });
+
+    const fallback = window.setInterval(() => void fetchUpdates(), 10000);
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      authListener.subscription.unsubscribe();
+      window.clearInterval(fallback);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [fetchUpdates]);
 
