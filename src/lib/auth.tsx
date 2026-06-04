@@ -63,9 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 6000);
 
     // Set up listener BEFORE getting initial session
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
+          setLoading(true);
+        }
         // Defer Supabase calls to avoid deadlock with the auth state listener.
         // loadUserData() will flip `loading` to false once roles are resolved.
         setTimeout(() => {

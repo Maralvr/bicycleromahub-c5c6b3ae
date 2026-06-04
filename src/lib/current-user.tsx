@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./auth";
 import { useStaffStore } from "./staff-store";
 
@@ -23,6 +23,15 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
   const [roleOverride, setRoleOverride] = useState<ViewRole | null>(null);
   const [staffId, setStaffIdState] = useState<string>("");
+  const ownStaffId = useMemo(
+    () =>
+      profile?.staff_id ||
+      (user ? (staff.find((s) => s.profileId === user.id)?.id ?? "") : ""),
+    [profile?.staff_id, staff, user],
+  );
+  const effectiveStaffId = isAdmin
+    ? staffId || ownStaffId || staff[0]?.id || ""
+    : ownStaffId;
 
   useEffect(() => {
     try {
@@ -37,20 +46,18 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Auto-bind to the staff row that matches the signed-in user (by profile_id),
-  // unless the admin has manually impersonated someone.
+  // Guides must always bind to their own staff row. Stored/admin-selected staff
+  // ids can be stale after sign-in and would make notification queries miss.
   useEffect(() => {
     if (!user) return;
-    const profileStaffId = profile?.staff_id;
-    const myRow = staff.find((s) => s.profileId === user.id || (profileStaffId && s.id === profileStaffId));
-    if (profileStaffId && (!isAdmin || !staffId)) {
-      setStaffIdState(profileStaffId);
-    } else if (myRow && (!isAdmin || !staffId)) {
-      setStaffIdState(myRow.id);
-    } else if (!staffId && staff[0]) {
+    if (!isAdmin && ownStaffId && staffId !== ownStaffId) {
+      setStaffIdState(ownStaffId);
+    } else if (isAdmin && !staffId && ownStaffId) {
+      setStaffIdState(ownStaffId);
+    } else if (isAdmin && !staffId && staff[0]) {
       setStaffIdState(staff[0].id);
     }
-  }, [user, profile?.staff_id, staff, staffId, isAdmin]);
+  }, [user, ownStaffId, staff, staffId, isAdmin]);
 
   const persist = (next: { role: ViewRole | null; staffId: string }) => {
     try {
@@ -74,12 +81,12 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     persist({ role: roleOverride, staffId: id });
   };
 
-  const member = staff.find((s) => s.id === staffId);
+  const member = staff.find((s) => s.id === effectiveStaffId);
   const isAdminView = role === "admin";
 
   const value: CurrentUserContextValue = {
     role,
-    staffId,
+    staffId: effectiveStaffId,
     setRole,
     setStaffId,
     displayName: isAdminView
