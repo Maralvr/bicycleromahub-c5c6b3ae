@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo, useRef } from "react";
 import { GuideNote, FieldUpdate, Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
@@ -42,8 +42,8 @@ type NotesStore = {
     staffIds: string[],
     n: Omit<GuideNotification, "id" | "createdAt" | "read" | "staffId">,
   ) => Promise<void>;
-  markRead: (id: string) => void;
-  markAllRead: (staffId: string) => void;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: (staffId: string) => Promise<void>;
   archiveNotification: (id: string) => Promise<void>;
   unarchiveNotification: (id: string) => Promise<void>;
   clearForGuide: (staffId: string) => void;
@@ -131,12 +131,13 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
   const { staffId: currentStaffId } = useCurrentUser();
   const myStaffId = useMemo(
-    () => currentStaffId || profile?.staff_id || (user ? staff.find((s) => s.profileId === user.id)?.id ?? null : null),
+    () => currentStaffId || profile?.staff_id || (user ? (staff.find((s) => s.profileId === user.id)?.id ?? null) : null),
     [currentStaffId, profile?.staff_id, user, staff],
   );
   const [notesByShift, setNotesByShift] = useState<Record<string, GuideNote[]>>({});
   const [feed, setFeed] = useState<FieldUpdate[]>([]);
   const [notifications, setNotifications] = useState<GuideNotification[]>([]);
+  const locallyReadNotificationIds = useRef(new Set<string>());
 
   const fetchNotes = useCallback(async () => {
     const { data, error } = await supabase
@@ -169,7 +170,14 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     if (staffId) query = query.eq("staff_id", staffId);
     const { data, error } = await query.order("created_at", { ascending: false });
     if (!error) {
-      setNotifications(((data ?? []) as GuideNotificationRow[]).map(notificationFromRow));
+      setNotifications(
+        ((data ?? []) as GuideNotificationRow[]).map((row) => {
+          const notification = notificationFromRow(row);
+          return locallyReadNotificationIds.current.has(notification.id)
+            ? { ...notification, read: true }
+            : notification;
+        }),
+      );
       return;
     }
 
