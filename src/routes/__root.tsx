@@ -149,25 +149,23 @@ function RootComponent() {
         </>
       ) : (
         <AuthProvider>
-          <AuthGate>
-            <AuthenticatedDataProviders />
-          </AuthGate>
+          <AuthenticatedDataProviders>
+            <AuthGate>
+              <Outlet />
+              <Toaster />
+            </AuthGate>
+          </AuthenticatedDataProviders>
         </AuthProvider>
       )}
     </I18nProvider>
   );
 }
 
-function AuthenticatedDataProviders() {
+function AuthenticatedDataProviders({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return (
-      <>
-        <Outlet />
-        <Toaster />
-      </>
-    );
+    return <>{children}</>;
   }
 
   return (
@@ -177,8 +175,7 @@ function AuthenticatedDataProviders() {
           <NotesStoreProvider>
             <TasksStoreProvider>
               <TaskUpdatesStoreProvider>
-                <Outlet />
-                <Toaster />
+                {children}
               </TaskUpdatesStoreProvider>
             </TasksStoreProvider>
           </NotesStoreProvider>
