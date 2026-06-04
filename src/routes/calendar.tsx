@@ -24,6 +24,7 @@ function CalendarPage() {
   const { role } = useCurrentUser();
   const { staff } = useStaffStore();
   const { shifts, assignShift, updateShift } = useShiftsStore();
+  const { notifyGuide } = useNotesStore();
 
   // Guides have their own /shifts view; the all-tours calendar is admin-only.
   if (role !== "admin") {
@@ -31,7 +32,20 @@ function CalendarPage() {
   }
 
   const handleAssign = async (shiftId: string, staffId: string) => {
+    const prev = shifts.find((s) => s.id === shiftId);
     await assignShift(shiftId, staffId);
+    if (staffId) {
+      const sh = prev ?? shifts.find((s) => s.id === shiftId);
+      const reassigning = !!prev?.assignedStaffId && prev.assignedStaffId !== staffId;
+      await notifyGuide({
+        staffId,
+        type: reassigning ? "reassigned" : "assigned",
+        title: reassigning ? "Shift reassigned to you" : "New shift assigned",
+        body: sh ? `${sh.tourName} on ${sh.date} at ${sh.startTime}` : "You've been assigned a new shift.",
+        shiftId,
+        link: "/shifts",
+      });
+    }
   };
 
   const handleUpdateDeparture = async (
