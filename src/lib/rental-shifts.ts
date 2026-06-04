@@ -167,10 +167,16 @@ export function useRentalShifts() {
       if (patch.rateTitle !== undefined) out.rate_title = patch.rateTitle ?? null;
       if (patch.assignedStaffId !== undefined) out.assigned_staff_id = patch.assignedStaffId;
       if (patch.status !== undefined) out.status = patch.status;
+      // Optimistic local update
+      setRows((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, ...(out as Partial<Row>) } : r)),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: err } = await supabase.from("shifts").update(out as any).eq("id", id);
-      if (err) throw err;
-      await fetchAll();
+      if (err) {
+        void fetchAll();
+        throw err;
+      }
     },
     [fetchAll],
   );
