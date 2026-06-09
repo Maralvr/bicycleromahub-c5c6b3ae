@@ -15,6 +15,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { staff } = useStaffStore();
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useAuth();
+  const switchView = () => setRole(role === "admin" ? "staff" : "admin");
 
   const nav = role === "staff"
     ? [
