@@ -212,7 +212,11 @@ function ShiftsPage() {
 
   const handleAccept = async (id: string) => {
     const sh = shifts.find((s) => s.id === id);
-    await setStatus(id, "accepted");
+    const { error } = await supabase.rpc("accept_shift" as never, { _shift_id: id } as never);
+    if (error) {
+      toast.error("Couldn't accept shift", { description: error.message });
+      return;
+    }
     toast.success("Shift accepted");
     if (sh) {
       const guide = staff.find((m) => m.id === sh.assignedStaffId);
