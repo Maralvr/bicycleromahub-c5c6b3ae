@@ -94,6 +94,9 @@ function rowToShift(r: ShiftRow): Shift {
     assignedStaffId: r.assigned_staff_id,
     status: r.status,
     requiredTags: r.required_tags ?? [],
+    pendingExpiresAt: r.pending_expires_at,
+    rejectionReason: r.rejection_reason,
+    rejectedByStaffIds: r.rejected_by_staff_ids ?? [],
   };
 }
 
