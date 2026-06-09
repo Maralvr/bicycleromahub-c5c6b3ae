@@ -27,6 +27,10 @@ type Props = {
 export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
   const { points } = useRentalPoints();
   const { staff } = useLiveStaff();
+  const { isAdmin } = useAuth();
+  const assignedGuide = initial?.assigned_staff_id
+    ? staff.find((s) => s.id === initial.assigned_staff_id) ?? null
+    : null;
 
   const empty: LiveShiftInput = {
     tour_name: "",
