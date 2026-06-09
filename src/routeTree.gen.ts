@@ -25,6 +25,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
 import { Route as ApiPublicHooksSyncBokunRouteImport } from './routes/api/public/hooks/sync-bokun'
+import { Route as ApiPublicHooksSendShiftRemindersRouteImport } from './routes/api/public/hooks/send-shift-reminders'
 import { Route as ApiPublicHooksExpireShiftRequestsRouteImport } from './routes/api/public/hooks/expire-shift-requests'
 
 const UsersRoute = UsersRouteImport.update({
@@ -108,6 +109,12 @@ const ApiPublicHooksSyncBokunRoute = ApiPublicHooksSyncBokunRouteImport.update({
   path: '/api/public/hooks/sync-bokun',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSendShiftRemindersRoute =
+  ApiPublicHooksSendShiftRemindersRouteImport.update({
+    id: '/api/public/hooks/send-shift-reminders',
+    path: '/api/public/hooks/send-shift-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksExpireShiftRequestsRoute =
   ApiPublicHooksExpireShiftRequestsRouteImport.update({
     id: '/api/public/hooks/expire-shift-requests',
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRoutesByTo {
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRoutesById {
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
 export interface FileRouteTypes {
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   id:
     | '__root__'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   fileRoutesById: FileRoutesById
 }
@@ -250,6 +263,7 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRoute
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
   ApiPublicHooksExpireShiftRequestsRoute: typeof ApiPublicHooksExpireShiftRequestsRoute
+  ApiPublicHooksSendShiftRemindersRoute: typeof ApiPublicHooksSendShiftRemindersRoute
   ApiPublicHooksSyncBokunRoute: typeof ApiPublicHooksSyncBokunRoute
 }
 
@@ -367,6 +381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncBokunRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/send-shift-reminders': {
+      id: '/api/public/hooks/send-shift-reminders'
+      path: '/api/public/hooks/send-shift-reminders'
+      fullPath: '/api/public/hooks/send-shift-reminders'
+      preLoaderRoute: typeof ApiPublicHooksSendShiftRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/expire-shift-requests': {
       id: '/api/public/hooks/expire-shift-requests'
       path: '/api/public/hooks/expire-shift-requests'
@@ -395,8 +416,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
   ApiPublicHooksExpireShiftRequestsRoute:
     ApiPublicHooksExpireShiftRequestsRoute,
+  ApiPublicHooksSendShiftRemindersRoute: ApiPublicHooksSendShiftRemindersRoute,
   ApiPublicHooksSyncBokunRoute: ApiPublicHooksSyncBokunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
