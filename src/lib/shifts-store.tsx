@@ -48,10 +48,26 @@ type ShiftRow = {
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
 type ShiftPatch = Partial<NewShiftInput>;
 
+export type ShiftsDateRange = { from: string; to: string };
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export function defaultShiftsDateRange(): ShiftsDateRange {
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  to.setUTCDate(to.getUTCDate() + 30);
+  return { from: isoDate(from), to: isoDate(to) };
+}
+
 type ShiftsStoreContextValue = {
   shifts: Shift[];
   loading: boolean;
   error: string | null;
+  dateRange: ShiftsDateRange;
+  setDateRange: (range: ShiftsDateRange) => void;
   refresh: () => Promise<void>;
   addShift: (input: NewShiftInput) => Promise<Shift | null>;
   updateShift: (id: string, patch: ShiftPatch) => Promise<void>;
