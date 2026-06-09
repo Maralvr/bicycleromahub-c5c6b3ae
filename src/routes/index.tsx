@@ -39,7 +39,8 @@ function DashboardPage() {
   const { tasks } = useTasksStore();
   const { feed } = useNotesStore();
   const { shifts } = useShiftsStore();
-  const today = new Date().toISOString().slice(0, 10);
+  const _now = new Date();
+  const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
   if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);
   const pending = shifts.filter((s) => s.status === "pending");
