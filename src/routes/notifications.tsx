@@ -354,7 +354,15 @@ function NotificationsPage() {
                         onClick={() => {
                           if (!n.read) markRead(n.id);
                           if (n.link) {
-                            navigate({ to: n.link as string });
+                            try {
+                              const url = new URL(n.link as string, window.location.origin);
+                              const search = Object.fromEntries(url.searchParams);
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              navigate({ to: url.pathname as any, search: search as any });
+                            } catch {
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              navigate({ to: n.link as any });
+                            }
                             return;
                           }
                           setExpandedNotif(isOpen ? null : n.id);
