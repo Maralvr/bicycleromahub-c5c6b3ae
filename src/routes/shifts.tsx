@@ -484,7 +484,14 @@ function ShiftsPage() {
         {!isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>
-            <TabsTrigger value="mine"><ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.shifts.myShifts}</TabsTrigger>
+            <TabsTrigger value="mine" className="relative">
+              <ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.shifts.myShifts}
+              {myPendingCount > 0 && (
+                <Badge variant="default" className="ml-2 h-4 min-w-4 px-1 text-[10px] font-bold bg-primary text-primary-foreground">
+                  {myPendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
           </TabsList>
         )}
