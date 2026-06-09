@@ -422,20 +422,24 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       }
 
       if (rows.length > 0) {
-        // Find which booking_ids already exist so we can preserve `status`
-        // for new rows (default 'unassigned') without overwriting existing assignments.
+        // Look up existing rows so we can preserve their `status` (the column
+        // is NOT NULL and supabase-js fills missing keys with NULL during a
+        // batch upsert, which would otherwise overwrite assignments).
         const bookingIds = rows.map((r) => r!.booking_id!);
         const { data: existingRows, error: existingErr } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id")
+          .select("booking_id, status")
           .eq("source", "bokun")
           .in("booking_id", bookingIds);
         if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
-        const existingSet = new Set((existingRows ?? []).map((r) => r.booking_id));
-
-        const payload = rows.map((r) =>
-          existingSet.has(r!.booking_id!) ? r! : { ...r!, status: "unassigned" as const },
+        const existingStatusByBookingId = new Map<string, string>(
+          (existingRows ?? []).map((r) => [r.booking_id as string, (r.status as string) ?? "unassigned"]),
         );
+
+        const payload = rows.map((r) => ({
+          ...r!,
+          status: existingStatusByBookingId.get(r!.booking_id!) ?? "unassigned",
+        }));
 
         const { error: upsertErr } = await supabaseAdmin
           .from("shifts")
@@ -444,11 +448,12 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           errors.push(`Upsert page ${page}: ${upsertErr.message}`);
         } else {
           for (const r of rows) {
-            if (existingSet.has(r!.booking_id!)) updated++;
+            if (existingStatusByBookingId.has(r!.booking_id!)) updated++;
             else created++;
           }
         }
       }
+
 
 
       if (results.length < PAGE_SIZE) done = true;
