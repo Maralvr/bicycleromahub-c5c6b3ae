@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
@@ -54,6 +54,7 @@ function NotificationsPage() {
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
+  const navigate = useNavigate();
   const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const myActiveNotifs = myNotifs.filter((n) => !n.archivedAt);
@@ -351,6 +352,10 @@ function NotificationsPage() {
                         type="button"
                         onClick={() => {
                           if (!n.read) markRead(n.id);
+                          if (n.link) {
+                            navigate({ to: n.link as string });
+                            return;
+                          }
                           setExpandedNotif(isOpen ? null : n.id);
                         }}
                         className="w-full text-left p-2.5"

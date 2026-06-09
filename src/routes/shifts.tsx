@@ -200,6 +200,23 @@ function ShiftsPage() {
   const byStatus = (s: Shift) => !statusFilter || s.status === statusFilter;
   const upcomingShifts = filteredShifts.filter((s) => !isPast(s) && byStatus(s));
   const pastShifts = filteredShifts.filter((s) => isPast(s) && byStatus(s));
+  // For guides: include every assigned shift that still needs their response (pending),
+  // even if the date already passed, so notifications never point to an empty list.
+  // Pinned at the top, then upcoming chronologically.
+  const myShifts = !isAdmin && staffId
+    ? (() => {
+        const mine = filteredShifts.filter((s) => s.assignedStaffId === staffId && byStatus(s));
+        const pendingAny = mine.filter((s) => s.status === "pending");
+        const upcomingNonPending = mine.filter((s) => s.status !== "pending" && !isPast(s));
+        const seen = new Set<string>();
+        return [...pendingAny, ...upcomingNonPending].filter((s) => {
+          if (seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        });
+      })()
+    : [];
+  const myPendingCount = myShifts.filter((s) => s.status === "pending").length;
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
@@ -467,7 +484,14 @@ function ShiftsPage() {
         {!isAdmin && (
           <TabsList className="bg-muted">
             <TabsTrigger value="calendar"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Calendar</TabsTrigger>
-            <TabsTrigger value="mine"><ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.shifts.myShifts}</TabsTrigger>
+            <TabsTrigger value="mine" className="relative">
+              <ListIcon className="h-3.5 w-3.5 mr-1.5" />{t.shifts.myShifts}
+              {myPendingCount > 0 && (
+                <Badge variant="default" className="ml-2 h-4 min-w-4 px-1 text-[10px] font-bold bg-primary text-primary-foreground">
+                  {myPendingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="past">Past tours</TabsTrigger>
           </TabsList>
         )}
@@ -497,7 +521,7 @@ function ShiftsPage() {
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={upcomingShifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
+          <ShiftList shifts={myShifts} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="past" className="mt-5">
           <ShiftList
