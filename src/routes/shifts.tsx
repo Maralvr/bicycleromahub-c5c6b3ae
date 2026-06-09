@@ -30,6 +30,7 @@ import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { InvoiceDialog } from "@/components/invoice-dialog";
 import { ManualShiftDialog } from "@/components/manual-shift-dialog";
+import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
@@ -183,6 +184,7 @@ function ShiftsPage() {
     }
   };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
+  const [bulkDispatchOpen, setBulkDispatchOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide, notifyGuides } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
@@ -385,6 +387,40 @@ function ShiftsPage() {
     });
   };
 
+  const handleBulkDispatch = async (
+    picks: Array<{ shift: Shift; staffId: string; staffName: string }>,
+  ) => {
+    let ok = 0;
+    let failed = 0;
+    for (const { shift, staffId, staffName } of picks) {
+      try {
+        await assignShift(shift.id, staffId);
+        await notifyGuide({
+          staffId,
+          type: "assigned",
+          title: "New shift assigned",
+          body: shiftSummary(shift),
+          shiftId: shift.id,
+          link: "/shifts?tab=mine",
+        });
+        ok++;
+      } catch (e) {
+        console.error("Bulk dispatch failed for shift", shift.id, e);
+        failed++;
+        void staffName;
+      }
+    }
+    if (failed === 0) {
+      toast.success(`Dispatched ${ok} shift${ok === 1 ? "" : "s"}`, {
+        description: "Guides notified — awaiting accept/reject.",
+      });
+    } else {
+      toast.warning(`Dispatched ${ok}, ${failed} failed`, {
+        description: "Check the console for details and retry the failed ones.",
+      });
+    }
+  };
+
   const duplicate = async (s: Shift) => {
     const { id: _omit, ...rest } = s;
     void _omit;
@@ -443,6 +479,9 @@ function ShiftsPage() {
 
               <Button variant="outline" onClick={simulateWaiverSigned}>
                 <FileSignature className="h-4 w-4 mr-1" /> Simulate waiver signed
+              </Button>
+              <Button variant="outline" onClick={() => setBulkDispatchOpen(true)}>
+                <Wand2 className="h-4 w-4 mr-1" /> Bulk dispatch
               </Button>
               <Button variant="outline" onClick={autoAssignAll}>
                 <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
@@ -551,6 +590,16 @@ function ShiftsPage() {
         onAssign={assignStaff}
         onOverride={isAdmin ? (id, patch) => handleUpdateDeparture(id, patch) : undefined}
       />
+
+      <BulkDispatchDialog
+        open={bulkDispatchOpen}
+        onClose={() => setBulkDispatchOpen(false)}
+        unassignedShifts={upcomingShifts.filter((s) => !s.assignedStaffId)}
+        allShifts={shifts}
+        staff={staff}
+        onDispatch={handleBulkDispatch}
+      />
+
 
       <LeaveNoteDialog
         shift={noteDialogShift}
