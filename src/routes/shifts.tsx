@@ -184,6 +184,7 @@ function ShiftsPage() {
     }
   };
   const [newShiftOpen, setNewShiftOpen] = useState(false);
+  const [bulkDispatchOpen, setBulkDispatchOpen] = useState(false);
   const { notesByShift, addNote, notifyGuide, notifyGuides } = useNotesStore();
   const { signatures: waiverSignatures } = useWaiverSignatures();
 
