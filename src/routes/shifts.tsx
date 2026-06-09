@@ -111,7 +111,7 @@ function ShiftsPage() {
   const closeCardDialog = () => {
     setCardDialogShifts(null);
     if (search.shift) {
-      navigate({ search: (prev) => ({ ...prev, shift: undefined }), replace: true });
+      navigate({ search: (prev: { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string }) => ({ ...prev, shift: undefined }), replace: true });
     }
   };
   const handleCalendarShiftClick = (s: CalendarShift) => {
