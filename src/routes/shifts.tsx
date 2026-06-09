@@ -1015,3 +1015,34 @@ function RejectShiftDialog({
     </Dialog>
   );
 }
+
+function PendingCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const expiresMs = new Date(expiresAt).getTime();
+  const remaining = expiresMs - now;
+  const expired = remaining <= 0;
+  const mins = Math.max(0, Math.floor(remaining / 60_000));
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  const label = expired ? "Expired" : hours > 0 ? `${hours}h ${rem}m left` : `${rem}m left`;
+  const urgent = !expired && remaining < 30 * 60_000;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md border ${
+        expired
+          ? "bg-destructive/10 border-destructive/30 text-destructive"
+          : urgent
+          ? "bg-warning/10 border-warning/40 text-warning-foreground"
+          : "bg-muted border-border/60 text-muted-foreground"
+      }`}
+      title={`Auto-expires at ${new Date(expiresAt).toLocaleString()}`}
+    >
+      <Hourglass className="h-2.5 w-2.5" />
+      {label}
+    </span>
+  );
+}
