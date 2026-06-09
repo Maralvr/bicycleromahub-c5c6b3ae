@@ -98,9 +98,10 @@ export function usePushSubscription() {
       await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
+        const appKey = urlBase64ToUint8Array(VAPID_PUBLIC);
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+          applicationServerKey: appKey.buffer.slice(appKey.byteOffset, appKey.byteOffset + appKey.byteLength) as ArrayBuffer,
         });
       }
       await register({ data: subscriptionToPayload(sub) });
