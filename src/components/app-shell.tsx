@@ -33,6 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/payouts", label: "Payouts", icon: Euro },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
         { to: "/bokun-runs", label: "Bokun runs", icon: RefreshCw },
+        { to: "/dispatch-log", label: "Dispatch log", icon: History },
         { to: "/users", label: "Users", icon: ShieldCheck },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
       ];
