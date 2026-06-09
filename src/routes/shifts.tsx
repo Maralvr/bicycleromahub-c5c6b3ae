@@ -71,7 +71,7 @@ function ShiftsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const isAdminRole = role === "admin";
-  const defaultTab: ShiftsTab = search.tab ?? (isAdminRole ? (search.status ? "all" : "calendar") : "calendar");
+  const defaultTab: ShiftsTab = search.tab ?? (isAdminRole ? (search.status ? "all" : "calendar") : "mine");
   const [activeTab, setActiveTab] = useState<ShiftsTab>(defaultTab);
   useEffect(() => {
     if (search.tab && search.tab !== activeTab) setActiveTab(search.tab);
