@@ -146,6 +146,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         )
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
+        .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (err) {
         setError(err.message);
