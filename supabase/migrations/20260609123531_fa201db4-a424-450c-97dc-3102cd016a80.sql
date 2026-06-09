@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS shifts_date_start_time_idx ON public.shifts USING btree (date, start_time);
