@@ -480,6 +480,9 @@ function ShiftsPage() {
               <Button variant="outline" onClick={simulateWaiverSigned}>
                 <FileSignature className="h-4 w-4 mr-1" /> Simulate waiver signed
               </Button>
+              <Button variant="outline" onClick={() => setBulkDispatchOpen(true)}>
+                <Wand2 className="h-4 w-4 mr-1" /> Bulk dispatch
+              </Button>
               <Button variant="outline" onClick={autoAssignAll}>
                 <Wand2 className="h-4 w-4 mr-1" /> Auto-assign all
               </Button>
