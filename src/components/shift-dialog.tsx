@@ -333,6 +333,95 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
           {/* ============ 2. ASSIGNMENT ============ */}
           <section className="space-y-3">
             <SectionHeader icon={User} title="Assignment" hint="Pick the guide who should run this booking." />
+
+            {/* AI-tiered suggestions */}
+            {richStaff.length > 0 && (
+              <div className="rounded-lg border bg-card p-3 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Suggested guides for {form.date} {form.start_time}–{form.end_time}
+                </div>
+
+                {/* Available */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-success">
+                    <CheckCircle2 className="h-3 w-3" /> Available ({available.length})
+                  </div>
+                  {available.length === 0 ? (
+                    <div className="text-[11px] text-muted-foreground italic">No guides are clearly available for this slot.</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {available.slice(0, 6).map((c) => {
+                        const picked = form.assigned_staff_id === c.staff.id;
+                        return (
+                          <button
+                            key={c.staff.id}
+                            type="button"
+                            onClick={() => setForm({ ...form, assigned_staff_id: c.staff.id, status: "pending" })}
+                            className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${picked ? "bg-success/15 border-success text-success-foreground" : "bg-success/5 border-success/30 hover:bg-success/10"}`}
+                            title={c.reasons.join(" · ") || "Best fit"}
+                          >
+                            <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                            <span className="font-medium">{c.staff.name}</span>
+                            <Badge variant="outline" className="h-4 px-1 text-[9px]">{Math.round(c.score)}</Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Requestable */}
+                {requestable.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-warning">
+                      <AlertTriangle className="h-3 w-3" /> Requestable ({requestable.length})
+                      <span className="text-muted-foreground font-normal">— no submitted availability or partial conflict</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {requestable.slice(0, 6).map((c) => {
+                        const picked = form.assigned_staff_id === c.staff.id;
+                        return (
+                          <button
+                            key={c.staff.id}
+                            type="button"
+                            onClick={() => setForm({ ...form, assigned_staff_id: c.staff.id, status: "pending" })}
+                            className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${picked ? "bg-warning/15 border-warning" : "bg-card border-warning/30 hover:bg-warning/5"}`}
+                            title={c.warnings.join(" · ")}
+                          >
+                            <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                            <span className="font-medium">{c.staff.name}</span>
+                            <Badge variant="outline" className="h-4 px-1 text-[9px]">{Math.round(c.score)}</Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Blocked */}
+                {blocked.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                      <Ban className="h-3 w-3" /> Blocked ({blocked.length})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {blocked.slice(0, 6).map((c) => (
+                        <span
+                          key={c.staff.id}
+                          className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground opacity-60 cursor-not-allowed line-through"
+                          title={c.blockedReason ?? "Marked off"}
+                        >
+                          <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                          <span>{c.staff.name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="rounded-lg border bg-primary/[0.03] p-3 space-y-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex-1 min-w-[220px] space-y-1.5">
@@ -350,11 +439,15 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                     <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE_VALUE}>— Unassigned —</SelectItem>
-                      {staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} <span className="text-muted-foreground">· {s.role}</span>
-                        </SelectItem>
-                      ))}
+                      {staff.map((s) => {
+                        const isBlocked = blockedIds.has(s.id);
+                        return (
+                          <SelectItem key={s.id} value={s.id} disabled={isBlocked}>
+                            {s.name} <span className="text-muted-foreground">· {s.role}</span>
+                            {isBlocked && <span className="text-destructive ml-1">· off</span>}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
