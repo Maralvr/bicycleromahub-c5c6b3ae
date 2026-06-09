@@ -413,7 +413,19 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       attachments: n.attachments ?? [],
       read: false,
     });
-    if (error) console.error("[notifyGuide] insert failed", error);
+    if (error) {
+      console.error("[notifyGuide] insert failed", error);
+      return;
+    }
+    // Fire-and-forget push (server fn; auth-required, errors are swallowed).
+    void (async () => {
+      try {
+        const { sendPushForNotification } = await import("@/lib/push.functions");
+        await sendPushForNotification({ data: { staffIds: [n.staffId], title: n.title, body: n.body, url: n.link ?? "/notifications" } });
+      } catch (e) {
+        console.warn("[notifyGuide] push failed (non-fatal)", e);
+      }
+    })();
   }, []);
 
   const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback(async (update) => {
@@ -442,7 +454,18 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         read: false,
       })),
     );
-    if (error) console.error("[notifyGuides] insert failed", error);
+    if (error) {
+      console.error("[notifyGuides] insert failed", error);
+      return;
+    }
+    void (async () => {
+      try {
+        const { sendPushForNotification } = await import("@/lib/push.functions");
+        await sendPushForNotification({ data: { staffIds, title: n.title, body: n.body, url: n.link ?? "/notifications" } });
+      } catch (e) {
+        console.warn("[notifyGuides] push failed (non-fatal)", e);
+      }
+    })();
   }, []);
 
   const markRead = useCallback(async (id: string) => {
