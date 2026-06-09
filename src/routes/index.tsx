@@ -55,8 +55,8 @@ function DashboardPage() {
       sub: "+2 vs yesterday",
       icon: CalendarRange,
       accent: true,
-      to: "/live-shifts" as const,
-      search: undefined,
+      to: "/shifts" as const,
+      search: { tab: "calendar" as const },
     },
     {
       label: t.dashboard.pendingAccept,
