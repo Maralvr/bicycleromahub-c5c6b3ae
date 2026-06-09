@@ -44,6 +44,7 @@ function MyAvailabilityView() {
   const { staffId } = useCurrentUser();
   const { staff, loading } = useStaffStore();
   const { shifts: allShifts } = useShiftsStore();
+  const navigate = useNavigate();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
   const [editOpen, setEditOpen] = useState(false);
 
