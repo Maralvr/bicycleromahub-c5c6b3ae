@@ -37,6 +37,9 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [posting, setPosting] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { templates, loading: templatesLoading } = useNoteTemplates(isAdmin && canPost);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
