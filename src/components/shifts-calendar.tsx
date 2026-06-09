@@ -420,6 +420,8 @@ export function ShiftsCalendar({
           accent={STATUS.accepted.text}
           dot={STATUS.accepted.dot}
           helper="Confirmed ops"
+          active={statusFilter === "accepted"}
+          onClick={() => setStatusFilter(statusFilter === "accepted" ? "all" : "accepted")}
         />
         <Stat
           label="Pending"
@@ -427,6 +429,8 @@ export function ShiftsCalendar({
           accent={STATUS.pending.text}
           dot={STATUS.pending.dot}
           helper="Awaiting guide"
+          active={statusFilter === "pending"}
+          onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
         />
         <Stat
           label="Unassigned"
@@ -434,6 +438,8 @@ export function ShiftsCalendar({
           accent={STATUS.unassigned.text}
           dot={STATUS.unassigned.dot}
           helper="Needs attention"
+          active={statusFilter === "unassigned"}
+          onClick={() => setStatusFilter(statusFilter === "unassigned" ? "all" : "unassigned")}
         />
       </div>
 
