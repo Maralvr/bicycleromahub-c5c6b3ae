@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker";
 import type { Attachment } from "@/lib/mock-data";
-import { MessageSquare, Send, Trash2, Loader2 } from "lucide-react";
+import { MessageSquare, Send, Trash2, Loader2, FileText, Settings2 } from "lucide-react";
 import { toast } from "sonner";
+import { useNoteTemplates } from "@/lib/note-templates";
+import { NoteTemplatesDialog } from "@/components/note-templates-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export type BookingNote = {
   id: string;
