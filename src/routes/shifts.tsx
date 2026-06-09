@@ -710,9 +710,21 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusPill status={s.status} />
+                    {!pastView && s.status === "pending" && s.pendingExpiresAt && (
+                      <PendingCountdown expiresAt={s.pendingExpiresAt} />
+                    )}
                     {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
                   </div>
                 </div>
+
+                {!pastView && s.status === "unassigned" && s.rejectionReason && (
+                  <div className="mt-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20 text-xs">
+                    <div className="flex items-center gap-1.5 text-destructive font-semibold text-[10px] uppercase tracking-wider mb-0.5">
+                      <XCircle className="h-3 w-3" /> Last rejection reason
+                    </div>
+                    <div className="text-foreground/80 italic break-words">“{s.rejectionReason}”</div>
+                  </div>
+                )}
 
                 {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
 
