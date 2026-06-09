@@ -45,14 +45,16 @@ type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
 type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
 
 export const Route = createFileRoute("/shifts")({
-  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string } => {
     const tab = search.tab as string | undefined;
     const status = search.status as string | undefined;
+    const shift = search.shift as string | undefined;
     const validTabs: ShiftsTab[] = ["calendar", "all", "bokun", "manual", "mine", "past"];
     const validStatuses: ShiftStatusFilter[] = ["pending", "unassigned", "accepted", "rejected"];
     return {
       tab: tab && validTabs.includes(tab as ShiftsTab) ? (tab as ShiftsTab) : undefined,
       status: status && validStatuses.includes(status as ShiftStatusFilter) ? (status as ShiftStatusFilter) : undefined,
+      shift: shift && shift.length > 0 ? shift : undefined,
     };
   },
   head: () => ({
