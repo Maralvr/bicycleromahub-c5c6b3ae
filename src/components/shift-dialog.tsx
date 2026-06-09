@@ -5,10 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/avatar";
+import { BookingNotesThread } from "@/components/booking-notes-thread";
+import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { useRentalPoints } from "@/lib/rental-points";
 import { useLiveStaff } from "@/lib/live-staff";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
+import { Package, MapPin, Users, User, FileText } from "lucide-react";
 
 const NONE_VALUE = "__none";
 
@@ -22,6 +27,10 @@ type Props = {
 export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
   const { points } = useRentalPoints();
   const { staff } = useLiveStaff();
+  const { isAdmin } = useAuth();
+  const assignedGuide = initial?.assigned_staff_id
+    ? staff.find((s) => s.id === initial.assigned_staff_id) ?? null
+    : null;
 
   const empty: LiveShiftInput = {
     tour_name: "",
@@ -120,165 +129,235 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
     }
   };
 
+  const SectionHeader = ({
+    icon: Icon,
+    title,
+    hint,
+  }: {
+    icon: typeof Package;
+    title: string;
+    hint?: string;
+  }) => (
+    <div className="flex items-baseline gap-2 border-b border-border/60 pb-1.5">
+      <Icon className="h-4 w-4 text-primary self-center" />
+      <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+      {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial ? "Edit shift" : "New shift"}</DialogTitle>
-          <DialogDescription>Manual booking — assigned to a rental point and optionally a guide.</DialogDescription>
+          <DialogTitle>{initial ? "Booking details & assignment" : "New booking"}</DialogTitle>
+          <DialogDescription>
+            Every field can be overridden. Review the booking, then assign a guide, then add notes.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          {initial?.source === "bokun" && (
-            <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-sm">
-              <div className="font-medium text-foreground">Bokun references</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                {initial.channel_booking_ref && (
-                  <div><span className="text-muted-foreground">Booking ref. </span><span className="font-mono">{initial.channel_booking_ref}</span></div>
-                )}
-                {initial.booking_id && (
-                  <div><span className="text-muted-foreground">Product booking ref. </span><span className="font-mono">{initial.booking_id}</span></div>
-                )}
-                {initial.external_booking_ref && (
-                  <div><span className="text-muted-foreground">Ext. booking ref </span><span className="font-mono">{initial.external_booking_ref}</span></div>
-                )}
-                {initial.bokun_created_at && (
-                  <div><span className="text-muted-foreground">Created </span>{new Date(initial.bokun_created_at).toLocaleString()}</div>
-                )}
-                {initial.seller && (
-                  <div><span className="text-muted-foreground">Seller </span>{initial.seller}</div>
-                )}
-                {initial.booking_channel && (
-                  <div><span className="text-muted-foreground">Channel </span>{initial.booking_channel}</div>
-                )}
-                <div><span className="text-muted-foreground">Ticket sent </span>{initial.ticket_sent ? "Yes" : "No"}</div>
+        <form onSubmit={submit} className="space-y-6">
+          {/* ============ 1. BOOKING DETAILS ============ */}
+          <section className="space-y-3">
+            <SectionHeader icon={Package} title="Booking details" hint="Editable — any change saves on this booking." />
+
+            {initial?.source === "bokun" && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-2 text-xs">
+                <div className="font-medium text-foreground text-sm">Bokun references</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {initial.channel_booking_ref && (
+                    <div><span className="text-muted-foreground">Booking ref. </span><span className="font-mono">{initial.channel_booking_ref}</span></div>
+                  )}
+                  {initial.booking_id && (
+                    <div><span className="text-muted-foreground">Product booking ref. </span><span className="font-mono">{initial.booking_id}</span></div>
+                  )}
+                  {initial.external_booking_ref && (
+                    <div><span className="text-muted-foreground">Ext. booking ref </span><span className="font-mono">{initial.external_booking_ref}</span></div>
+                  )}
+                  {initial.bokun_created_at && (
+                    <div><span className="text-muted-foreground">Created </span>{new Date(initial.bokun_created_at).toLocaleString()}</div>
+                  )}
+                  {initial.seller && (
+                    <div><span className="text-muted-foreground">Seller </span>{initial.seller}</div>
+                  )}
+                  {initial.booking_channel && (
+                    <div><span className="text-muted-foreground">Channel </span>{initial.booking_channel}</div>
+                  )}
+                  <div><span className="text-muted-foreground">Ticket sent </span>{initial.ticket_sent ? "Yes" : "No"}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-tour">Tour / activity *</Label>
+              <Input id="sh-tour" value={form.tour_name} onChange={(e) => setForm({ ...form, tour_name: e.target.value })} placeholder="e.g. Colosseum E-Bike Tour" required />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-date">Date *</Label>
+                <Input id="sh-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-start">Start *</Label>
+                <Input id="sh-start" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-end">End *</Label>
+                <Input id="sh-end" type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} required />
               </div>
             </div>
-          )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="sh-tour">Tour / activity *</Label>
-            <Input id="sh-tour" value={form.tour_name} onChange={(e) => setForm({ ...form, tour_name: e.target.value })} placeholder="e.g. Colosseum E-Bike Tour" required />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-date">Date *</Label>
-              <Input id="sh-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-start">Start *</Label>
-              <Input id="sh-start" type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} required />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-end">End *</Label>
-              <Input id="sh-end" type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} required />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Rental point</Label>
-              <Select value={form.rental_point_id ?? NONE_VALUE} onValueChange={(v) => setForm({ ...form, rental_point_id: v === NONE_VALUE ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_VALUE}>—</SelectItem>
-                  {points.filter((p) => p.active).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Assigned guide</Label>
-              <Select value={form.assigned_staff_id ?? NONE_VALUE} onValueChange={(v) => setForm({ ...form, assigned_staff_id: v === NONE_VALUE ? null : v, status: v === NONE_VALUE ? "unassigned" : "pending" })}>
-                <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_VALUE}>Unassigned</SelectItem>
-                  {staff.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} <span className="text-muted-foreground">· {s.role}</span></SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="sh-meet">Meeting point details</Label>
-            <Input id="sh-meet" value={form.meeting_point ?? ""} onChange={(e) => setForm({ ...form, meeting_point: e.target.value })} placeholder="Override or extra details" />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-cname">Customer name</Label>
-              <Input id="sh-cname" value={form.customer_name ?? ""} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-cphone">Customer phone</Label>
-              <Input id="sh-cphone" value={form.customer_phone ?? ""} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} placeholder="+39 …" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-cmail">Customer email</Label>
-              <Input id="sh-cmail" type="email" value={form.customer_email ?? ""} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-3">
-            {([
-              ["adults", "Adults"],
-              ["teens", "Teens"],
-              ["infants", "Infants"],
-              ["trailers", "Trailers"],
-            ] as const).map(([key, label]) => (
-              <div key={key} className="space-y-1.5">
-                <Label>{label}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form[key] ?? 0}
-                  onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) || 0 })}
-                />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Rental point</Label>
+                <Select value={form.rental_point_id ?? NONE_VALUE} onValueChange={(v) => setForm({ ...form, rental_point_id: v === NONE_VALUE ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_VALUE}>—</SelectItem>
+                    {points.filter((p) => p.active).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ))}
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-meet">Meeting point details</Label>
+                <Input id="sh-meet" value={form.meeting_point ?? ""} onChange={(e) => setForm({ ...form, meeting_point: e.target.value })} placeholder="Override or extra details" />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-rate">Rate (€)</Label>
-              <Input id="sh-rate" type="number" step="0.01" value={form.rate ?? ""} onChange={(e) => setForm({ ...form, rate: e.target.value === "" ? null : Number(e.target.value) })} />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-cname">Customer name</Label>
+                <Input id="sh-cname" value={form.customer_name ?? ""} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-cphone">Customer phone</Label>
+                <Input id="sh-cphone" value={form.customer_phone ?? ""} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} placeholder="+39 …" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-cmail">Customer email</Label>
+                <Input id="sh-cmail" type="email" value={form.customer_email ?? ""} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-rate-title">Rate name</Label>
-              <Input id="sh-rate-title" value={form.rate_title ?? ""} onChange={(e) => setForm({ ...form, rate_title: e.target.value })} placeholder="e.g. Public tour in Spanish" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sh-tags">Required tags</Label>
-              <Input id="sh-tags" value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="e-bike, Vatican tour" />
-            </div>
-          </div>
 
-          {(form.participants?.length ?? 0) > 0 && (
             <div className="space-y-1.5">
-              <Label>Participants</Label>
-              <div className="rounded-md border divide-y text-sm">
-                {form.participants!.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between px-3 py-1.5">
-                    <span>{p.name}</span>
-                    <span className="text-muted-foreground text-xs">{p.category}</span>
+              <Label className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Party</Label>
+              <div className="grid grid-cols-4 gap-3">
+                {([
+                  ["adults", "Adults"],
+                  ["teens", "Teens"],
+                  ["infants", "Infants"],
+                  ["trailers", "Trailers"],
+                ] as const).map(([key, label]) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">{label}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form[key] ?? 0}
+                      onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) || 0 })}
+                    />
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="sh-notes">Note for booking</Label>
-            <Textarea id="sh-notes" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
-          </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-rate">Rate (€)</Label>
+                <Input id="sh-rate" type="number" step="0.01" value={form.rate ?? ""} onChange={(e) => setForm({ ...form, rate: e.target.value === "" ? null : Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-rate-title">Rate name</Label>
+                <Input id="sh-rate-title" value={form.rate_title ?? ""} onChange={(e) => setForm({ ...form, rate_title: e.target.value })} placeholder="e.g. Public tour in Spanish" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sh-tags">Required tags</Label>
+                <Input id="sh-tags" value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="e-bike, Vatican tour" />
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="sh-ops-notes">Note to appear on operations reports</Label>
-            <Textarea id="sh-ops-notes" rows={2} value={form.operations_notes ?? ""} onChange={(e) => setForm({ ...form, operations_notes: e.target.value })} placeholder="Internal operations note" />
-          </div>
+            {(form.participants?.length ?? 0) > 0 && (
+              <div className="space-y-1.5">
+                <Label>Participants</Label>
+                <div className="rounded-md border divide-y text-sm">
+                  {form.participants!.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                      <span>{p.name}</span>
+                      <span className="text-muted-foreground text-xs">{p.category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* ============ 2. ASSIGNMENT ============ */}
+          <section className="space-y-3">
+            <SectionHeader icon={User} title="Assignment" hint="Pick the guide who should run this booking." />
+            <div className="rounded-lg border bg-primary/[0.03] p-3 space-y-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-[220px] space-y-1.5">
+                  <Label className="text-xs">Assigned guide</Label>
+                  <Select
+                    value={form.assigned_staff_id ?? NONE_VALUE}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        assigned_staff_id: v === NONE_VALUE ? null : v,
+                        status: v === NONE_VALUE ? "unassigned" : "pending",
+                      })
+                    }
+                  >
+                    <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>— Unassigned —</SelectItem>
+                      {staff.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} <span className="text-muted-foreground">· {s.role}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                    {form.status}
+                  </Badge>
+                  {assignedGuide && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} size="sm" />
+                      <span className="font-medium">{assignedGuide.name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {form.assigned_staff_id && form.status === "pending" && (
+                <p className="text-[11px] text-muted-foreground">
+                  Saving will send a pending request to this guide. They have 2 hours to accept or reject.
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* ============ 3. NOTES & ATTACHMENTS ============ */}
+          <section className="space-y-3">
+            <SectionHeader icon={FileText} title="Notes & attachments" hint="Visible to the assigned guide and other admins." />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-notes">Note for booking</Label>
+              <Textarea id="sh-notes" rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything the guide should know." />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="sh-ops-notes">Note to appear on operations reports</Label>
+              <Textarea id="sh-ops-notes" rows={2} value={form.operations_notes ?? ""} onChange={(e) => setForm({ ...form, operations_notes: e.target.value })} placeholder="Internal operations note" />
+            </div>
+
+            {initial?.id && (
+              <BookingNotesThread shiftId={initial.id} canPost={isAdmin} compact />
+            )}
+          </section>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
