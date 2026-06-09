@@ -45,14 +45,16 @@ type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
 type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
 
 export const Route = createFileRoute("/shifts")({
-  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string } => {
     const tab = search.tab as string | undefined;
     const status = search.status as string | undefined;
+    const shift = search.shift as string | undefined;
     const validTabs: ShiftsTab[] = ["calendar", "all", "bokun", "manual", "mine", "past"];
     const validStatuses: ShiftStatusFilter[] = ["pending", "unassigned", "accepted", "rejected"];
     return {
       tab: tab && validTabs.includes(tab as ShiftsTab) ? (tab as ShiftsTab) : undefined,
       status: status && validStatuses.includes(status as ShiftStatusFilter) ? (status as ShiftStatusFilter) : undefined,
+      shift: shift && shift.length > 0 ? shift : undefined,
     };
   },
   head: () => ({
@@ -100,6 +102,18 @@ function ShiftsPage() {
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
+  // Deep-link: open the shift dialog when ?shift=<id> is present
+  useEffect(() => {
+    if (!search.shift) return;
+    const target = shifts.find((s) => s.id === search.shift);
+    if (target) setCardDialogShifts([target]);
+  }, [search.shift, shifts]);
+  const closeCardDialog = () => {
+    setCardDialogShifts(null);
+    if (search.shift) {
+      navigate({ search: (prev: { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string }) => ({ ...prev, shift: undefined }), replace: true });
+    }
+  };
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
@@ -636,7 +650,7 @@ function ShiftsPage() {
         onConfirm={handleRejectConfirm}
       />
 
-      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && setCardDialogShifts(null)}>
+      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && closeCardDialog()}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle>
