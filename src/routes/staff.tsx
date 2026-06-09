@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
@@ -44,14 +44,21 @@ function MyAvailabilityView() {
   const { staffId } = useCurrentUser();
   const { staff, loading } = useStaffStore();
   const { shifts: allShifts } = useShiftsStore();
-  const navigate = useNavigate();
-  const me = staff.find((s) => s.id === staffId) ?? staff[0];
+  const me = staff.find((s) => s.id === staffId);
   const [editOpen, setEditOpen] = useState(false);
 
-  if (loading || !me) {
+  if (loading || !staffId) {
     return (
       <AppShell>
         <div className="text-sm text-muted-foreground py-12 text-center">Loading your profile…</div>
+      </AppShell>
+    );
+  }
+
+  if (!me) {
+    return (
+      <AppShell>
+        <div className="text-sm text-muted-foreground py-12 text-center">No guide profile is linked to this account.</div>
       </AppShell>
     );
   }
@@ -85,7 +92,8 @@ function MyAvailabilityView() {
           label="Pending response"
           value={myShifts.filter((s) => s.status === "pending").length}
           sub={myShifts.some((s) => s.status === "pending") ? "Tap to accept or reject" : "Nothing waiting"}
-          onClick={() => navigate({ to: "/shifts", search: { tab: "mine", status: "pending" } })}
+          to="/shifts"
+          search={{ tab: "mine", status: "pending" }}
         />
         <StatCard icon={CalendarOff} label="Days off this month" value={monthOffDays} sub="Marked unavailable" />
         <StatCard
@@ -198,7 +206,7 @@ function MyAvailabilityView() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string; onClick?: () => void }) {
+function StatCard({ icon: Icon, label, value, sub, to, search }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string; to?: "/shifts"; search?: { tab: "mine"; status: "pending" } }) {
   const content = (
     <>
       <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
@@ -208,15 +216,15 @@ function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.Comp
       <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
     </>
   );
-  if (onClick) {
+  if (to) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
+      <Link
+        to={to}
+        search={search}
         className="rounded-lg border border-border/60 bg-card p-4 text-left cursor-pointer hover:border-primary/50 hover:bg-accent/40 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
         {content}
-      </button>
+      </Link>
     );
   }
   return <Card className="p-4 border-border/60">{content}</Card>;
