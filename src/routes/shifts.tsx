@@ -279,6 +279,13 @@ function ShiftsPage() {
 
   const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string, note?: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
+    // Soft cooldown warning: this guide previously rejected this shift.
+    if (prevShift?.rejectedByStaffIds?.includes(assignedStaffId)) {
+      const proceed = window.confirm(
+        `${staffName} already rejected this shift. Send it to them again?`,
+      );
+      if (!proceed) return;
+    }
     await assignShift(shiftId, assignedStaffId);
     if (prevShift) {
       const updated = { ...prevShift, assignedStaffId };
