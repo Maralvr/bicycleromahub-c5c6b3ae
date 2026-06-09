@@ -18,6 +18,7 @@ import {
   DEFAULT_MAX_SIZE,
   AttachmentList,
 } from "@/components/attachment-picker";
+import { PushToggle } from "@/components/push-toggle";
 import {
   Send,
   Megaphone,
