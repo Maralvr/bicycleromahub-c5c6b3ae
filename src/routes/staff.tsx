@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
@@ -44,6 +44,7 @@ function MyAvailabilityView() {
   const { staffId } = useCurrentUser();
   const { staff, loading } = useStaffStore();
   const { shifts: allShifts } = useShiftsStore();
+  const navigate = useNavigate();
   const me = staff.find((s) => s.id === staffId) ?? staff[0];
   const [editOpen, setEditOpen] = useState(false);
 
@@ -79,7 +80,13 @@ function MyAvailabilityView() {
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard icon={CalendarDays} label="Shifts this month" value={monthShifts.length} sub={`${acceptedHours.toFixed(1)} h accepted`} />
-        <StatCard icon={Briefcase} label="Pending response" value={myShifts.filter((s) => s.status === "pending").length} sub="Accept or reject" />
+        <StatCard
+          icon={Briefcase}
+          label="Pending response"
+          value={myShifts.filter((s) => s.status === "pending").length}
+          sub={myShifts.some((s) => s.status === "pending") ? "Tap to accept or reject" : "Nothing waiting"}
+          onClick={() => navigate({ to: "/shifts", search: { tab: "mine", status: "pending" } })}
+        />
         <StatCard icon={CalendarOff} label="Days off this month" value={monthOffDays} sub="Marked unavailable" />
         <StatCard
           icon={LangIcon}
@@ -191,16 +198,28 @@ function MyAvailabilityView() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string }) {
-  return (
-    <Card className="p-4 border-border/60">
+function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string; onClick?: () => void }) {
+  const content = (
+    <>
       <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div className="text-2xl font-bold text-foreground mt-1 tabular-nums">{value}</div>
       <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
-    </Card>
+    </>
   );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded-lg border border-border/60 bg-card p-4 text-left cursor-pointer hover:border-primary/50 hover:bg-accent/40 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        {content}
+      </button>
+    );
+  }
+  return <Card className="p-4 border-border/60">{content}</Card>;
 }
 
 function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string }>; label: string; children: React.ReactNode }) {
