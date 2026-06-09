@@ -200,6 +200,23 @@ function ShiftsPage() {
   const byStatus = (s: Shift) => !statusFilter || s.status === statusFilter;
   const upcomingShifts = filteredShifts.filter((s) => !isPast(s) && byStatus(s));
   const pastShifts = filteredShifts.filter((s) => isPast(s) && byStatus(s));
+  // For guides: include every assigned shift that still needs their response (pending),
+  // even if the date already passed, so notifications never point to an empty list.
+  // Pinned at the top, then upcoming chronologically.
+  const myShifts = !isAdmin && staffId
+    ? (() => {
+        const mine = filteredShifts.filter((s) => s.assignedStaffId === staffId && byStatus(s));
+        const pendingAny = mine.filter((s) => s.status === "pending");
+        const upcomingNonPending = mine.filter((s) => s.status !== "pending" && !isPast(s));
+        const seen = new Set<string>();
+        return [...pendingAny, ...upcomingNonPending].filter((s) => {
+          if (seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        });
+      })()
+    : [];
+  const myPendingCount = myShifts.filter((s) => s.status === "pending").length;
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
