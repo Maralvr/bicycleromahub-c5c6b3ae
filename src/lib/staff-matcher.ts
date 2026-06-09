@@ -252,3 +252,46 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       return b.score - a.score;
     });
 }
+
+export type AssignmentTier = "available" | "requestable" | "blocked";
+
+export type TieredCandidate = {
+  staff: Staff;
+  tier: AssignmentTier;
+  score: number;
+  reasons: string[];
+  warnings: string[];
+  blockedReason?: string;
+};
+
+/**
+ * Group every staff member for a shift into three tiers:
+ *  - "available"   : no off marker on this date AND no partial/overlap warning
+ *  - "requestable" : no all-day off, but has a partial-time conflict, overlap,
+ *                    or other warnings — admin may still assign
+ *  - "blocked"     : explicit all-day off marker — unassignable
+ * Available + requestable are sorted by score (best first).
+ */
+export function categorizeForAssignment(
+  shift: Shift,
+  allStaff: Staff[],
+  allShifts: Shift[],
+): TieredCandidate[] {
+  const out: TieredCandidate[] = allStaff.map((s) => {
+    const conflict = findUnavailabilityConflict(s, shift);
+    if (conflict?.hard) {
+      return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflict.reason };
+    }
+    const scored = scoreStaff(s, shift, allShifts);
+    if (!scored) {
+      return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: "Unavailable" };
+    }
+    const tier: AssignmentTier = scored.warnings.length === 0 ? "available" : "requestable";
+    return { staff: s, tier, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
+  });
+  const rank: Record<AssignmentTier, number> = { available: 0, requestable: 1, blocked: 2 };
+  return out.sort((a, b) => {
+    if (a.tier !== b.tier) return rank[a.tier] - rank[b.tier];
+    return b.score - a.score;
+  });
+}
