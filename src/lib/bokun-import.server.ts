@@ -414,60 +414,58 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         fullBookings.push(...settled);
       }
 
+      // First-of-current-month threshold (UTC). Bokun bookings whose travel
+      // date OR booking-creation date falls before this are skipped entirely.
+      const _now = new Date();
+      const monthStart = `${_now.getUTCFullYear()}-${String(_now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+
       const rows: ReturnType<typeof mapToShiftRow>[] = [];
       for (const full of fullBookings) {
         const row = mapToShiftRow(full, rentalPointIdByName);
         if (!row || !row.booking_id) { skipped++; continue; }
+        const travelBefore = typeof row.date === "string" && row.date < monthStart;
+        const createdBefore =
+          typeof row.bokun_created_at === "string" &&
+          row.bokun_created_at.slice(0, 10) < monthStart;
+        if (travelBefore || createdBefore) { skipped++; continue; }
         rows.push(row);
       }
 
       if (rows.length > 0) {
-        // Look up existing rows so we can preserve fields the Bokun mapper
-        // does not own (status, assigned_staff_id, pending_expires_at).
-        // supabase-js fills missing keys with NULL during a batch upsert,
-        // which would otherwise wipe admin-made assignments on every sync.
+        // Look up existing rows by booking_id. Existing bookings are NEVER
+        // reimported — admins may have edited fields, reassigned guides, or
+        // posted notes since the original import, and Bokun is no longer the
+        // source of truth for them.
         const bookingIds = rows.map((r) => r!.booking_id!);
         const { data: existingRows, error: existingErr } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id, status, assigned_staff_id, pending_expires_at")
+          .select("booking_id")
           .eq("source", "bokun")
           .in("booking_id", bookingIds);
         if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
-        type ExistingShiftMeta = {
-          status: "accepted" | "pending" | "rejected" | "unassigned";
-          assigned_staff_id: string | null;
-          pending_expires_at: string | null;
-        };
-        const existingByBookingId = new Map<string, ExistingShiftMeta>(
-          (existingRows ?? []).map((r) => [
-            r.booking_id as string,
-            {
-              status: ((r.status as ExistingShiftMeta["status"]) ?? "unassigned"),
-              assigned_staff_id: (r.assigned_staff_id as string | null) ?? null,
-              pending_expires_at: (r.pending_expires_at as string | null) ?? null,
-            },
-          ]),
+        const existingBookingIds = new Set<string>(
+          (existingRows ?? []).map((r) => r.booking_id as string),
         );
 
-        const payload = rows.map((r) => {
-          const prev = existingByBookingId.get(r!.booking_id!);
-          return {
-            ...r!,
-            status: prev?.status ?? "unassigned",
-            assigned_staff_id: prev?.assigned_staff_id ?? null,
-            pending_expires_at: prev?.pending_expires_at ?? null,
-          };
-        });
+        // Only insert rows we have never seen before.
+        const newRows = rows.filter((r) => !existingBookingIds.has(r!.booking_id!));
+        skipped += rows.length - newRows.length;
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("shifts")
-          .upsert(payload, { onConflict: "source,booking_id" });
-        if (upsertErr) {
-          errors.push(`Upsert page ${page}: ${upsertErr.message}`);
-        } else {
-          for (const r of rows) {
-            if (existingByBookingId.has(r!.booking_id!)) updated++;
-            else created++;
+        if (newRows.length > 0) {
+          const payload = newRows.map((r) => ({
+            ...r!,
+            status: "unassigned" as const,
+            assigned_staff_id: null,
+            pending_expires_at: null,
+          }));
+
+          const { error: upsertErr } = await supabaseAdmin
+            .from("shifts")
+            .upsert(payload, { onConflict: "source,booking_id" });
+          if (upsertErr) {
+            errors.push(`Upsert page ${page}: ${upsertErr.message}`);
+          } else {
+            created += newRows.length;
           }
         }
       }
