@@ -43,7 +43,7 @@ function DashboardPage() {
   if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);
   const pending = shifts.filter((s) => s.status === "pending");
-  const unassigned = shifts.filter((s) => s.status === "unassigned");
+  
   const openTasks = tasks.filter((t) => !t.done);
   const activeStaff = staff.filter((s) => s.status !== "off").length;
 
