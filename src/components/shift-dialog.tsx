@@ -67,6 +67,38 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
   const [tagsText, setTagsText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Build a Shift-shaped object from the current form for the matcher.
+  const candidateShift = useMemo<Shift>(() => ({
+    id: initial?.id ?? "__draft__",
+    source: (form.source ?? "manual") as Shift["source"],
+    bookingId: initial?.booking_id ?? null,
+    tourName: form.tour_name || "",
+    date: form.date,
+    startTime: form.start_time,
+    endTime: form.end_time,
+    meetingPoint: form.meeting_point ?? "",
+    customer: { name: form.customer_name ?? "", phone: form.customer_phone ?? "", email: form.customer_email ?? null },
+    adults: form.adults ?? 0,
+    teens: form.teens ?? 0,
+    infants: form.infants ?? 0,
+    trailers: form.trailers ?? 0,
+    participants: form.participants ?? [],
+    rate: form.rate ?? null,
+    notes: form.notes ?? "",
+    assignedStaffId: form.assigned_staff_id ?? null,
+    status: form.status ?? "unassigned",
+    requiredTags: form.required_tags ?? [],
+  } as unknown as Shift), [form, initial]);
+
+  const tiers = useMemo(
+    () => categorizeForAssignment(candidateShift, richStaff, allShifts),
+    [candidateShift, richStaff, allShifts],
+  );
+  const available = tiers.filter((c) => c.tier === "available");
+  const requestable = tiers.filter((c) => c.tier === "requestable");
+  const blocked = tiers.filter((c) => c.tier === "blocked");
+  const blockedIds = new Set(blocked.map((c) => c.staff.id));
+
   useEffect(() => {
     if (!open) return;
     if (initial) {
