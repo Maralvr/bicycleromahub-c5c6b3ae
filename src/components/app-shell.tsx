@@ -176,20 +176,30 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 onClick={() => void signOut()}
                 title="Sign out"
-                className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+                className="h-9 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-semibold border border-border bg-card text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 active:scale-95 transition-all"
               >
-                <LogOut className="h-3.5 w-3.5" />
+                <LogOut className="h-4 w-4" />
+                <span className="hidden xs:inline">Sign out</span>
               </button>
             </div>
           </div>
-          <nav className="flex overflow-x-auto px-2 gap-1 pb-1.5">
+          <nav className="flex overflow-x-auto px-2 gap-1.5 pb-2 pt-1 scrollbar-none">
             {nav.map((item) => {
               const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
-                <Link key={item.to} to={item.to} className={cn("flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md", active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}>
-                  <Icon className="h-3.5 w-3.5" />
-                  {item.label}
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "flex-shrink-0 flex flex-col items-center justify-center gap-1 min-w-[68px] px-3 py-2 text-[11px] font-semibold rounded-lg border transition-all active:scale-95",
+                    active
+                      ? "bg-primary text-primary-foreground border-primary shadow-[var(--shadow-elegant)]"
+                      : "bg-card text-muted-foreground border-border/60 hover:bg-accent hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="leading-none">{item.label}</span>
                 </Link>
               );
             })}
