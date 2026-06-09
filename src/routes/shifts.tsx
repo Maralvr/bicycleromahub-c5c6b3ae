@@ -387,6 +387,40 @@ function ShiftsPage() {
     });
   };
 
+  const handleBulkDispatch = async (
+    picks: Array<{ shift: Shift; staffId: string; staffName: string }>,
+  ) => {
+    let ok = 0;
+    let failed = 0;
+    for (const { shift, staffId, staffName } of picks) {
+      try {
+        await assignShift(shift.id, staffId);
+        await notifyGuide({
+          staffId,
+          type: "assigned",
+          title: "New shift assigned",
+          body: shiftSummary(shift),
+          shiftId: shift.id,
+          link: "/shifts?tab=mine",
+        });
+        ok++;
+      } catch (e) {
+        console.error("Bulk dispatch failed for shift", shift.id, e);
+        failed++;
+        void staffName;
+      }
+    }
+    if (failed === 0) {
+      toast.success(`Dispatched ${ok} shift${ok === 1 ? "" : "s"}`, {
+        description: "Guides notified — awaiting accept/reject.",
+      });
+    } else {
+      toast.warning(`Dispatched ${ok}, ${failed} failed`, {
+        description: "Check the console for details and retry the failed ones.",
+      });
+    }
+  };
+
   const duplicate = async (s: Shift) => {
     const { id: _omit, ...rest } = s;
     void _omit;
