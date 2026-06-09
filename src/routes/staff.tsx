@@ -198,16 +198,27 @@ function MyAvailabilityView() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string }) {
-  return (
-    <Card className="p-4 border-border/60">
+function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; sub: string; onClick?: () => void }) {
+  const content = (
+    <>
       <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div className="text-2xl font-bold text-foreground mt-1 tabular-nums">{value}</div>
       <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
-    </Card>
+    </>
   );
+  if (onClick) {
+    return (
+      <Card
+        asChild
+        className="p-4 border-border/60 cursor-pointer hover:border-primary/50 hover:bg-accent/40 transition-colors text-left"
+      >
+        <button type="button" onClick={onClick}>{content}</button>
+      </Card>
+    );
+  }
+  return <Card className="p-4 border-border/60">{content}</Card>;
 }
 
 function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string }>; label: string; children: React.ReactNode }) {
