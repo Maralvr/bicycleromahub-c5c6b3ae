@@ -39,7 +39,17 @@ export const processBokunImportChunkFn = createServerFn({ method: "POST" })
     return processBokunImportChunk(data.runId);
   });
 
-/** Cron: import March 2026 onward. Resumes the existing cron run before starting a new one. */
+/**
+ * Cron: import current month onward.
+ *
+ * The Bokun search window starts at the 1st of the current month so each
+ * cron tick only paginates through relevant bookings. The per-row date
+ * filter inside `processBokunImportChunk` also drops anything older than
+ * the 1st of the current month (travel date or booking-creation date),
+ * and existing bookings are never reimported.
+ *
+ * Resumes the existing in-flight cron run before starting a new one.
+ */
 export const syncBokunCronImport = createServerFn({ method: "POST" })
   .handler(async () => {
     const { data: inflight, error: inflightError } = await supabaseAdmin
@@ -56,12 +66,12 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
     }
 
     const today = new Date();
-    const from = "2026-03-01";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const from = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-01`;
     const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     return runBokunImport(from, to, "cron", { maxPages: 20 });
-
   });
 
 
