@@ -67,9 +67,9 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Admins always default to admin view; they must explicitly opt into guide view per session.
-  // (Stale "staff" override from localStorage is ignored to prevent admins getting locked in guide view.)
-  const role: ViewRole = isAdmin ? "admin" : "staff";
+  // Admins may opt into the guide view via the toggle; the choice persists in localStorage.
+  // Non-admins are always locked to staff view.
+  const role: ViewRole = isAdmin ? (roleOverride === "staff" ? "staff" : "admin") : "staff";
 
   const setRole = (r: ViewRole) => {
     if (!isAdmin && r === "admin") return;
