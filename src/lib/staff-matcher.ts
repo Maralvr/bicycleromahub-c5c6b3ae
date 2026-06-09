@@ -102,9 +102,11 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
 
   // --- 3. Availability / unavailability check ---
   const conflict = findUnavailabilityConflict(staff, shift);
-  if (conflict) return null; // hard block
+  if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
+  if (conflict) warnings.push(conflict.reason);
 
-  // Check for overlapping shifts already assigned
+  // Check for overlapping shifts already assigned — soft warning, admin may
+  // still override.
   const overlapping = allShifts.find((other) => {
     if (other.id === shift.id) return false;
     if (other.assignedStaffId !== staff.id) return false;
@@ -114,7 +116,10 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
     const oEnd = toMinutes(other.endTime);
     return toMinutes(shift.startTime) < oEnd && toMinutes(shift.endTime) > oStart;
   });
-  if (overlapping) return null; // hard block — double booking
+  if (overlapping) {
+    warnings.push(`Overlaps with ${overlapping.startTime}–${overlapping.endTime} shift`);
+    score -= 30;
+  }
 
   // --- 4. Status preference ---
   if (staff.status === "available") {
