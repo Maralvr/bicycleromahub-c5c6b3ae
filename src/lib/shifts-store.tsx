@@ -247,6 +247,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   const updateShift: ShiftsStoreContextValue["updateShift"] = async (id, patch) => {
     const dbPatch = shiftToDbPatch(patch);
+    const prevRow = rows.find((r) => r.id === id);
     // Optimistic local update — realtime will reconcile authoritative values.
     setRows((prev) =>
       prev.map((r) => (r.id === id ? ({ ...r, ...(dbPatch as Partial<ShiftRow>) }) : r)),
@@ -258,8 +259,18 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       .eq("id", id);
     if (err) {
       setError(err.message);
-      // Roll back by refetching authoritative state
-      void fetchAll();
+      // Roll back just this row by refetching it from the server.
+      const { data: fresh } = await supabase
+        .from("shifts")
+        .select(
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
+        )
+        .eq("id", id)
+        .maybeSingle();
+      const authoritative = (fresh as ShiftRow | null) ?? prevRow ?? null;
+      if (authoritative) {
+        setRows((prev) => prev.map((r) => (r.id === id ? authoritative : r)));
+      }
     }
   };
 
