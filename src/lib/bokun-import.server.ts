@@ -441,14 +441,6 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           status: (existingStatusByBookingId.get(r!.booking_id!) ?? "unassigned") as "accepted" | "pending" | "rejected" | "unassigned",
         }));
 
-          (existingRows ?? []).map((r) => [r.booking_id as string, (r.status as string) ?? "unassigned"]),
-        );
-
-        const payload = rows.map((r) => ({
-          ...r!,
-          status: existingStatusByBookingId.get(r!.booking_id!) ?? "unassigned",
-        }));
-
         const { error: upsertErr } = await supabaseAdmin
           .from("shifts")
           .upsert(payload, { onConflict: "source,booking_id" });
