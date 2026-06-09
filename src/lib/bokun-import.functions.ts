@@ -52,7 +52,7 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
       .maybeSingle();
     if (inflightError) throw new Error(`Could not check in-flight Bokun run: ${inflightError.message}`);
     if (inflight) {
-      return continueBokunImport(inflight.id, { maxPages: 1 });
+      return continueBokunImport(inflight.id, { maxPages: 20 });
     }
 
     const today = new Date();
@@ -60,7 +60,8 @@ export const syncBokunCronImport = createServerFn({ method: "POST" })
     const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
-    return runBokunImport(from, to, "cron", { maxPages: 1 });
+    return runBokunImport(from, to, "cron", { maxPages: 20 });
+
   });
 
 
