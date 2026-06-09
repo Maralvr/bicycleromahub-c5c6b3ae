@@ -352,6 +352,10 @@ function NotificationsPage() {
                         type="button"
                         onClick={() => {
                           if (!n.read) markRead(n.id);
+                          if (n.link) {
+                            navigate({ to: n.link as string });
+                            return;
+                          }
                           setExpandedNotif(isOpen ? null : n.id);
                         }}
                         className="w-full text-left p-2.5"
