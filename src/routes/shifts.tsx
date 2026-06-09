@@ -30,6 +30,7 @@ import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { InvoiceDialog } from "@/components/invoice-dialog";
 import { ManualShiftDialog } from "@/components/manual-shift-dialog";
+import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
