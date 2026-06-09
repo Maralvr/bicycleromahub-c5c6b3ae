@@ -241,22 +241,10 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Only availability-based hard blocks remain
+      // Only "all day off" remains as a hard block now
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      if (conflict) reason = conflict;
-      else {
-        const overlap = allShifts.find(
-          (o) =>
-            o.id !== shift.id &&
-            o.assignedStaffId === s.id &&
-            o.date === shift.date &&
-            o.status !== "rejected" &&
-            toMinutes(shift.startTime) < toMinutes(o.endTime) &&
-            toMinutes(shift.endTime) > toMinutes(o.startTime),
-        );
-        if (overlap) reason = `Double-booked at ${overlap.startTime}`;
-      }
+      if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
     })
     .sort((a, b) => {
