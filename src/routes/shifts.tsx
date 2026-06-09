@@ -591,6 +591,16 @@ function ShiftsPage() {
         onOverride={isAdmin ? (id, patch) => handleUpdateDeparture(id, patch) : undefined}
       />
 
+      <BulkDispatchDialog
+        open={bulkDispatchOpen}
+        onClose={() => setBulkDispatchOpen(false)}
+        unassignedShifts={upcomingShifts.filter((s) => !s.assignedStaffId)}
+        allShifts={shifts}
+        staff={staff}
+        onDispatch={handleBulkDispatch}
+      />
+
+
       <LeaveNoteDialog
         shift={noteDialogShift}
         authorStaffId={staffId || "s1"}
