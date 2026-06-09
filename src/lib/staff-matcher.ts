@@ -46,19 +46,25 @@ function toMinutes(t: string): number {
 
 /**
  * Check whether the staff member has any unavailability that overlaps with
- * the shift's date/time window. Returns the conflict description, or null.
+ * the shift's date/time window. Returns:
+ *  - { hard: true, reason } when the guide marked the whole day off (hard block)
+ *  - { hard: false, reason } when there's only a partial-time conflict (soft warn)
+ *  - null when no conflict
  */
-function findUnavailabilityConflict(staff: Staff, shift: Shift): string | null {
+function findUnavailabilityConflict(
+  staff: Staff,
+  shift: Shift,
+): { hard: boolean; reason: string } | null {
   const start = toMinutes(shift.startTime);
   const end = toMinutes(shift.endTime);
   for (const u of staff.unavailability) {
     if (u.date !== shift.date) continue;
-    if (u.allDay) return `Unavailable all day${u.reason ? ` (${u.reason})` : ""}`;
+    if (u.allDay) return { hard: true, reason: `Unavailable all day${u.reason ? ` (${u.reason})` : ""}` };
     if (u.from && u.to) {
       const uStart = toMinutes(u.from);
       const uEnd = toMinutes(u.to);
       if (start < uEnd && end > uStart) {
-        return `Busy ${u.from}–${u.to}`;
+        return { hard: false, reason: `Busy ${u.from}–${u.to}` };
       }
     }
   }
@@ -96,9 +102,11 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
 
   // --- 3. Availability / unavailability check ---
   const conflict = findUnavailabilityConflict(staff, shift);
-  if (conflict) return null; // hard block
+  if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
+  if (conflict) warnings.push(conflict.reason);
 
-  // Check for overlapping shifts already assigned
+  // Check for overlapping shifts already assigned — soft warning, admin may
+  // still override.
   const overlapping = allShifts.find((other) => {
     if (other.id === shift.id) return false;
     if (other.assignedStaffId !== staff.id) return false;
@@ -108,7 +116,10 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
     const oEnd = toMinutes(other.endTime);
     return toMinutes(shift.startTime) < oEnd && toMinutes(shift.endTime) > oStart;
   });
-  if (overlapping) return null; // hard block — double booking
+  if (overlapping) {
+    warnings.push(`Overlaps with ${overlapping.startTime}–${overlapping.endTime} shift`);
+    score -= 30;
+  }
 
   // --- 4. Status preference ---
   if (staff.status === "available") {
@@ -230,22 +241,10 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Only availability-based hard blocks remain
+      // Only "all day off" remains as a hard block now
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      if (conflict) reason = conflict;
-      else {
-        const overlap = allShifts.find(
-          (o) =>
-            o.id !== shift.id &&
-            o.assignedStaffId === s.id &&
-            o.date === shift.date &&
-            o.status !== "rejected" &&
-            toMinutes(shift.startTime) < toMinutes(o.endTime) &&
-            toMinutes(shift.endTime) > toMinutes(o.startTime),
-        );
-        if (overlap) reason = `Double-booked at ${overlap.startTime}`;
-      }
+      if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
     })
     .sort((a, b) => {
