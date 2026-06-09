@@ -420,6 +420,8 @@ export function ShiftsCalendar({
           accent={STATUS.accepted.text}
           dot={STATUS.accepted.dot}
           helper="Confirmed ops"
+          active={statusFilter === "accepted"}
+          onClick={() => setStatusFilter(statusFilter === "accepted" ? "all" : "accepted")}
         />
         <Stat
           label="Pending"
@@ -427,6 +429,8 @@ export function ShiftsCalendar({
           accent={STATUS.pending.text}
           dot={STATUS.pending.dot}
           helper="Awaiting guide"
+          active={statusFilter === "pending"}
+          onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
         />
         <Stat
           label="Unassigned"
@@ -434,6 +438,8 @@ export function ShiftsCalendar({
           accent={STATUS.unassigned.text}
           dot={STATUS.unassigned.dot}
           helper="Needs attention"
+          active={statusFilter === "unassigned"}
+          onClick={() => setStatusFilter(statusFilter === "unassigned" ? "all" : "unassigned")}
         />
       </div>
 
@@ -496,15 +502,31 @@ function Stat({
   accent,
   dot,
   helper,
+  active,
+  onClick,
 }: {
   label: string;
   value: number;
   accent: string;
   dot?: string;
   helper?: string;
+  active?: boolean;
+  onClick?: () => void;
 }) {
+  const interactive = !!onClick;
+  const base =
+    "rounded-lg border bg-muted/20 p-3 shadow-sm text-left w-full transition-colors";
+  const interactiveCls = interactive
+    ? "cursor-pointer hover:bg-muted/40 hover:border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+    : "";
+  const activeCls = active ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30" : "border-border/70";
+  const Comp = interactive ? "button" : "div";
   return (
-    <div className="rounded-lg border border-border/70 bg-muted/20 p-3 shadow-sm">
+    <Comp
+      type={interactive ? "button" : undefined}
+      onClick={onClick}
+      className={`${base} ${activeCls} ${interactiveCls}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -515,7 +537,12 @@ function Stat({
         {dot && <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot}`} />}
       </div>
       <div className={`mt-3 text-2xl font-bold tabular-nums leading-none ${accent}`}>{value}</div>
-    </div>
+      {interactive && (
+        <div className="mt-1 text-[10px] text-muted-foreground/80">
+          {active ? "Filter active — click to clear" : "Click to filter"}
+        </div>
+      )}
+    </Comp>
   );
 }
 function ShiftChip({
