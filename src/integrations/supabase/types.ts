@@ -568,6 +568,8 @@ export type Database = {
           rate_title: string | null
           rejected_by_staff_ids: string[]
           rejection_reason: string | null
+          reminder_24h_sent_at: string | null
+          reminder_2h_sent_at: string | null
           rental_point_id: string | null
           requested_by: string | null
           required_tags: string[]
@@ -611,6 +613,8 @@ export type Database = {
           rate_title?: string | null
           rejected_by_staff_ids?: string[]
           rejection_reason?: string | null
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
           rental_point_id?: string | null
           requested_by?: string | null
           required_tags?: string[]
@@ -654,6 +658,8 @@ export type Database = {
           rate_title?: string | null
           rejected_by_staff_ids?: string[]
           rejection_reason?: string | null
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
           rental_point_id?: string | null
           requested_by?: string | null
           required_tags?: string[]
@@ -981,6 +987,7 @@ export type Database = {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
       }
+      send_shift_reminders: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "staff"
