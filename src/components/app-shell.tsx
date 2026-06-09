@@ -20,8 +20,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? [
         { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
         { to: "/staff", label: t.nav.myAvailability, icon: Users },
-        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
+        { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
       ]
     : [
         { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
