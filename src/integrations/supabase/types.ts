@@ -411,6 +411,61 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_dispatch_events: {
+        Row: {
+          actor_profile_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          previous_staff_id: string | null
+          reason: string | null
+          shift_id: string
+          staff_id: string | null
+        }
+        Insert: {
+          actor_profile_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          previous_staff_id?: string | null
+          reason?: string | null
+          shift_id: string
+          staff_id?: string | null
+        }
+        Update: {
+          actor_profile_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          previous_staff_id?: string | null
+          reason?: string | null
+          shift_id?: string
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_dispatch_events_previous_staff_id_fkey"
+            columns: ["previous_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_dispatch_events_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_dispatch_events_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           adults: number
@@ -440,6 +495,8 @@ export type Database = {
           pending_expires_at: string | null
           rate: number | null
           rate_title: string | null
+          rejected_by_staff_ids: string[]
+          rejection_reason: string | null
           rental_point_id: string | null
           requested_by: string | null
           required_tags: string[]
@@ -481,6 +538,8 @@ export type Database = {
           pending_expires_at?: string | null
           rate?: number | null
           rate_title?: string | null
+          rejected_by_staff_ids?: string[]
+          rejection_reason?: string | null
           rental_point_id?: string | null
           requested_by?: string | null
           required_tags?: string[]
@@ -522,6 +581,8 @@ export type Database = {
           pending_expires_at?: string | null
           rate?: number | null
           rate_title?: string | null
+          rejected_by_staff_ids?: string[]
+          rejection_reason?: string | null
           rental_point_id?: string | null
           requested_by?: string | null
           required_tags?: string[]
@@ -830,6 +891,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_shift: { Args: { _shift_id: string }; Returns: undefined }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
@@ -844,7 +906,10 @@ export type Database = {
         Returns: boolean
       }
       next_invoice_number: { Args: { _year: number }; Returns: number }
-      reject_shift: { Args: { _shift_id: string }; Returns: undefined }
+      reject_shift: {
+        Args: { _reason?: string; _shift_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "staff"

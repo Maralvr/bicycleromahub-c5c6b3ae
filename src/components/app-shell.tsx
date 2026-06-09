@@ -1,6 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut, ShieldCheck, RefreshCw, Euro } from "lucide-react";
+import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut, ShieldCheck, RefreshCw, Euro, History } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
@@ -33,6 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { to: "/payouts", label: "Payouts", icon: Euro },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
         { to: "/bokun-runs", label: "Bokun runs", icon: RefreshCw },
+        { to: "/dispatch-log", label: "Dispatch log", icon: History },
         { to: "/users", label: "Users", icon: ShieldCheck },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
       ];

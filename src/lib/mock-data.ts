@@ -51,6 +51,9 @@ export type Shift = {
   status: "pending" | "accepted" | "rejected" | "unassigned";
   requiredTags: string[];
   guideNotes?: GuideNote[];
+  pendingExpiresAt?: string | null;
+  rejectionReason?: string | null;
+  rejectedByStaffIds?: string[];
 };
 
 export type Task = {

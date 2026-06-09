@@ -18,6 +18,7 @@ import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
+import { Route as DispatchLogRouteImport } from './routes/dispatch-log'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as BokunRunsRouteImport } from './routes/bokun-runs'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -71,6 +72,11 @@ const LiveShiftsRoute = LiveShiftsRouteImport.update({
   path: '/live-shifts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DispatchLogRoute = DispatchLogRouteImport.update({
+  id: '/dispatch-log',
+  path: '/dispatch-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
+  '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
+  '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
+  '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bokun-runs'
     | '/calendar'
+    | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
@@ -189,6 +199,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bokun-runs'
     | '/calendar'
+    | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/bokun-runs'
     | '/calendar'
+    | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
@@ -226,6 +238,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BokunRunsRoute: typeof BokunRunsRoute
   CalendarRoute: typeof CalendarRoute
+  DispatchLogRoute: typeof DispatchLogRoute
   LiveShiftsRoute: typeof LiveShiftsRoute
   NotificationsRoute: typeof NotificationsRoute
   PayoutsRoute: typeof PayoutsRoute
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveShiftsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dispatch-log': {
+      id: '/dispatch-log'
+      path: '/dispatch-log'
+      fullPath: '/dispatch-log'
+      preLoaderRoute: typeof DispatchLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -362,6 +382,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BokunRunsRoute: BokunRunsRoute,
   CalendarRoute: CalendarRoute,
+  DispatchLogRoute: DispatchLogRoute,
   LiveShiftsRoute: LiveShiftsRoute,
   NotificationsRoute: NotificationsRoute,
   PayoutsRoute: PayoutsRoute,

@@ -33,7 +33,8 @@ import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2 } from "lucide-react";
+import { DispatchHistory } from "@/components/dispatch-history";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass } from "lucide-react";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { useEffect, useState } from "react";
@@ -212,7 +213,11 @@ function ShiftsPage() {
 
   const handleAccept = async (id: string) => {
     const sh = shifts.find((s) => s.id === id);
-    await setStatus(id, "accepted");
+    const { error } = await supabase.rpc("accept_shift" as never, { _shift_id: id } as never);
+    if (error) {
+      toast.error("Couldn't accept shift", { description: error.message });
+      return;
+    }
     toast.success("Shift accepted");
     if (sh) {
       const guide = staff.find((m) => m.id === sh.assignedStaffId);
@@ -248,7 +253,7 @@ function ShiftsPage() {
     }
 
     // 2. Release the shift back to the unassigned pool.
-    const { error } = await supabase.rpc("reject_shift", { _shift_id: sh.id });
+    const { error } = await supabase.rpc("reject_shift" as never, { _shift_id: sh.id, _reason: trimmed || null } as never);
     if (error) {
       toast.error("Couldn't reject shift", { description: error.message });
       return;
@@ -275,6 +280,13 @@ function ShiftsPage() {
 
   const assignStaff = async (shiftId: string, assignedStaffId: string, staffName: string, note?: string) => {
     const prevShift = shifts.find((s) => s.id === shiftId);
+    // Soft cooldown warning: this guide previously rejected this shift.
+    if (prevShift?.rejectedByStaffIds?.includes(assignedStaffId)) {
+      const proceed = window.confirm(
+        `${staffName} already rejected this shift. Send it to them again?`,
+      );
+      if (!proceed) return;
+    }
     await assignShift(shiftId, assignedStaffId);
     if (prevShift) {
       const updated = { ...prevShift, assignedStaffId };
@@ -698,9 +710,21 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusPill status={s.status} />
+                    {!pastView && s.status === "pending" && s.pendingExpiresAt && (
+                      <PendingCountdown expiresAt={s.pendingExpiresAt} />
+                    )}
                     {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
                   </div>
                 </div>
+
+                {!pastView && s.status === "unassigned" && s.rejectionReason && (
+                  <div className="mt-3 p-2.5 rounded-lg bg-destructive/5 border border-destructive/20 text-xs">
+                    <div className="flex items-center gap-1.5 text-destructive font-semibold text-[10px] uppercase tracking-wider mb-0.5">
+                      <XCircle className="h-3 w-3" /> Last rejection reason
+                    </div>
+                    <div className="text-foreground/80 italic break-words">“{s.rejectionReason}”</div>
+                  </div>
+                )}
 
                 {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
 
@@ -862,6 +886,10 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 </div>
 
+                {currentRole === "admin" && <DispatchHistory shiftId={s.id} />}
+
+
+
                 {pastView && shiftNotes.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5">
@@ -989,5 +1017,36 @@ function RejectShiftDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PendingCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const expiresMs = new Date(expiresAt).getTime();
+  const remaining = expiresMs - now;
+  const expired = remaining <= 0;
+  const mins = Math.max(0, Math.floor(remaining / 60_000));
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  const label = expired ? "Expired" : hours > 0 ? `${hours}h ${rem}m left` : `${rem}m left`;
+  const urgent = !expired && remaining < 30 * 60_000;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-md border ${
+        expired
+          ? "bg-destructive/10 border-destructive/30 text-destructive"
+          : urgent
+          ? "bg-warning/10 border-warning/40 text-warning-foreground"
+          : "bg-muted border-border/60 text-muted-foreground"
+      }`}
+      title={`Auto-expires at ${new Date(expiresAt).toLocaleString()}`}
+    >
+      <Hourglass className="h-2.5 w-2.5" />
+      {label}
+    </span>
   );
 }
