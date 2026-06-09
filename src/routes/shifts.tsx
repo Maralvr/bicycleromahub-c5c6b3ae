@@ -521,7 +521,7 @@ function ShiftsPage() {
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={upcomingShifts.filter((s) => s.assignedStaffId === staffId)} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
+          <ShiftList shifts={myShifts} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
         </TabsContent>
         <TabsContent value="past" className="mt-5">
           <ShiftList
