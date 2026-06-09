@@ -252,7 +252,7 @@ function ShiftsPage() {
     }
 
     // 2. Release the shift back to the unassigned pool.
-    const { error } = await supabase.rpc("reject_shift", { _shift_id: sh.id });
+    const { error } = await supabase.rpc("reject_shift" as never, { _shift_id: sh.id, _reason: trimmed || null } as never);
     if (error) {
       toast.error("Couldn't reject shift", { description: error.message });
       return;
