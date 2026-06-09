@@ -650,7 +650,7 @@ function ShiftsPage() {
         onConfirm={handleRejectConfirm}
       />
 
-      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && setCardDialogShifts(null)}>
+      <Dialog open={!!cardDialogShifts} onOpenChange={(o) => !o && closeCardDialog()}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle>
