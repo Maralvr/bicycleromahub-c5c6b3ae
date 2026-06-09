@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,12 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { useRentalPoints } from "@/lib/rental-points";
 import { useLiveStaff } from "@/lib/live-staff";
+import { useStaffStore } from "@/lib/staff-store";
+import { useShiftsStore } from "@/lib/shifts-store";
+import { categorizeForAssignment } from "@/lib/staff-matcher";
+import type { Shift } from "@/lib/mock-data";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
-import { Package, MapPin, Users, User, FileText } from "lucide-react";
+import { Package, MapPin, Users, User, FileText, Sparkles, Ban, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const NONE_VALUE = "__none";
 
