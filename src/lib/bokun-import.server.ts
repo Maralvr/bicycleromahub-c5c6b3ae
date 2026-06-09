@@ -422,24 +422,42 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       }
 
       if (rows.length > 0) {
-        // Look up existing rows so we can preserve their `status` (the column
-        // is NOT NULL and supabase-js fills missing keys with NULL during a
-        // batch upsert, which would otherwise overwrite assignments).
+        // Look up existing rows so we can preserve fields the Bokun mapper
+        // does not own (status, assigned_staff_id, pending_expires_at).
+        // supabase-js fills missing keys with NULL during a batch upsert,
+        // which would otherwise wipe admin-made assignments on every sync.
         const bookingIds = rows.map((r) => r!.booking_id!);
         const { data: existingRows, error: existingErr } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id, status")
+          .select("booking_id, status, assigned_staff_id, pending_expires_at")
           .eq("source", "bokun")
           .in("booking_id", bookingIds);
         if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
-        const existingStatusByBookingId = new Map<string, "accepted" | "pending" | "rejected" | "unassigned">(
-          (existingRows ?? []).map((r) => [r.booking_id as string, ((r.status as "accepted" | "pending" | "rejected" | "unassigned") ?? "unassigned")]),
+        type ExistingShiftMeta = {
+          status: "accepted" | "pending" | "rejected" | "unassigned";
+          assigned_staff_id: string | null;
+          pending_expires_at: string | null;
+        };
+        const existingByBookingId = new Map<string, ExistingShiftMeta>(
+          (existingRows ?? []).map((r) => [
+            r.booking_id as string,
+            {
+              status: ((r.status as ExistingShiftMeta["status"]) ?? "unassigned"),
+              assigned_staff_id: (r.assigned_staff_id as string | null) ?? null,
+              pending_expires_at: (r.pending_expires_at as string | null) ?? null,
+            },
+          ]),
         );
 
-        const payload = rows.map((r) => ({
-          ...r!,
-          status: (existingStatusByBookingId.get(r!.booking_id!) ?? "unassigned") as "accepted" | "pending" | "rejected" | "unassigned",
-        }));
+        const payload = rows.map((r) => {
+          const prev = existingByBookingId.get(r!.booking_id!);
+          return {
+            ...r!,
+            status: prev?.status ?? "unassigned",
+            assigned_staff_id: prev?.assigned_staff_id ?? null,
+            pending_expires_at: prev?.pending_expires_at ?? null,
+          };
+        });
 
         const { error: upsertErr } = await supabaseAdmin
           .from("shifts")
@@ -448,11 +466,12 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           errors.push(`Upsert page ${page}: ${upsertErr.message}`);
         } else {
           for (const r of rows) {
-            if (existingStatusByBookingId.has(r!.booking_id!)) updated++;
+            if (existingByBookingId.has(r!.booking_id!)) updated++;
             else created++;
           }
         }
       }
+
 
 
 
