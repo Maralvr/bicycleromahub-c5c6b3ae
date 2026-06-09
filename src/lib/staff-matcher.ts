@@ -46,19 +46,25 @@ function toMinutes(t: string): number {
 
 /**
  * Check whether the staff member has any unavailability that overlaps with
- * the shift's date/time window. Returns the conflict description, or null.
+ * the shift's date/time window. Returns:
+ *  - { hard: true, reason } when the guide marked the whole day off (hard block)
+ *  - { hard: false, reason } when there's only a partial-time conflict (soft warn)
+ *  - null when no conflict
  */
-function findUnavailabilityConflict(staff: Staff, shift: Shift): string | null {
+function findUnavailabilityConflict(
+  staff: Staff,
+  shift: Shift,
+): { hard: boolean; reason: string } | null {
   const start = toMinutes(shift.startTime);
   const end = toMinutes(shift.endTime);
   for (const u of staff.unavailability) {
     if (u.date !== shift.date) continue;
-    if (u.allDay) return `Unavailable all day${u.reason ? ` (${u.reason})` : ""}`;
+    if (u.allDay) return { hard: true, reason: `Unavailable all day${u.reason ? ` (${u.reason})` : ""}` };
     if (u.from && u.to) {
       const uStart = toMinutes(u.from);
       const uEnd = toMinutes(u.to);
       if (start < uEnd && end > uStart) {
-        return `Busy ${u.from}–${u.to}`;
+        return { hard: false, reason: `Busy ${u.from}–${u.to}` };
       }
     }
   }
