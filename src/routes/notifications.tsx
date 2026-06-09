@@ -18,6 +18,7 @@ import {
   DEFAULT_MAX_SIZE,
   AttachmentList,
 } from "@/components/attachment-picker";
+import { PushToggle } from "@/components/push-toggle";
 import {
   Send,
   Megaphone,
@@ -189,7 +190,7 @@ function NotificationsPage() {
 
   return (
     <AppShell>
-      <PageHeader title={t.notifications.title} subtitle={t.notifications.subtitle} />
+      <PageHeader title={t.notifications.title} subtitle={t.notifications.subtitle} actions={<PushToggle />} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {isAdmin ? (
