@@ -159,8 +159,71 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
 
       {canPost && (
         <div className="space-y-2 pt-2 border-t border-border/40">
+          {isAdmin && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-7 text-xs">
+                    <FileText className="h-3 w-3 mr-1.5" />
+                    Insert template
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-0" align="start">
+                  <div className="max-h-64 overflow-y-auto">
+                    {templatesLoading ? (
+                      <div className="p-3 text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                      </div>
+                    ) : templates.length === 0 ? (
+                      <div className="p-3 text-xs text-muted-foreground italic">
+                        No templates yet. Create one below.
+                      </div>
+                    ) : (
+                      <ul className="divide-y">
+                        {templates.map((t) => (
+                          <li key={t.id}>
+                            <button
+                              type="button"
+                              className="w-full text-left p-2.5 hover:bg-muted/60"
+                              onClick={() => {
+                                setMessage((m) => (m ? `${m}\n\n${t.body}` : t.body));
+                                setPickerOpen(false);
+                              }}
+                            >
+                              <div className="text-xs font-semibold">{t.name}</div>
+                              <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                                {t.body}
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="border-t p-1.5">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full h-7 text-xs justify-start"
+                      onClick={() => {
+                        setPickerOpen(false);
+                        setTemplatesOpen(true);
+                      }}
+                    >
+                      <Settings2 className="h-3 w-3 mr-1.5" /> Manage templates
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {message && (
+                <span className="text-[10px] text-muted-foreground italic">
+                  Edit before sending — templates are just a starting point.
+                </span>
+              )}
+            </div>
+          )}
           <Textarea
-            rows={2}
+            rows={3}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Add a note for this booking…"
@@ -184,6 +247,7 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
           </div>
         </div>
       )}
+      {isAdmin && <NoteTemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />}
     </Wrapper>
   );
 }
