@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { PageHeader, StatusPill } from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,12 @@ import { useTasksStore } from "@/lib/tasks-store";
 import { useNotesStore } from "@/lib/notes-store";
 import { useRequireAdmin } from "@/lib/require-admin";
 import {
-  AlertTriangle,
   CalendarRange,
   ClipboardCheck,
   Users2,
-  Sparkles,
-  MapPin,
-  Clock,
   ArrowUpRight,
   TrendingUp,
+  Clock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
