@@ -432,7 +432,15 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           .eq("source", "bokun")
           .in("booking_id", bookingIds);
         if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
-        const existingStatusByBookingId = new Map<string, string>(
+        const existingStatusByBookingId = new Map<string, "accepted" | "pending" | "rejected" | "unassigned">(
+          (existingRows ?? []).map((r) => [r.booking_id as string, ((r.status as "accepted" | "pending" | "rejected" | "unassigned") ?? "unassigned")]),
+        );
+
+        const payload = rows.map((r) => ({
+          ...r!,
+          status: (existingStatusByBookingId.get(r!.booking_id!) ?? "unassigned") as "accepted" | "pending" | "rejected" | "unassigned",
+        }));
+
           (existingRows ?? []).map((r) => [r.booking_id as string, (r.status as string) ?? "unassigned"]),
         );
 
