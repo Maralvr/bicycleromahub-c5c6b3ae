@@ -102,6 +102,18 @@ function ShiftsPage() {
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
+  // Deep-link: open the shift dialog when ?shift=<id> is present
+  useEffect(() => {
+    if (!search.shift) return;
+    const target = shifts.find((s) => s.id === search.shift);
+    if (target) setCardDialogShifts([target]);
+  }, [search.shift, shifts]);
+  const closeCardDialog = () => {
+    setCardDialogShifts(null);
+    if (search.shift) {
+      navigate({ search: (prev) => ({ ...prev, shift: undefined }), replace: true });
+    }
+  };
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
