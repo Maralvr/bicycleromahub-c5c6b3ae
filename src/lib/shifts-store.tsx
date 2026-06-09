@@ -148,8 +148,9 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRangeState] = useState<ShiftsDateRange>(() => defaultShiftsDateRange());
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (range: ShiftsDateRange = dateRange) => {
     setLoading(true);
     const pageSize = 1000;
     const all: ShiftRow[] = [];
@@ -160,6 +161,8 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         .select(
           "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
         )
+        .gte("date", range.from)
+        .lte("date", range.to)
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
         .order("id", { ascending: true })
@@ -177,7 +180,16 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     setRows(all);
     setError(null);
     setLoading(false);
+  }, [dateRange]);
+
+  const setDateRange = useCallback((range: ShiftsDateRange) => {
+    setDateRangeState(range);
   }, []);
+
+  const isWithinRange = useCallback(
+    (d: string | null | undefined) => !!d && d >= dateRange.from && d <= dateRange.to,
+    [dateRange],
+  );
 
   useEffect(() => {
     void fetchAll();
@@ -187,9 +199,17 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         const newRow = payload.new as ShiftRow | null;
         const oldRow = payload.old as { id?: string } | null;
         if (payload.eventType === "INSERT" && newRow) {
+          if (!isWithinRange(newRow.date)) return;
           setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
         } else if (payload.eventType === "UPDATE" && newRow) {
-          setRows((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r)));
+          setRows((prev) => {
+            const exists = prev.some((r) => r.id === newRow.id);
+            if (!isWithinRange(newRow.date)) {
+              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
+            }
+            if (!exists) return [...prev, newRow];
+            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
+          });
         } else if (payload.eventType === "DELETE" && oldRow?.id) {
           setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
         }
@@ -198,7 +218,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [fetchAll]);
+  }, [fetchAll, isWithinRange]);
 
   const shifts = useMemo<Shift[]>(
     () =>
