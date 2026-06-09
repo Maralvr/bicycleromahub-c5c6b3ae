@@ -54,6 +54,7 @@ function NotificationsPage() {
   const { role, staffId } = useCurrentUser();
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
+  const navigate = useNavigate();
   const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const myActiveNotifs = myNotifs.filter((n) => !n.archivedAt);
