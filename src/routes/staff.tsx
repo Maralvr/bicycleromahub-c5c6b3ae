@@ -210,12 +210,13 @@ function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.Comp
   );
   if (onClick) {
     return (
-      <Card
-        asChild
-        className="p-4 border-border/60 cursor-pointer hover:border-primary/50 hover:bg-accent/40 transition-colors text-left"
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded-lg border border-border/60 bg-card p-4 text-left cursor-pointer hover:border-primary/50 hover:bg-accent/40 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
-        <button type="button" onClick={onClick}>{content}</button>
-      </Card>
+        {content}
+      </button>
     );
   }
   return <Card className="p-4 border-border/60">{content}</Card>;
