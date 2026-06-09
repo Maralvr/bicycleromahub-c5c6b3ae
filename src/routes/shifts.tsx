@@ -886,6 +886,10 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 </div>
 
+                {currentRole === "admin" && <DispatchHistory shiftId={s.id} />}
+
+
+
                 {pastView && shiftNotes.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center gap-1.5">
