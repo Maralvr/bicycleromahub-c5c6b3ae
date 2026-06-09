@@ -80,7 +80,13 @@ function MyAvailabilityView() {
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard icon={CalendarDays} label="Shifts this month" value={monthShifts.length} sub={`${acceptedHours.toFixed(1)} h accepted`} />
-        <StatCard icon={Briefcase} label="Pending response" value={myShifts.filter((s) => s.status === "pending").length} sub="Accept or reject" />
+        <StatCard
+          icon={Briefcase}
+          label="Pending response"
+          value={myShifts.filter((s) => s.status === "pending").length}
+          sub={myShifts.some((s) => s.status === "pending") ? "Tap to accept or reject" : "Nothing waiting"}
+          onClick={() => navigate({ to: "/shifts", search: { tab: "mine", status: "pending" } })}
+        />
         <StatCard icon={CalendarOff} label="Days off this month" value={monthOffDays} sub="Marked unavailable" />
         <StatCard
           icon={LangIcon}
