@@ -207,6 +207,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </nav>
         </header>
+        {isAdmin && (
+          <div className="sticky top-0 md:top-0 z-10 flex justify-end px-4 md:px-10 pt-3 md:pt-4">
+            <button
+              onClick={switchView}
+              className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 active:scale-95 transition-all shadow-sm"
+              title={`Switch to ${role === "admin" ? "Guide" : "Admin"} view`}
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span>Switch to {role === "admin" ? "Guide" : "Admin"} view</span>
+            </button>
+          </div>
+        )}
         <main className="flex-1 p-5 md:p-10 overflow-x-hidden max-w-[1400px] w-full">{children}</main>
       </div>
     </div>
