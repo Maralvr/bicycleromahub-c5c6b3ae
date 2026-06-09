@@ -48,10 +48,26 @@ type ShiftRow = {
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
 type ShiftPatch = Partial<NewShiftInput>;
 
+export type ShiftsDateRange = { from: string; to: string };
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export function defaultShiftsDateRange(): ShiftsDateRange {
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  to.setUTCDate(to.getUTCDate() + 30);
+  return { from: isoDate(from), to: isoDate(to) };
+}
+
 type ShiftsStoreContextValue = {
   shifts: Shift[];
   loading: boolean;
   error: string | null;
+  dateRange: ShiftsDateRange;
+  setDateRange: (range: ShiftsDateRange) => void;
   refresh: () => Promise<void>;
   addShift: (input: NewShiftInput) => Promise<Shift | null>;
   updateShift: (id: string, patch: ShiftPatch) => Promise<void>;
@@ -132,8 +148,9 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRangeState] = useState<ShiftsDateRange>(() => defaultShiftsDateRange());
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (range: ShiftsDateRange = dateRange) => {
     setLoading(true);
     const pageSize = 1000;
     const all: ShiftRow[] = [];
@@ -144,6 +161,8 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         .select(
           "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
         )
+        .gte("date", range.from)
+        .lte("date", range.to)
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
         .order("id", { ascending: true })
@@ -161,7 +180,16 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     setRows(all);
     setError(null);
     setLoading(false);
+  }, [dateRange]);
+
+  const setDateRange = useCallback((range: ShiftsDateRange) => {
+    setDateRangeState(range);
   }, []);
+
+  const isWithinRange = useCallback(
+    (d: string | null | undefined) => !!d && d >= dateRange.from && d <= dateRange.to,
+    [dateRange],
+  );
 
   useEffect(() => {
     void fetchAll();
@@ -171,9 +199,17 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         const newRow = payload.new as ShiftRow | null;
         const oldRow = payload.old as { id?: string } | null;
         if (payload.eventType === "INSERT" && newRow) {
+          if (!isWithinRange(newRow.date)) return;
           setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
         } else if (payload.eventType === "UPDATE" && newRow) {
-          setRows((prev) => prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r)));
+          setRows((prev) => {
+            const exists = prev.some((r) => r.id === newRow.id);
+            if (!isWithinRange(newRow.date)) {
+              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
+            }
+            if (!exists) return [...prev, newRow];
+            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
+          });
         } else if (payload.eventType === "DELETE" && oldRow?.id) {
           setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
         }
@@ -182,7 +218,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [fetchAll]);
+  }, [fetchAll, isWithinRange]);
 
   const shifts = useMemo<Shift[]>(
     () =>
@@ -211,6 +247,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   const updateShift: ShiftsStoreContextValue["updateShift"] = async (id, patch) => {
     const dbPatch = shiftToDbPatch(patch);
+    const prevRow = rows.find((r) => r.id === id);
     // Optimistic local update — realtime will reconcile authoritative values.
     setRows((prev) =>
       prev.map((r) => (r.id === id ? ({ ...r, ...(dbPatch as Partial<ShiftRow>) }) : r)),
@@ -222,8 +259,18 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       .eq("id", id);
     if (err) {
       setError(err.message);
-      // Roll back by refetching authoritative state
-      void fetchAll();
+      // Roll back just this row by refetching it from the server.
+      const { data: fresh } = await supabase
+        .from("shifts")
+        .select(
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
+        )
+        .eq("id", id)
+        .maybeSingle();
+      const authoritative = (fresh as ShiftRow | null) ?? prevRow ?? null;
+      if (authoritative) {
+        setRows((prev) => prev.map((r) => (r.id === id ? authoritative : r)));
+      }
     }
   };
 
@@ -254,7 +301,9 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         shifts,
         loading,
         error,
-        refresh: fetchAll,
+        dateRange,
+        setDateRange,
+        refresh: () => fetchAll(),
         addShift,
         updateShift,
         deleteShift,
