@@ -117,7 +117,7 @@ function ShiftsPage() {
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
-  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
+  const handleUpdateDeparture = async (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
     const { rate, ...rest } = patch;
     await updateShift(id, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
     toast.success("Booking updated");
