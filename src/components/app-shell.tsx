@@ -27,16 +27,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     : [
         { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
         { to: "/staff", label: t.nav.staff, icon: Users },
-        { to: "/rental-points", label: "Rental points", icon: MapPin },
+        { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
         { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
-        { to: "/live-shifts", label: "Live shifts", icon: Zap },
+        { to: "/live-shifts", label: t.nav.liveShifts, icon: Zap },
         
-        { to: "/payouts", label: "Payouts", icon: Euro },
+        { to: "/payouts", label: t.nav.payouts, icon: Euro },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
-        { to: "/bokun-runs", label: "Bokun runs", icon: RefreshCw },
-        { to: "/dispatch-log", label: "Dispatch log", icon: History },
-        { to: "/users", label: "Users", icon: ShieldCheck },
+        { to: "/bokun-runs", label: t.nav.bokunRuns, icon: RefreshCw },
+        { to: "/dispatch-log", label: t.nav.dispatchLog, icon: History },
+        { to: "/users", label: t.nav.users, icon: ShieldCheck },
       ];
 
   return (
