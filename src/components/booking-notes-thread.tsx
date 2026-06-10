@@ -96,15 +96,12 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
     if (error) toast.error("Couldn't delete", { description: error.message });
   };
 
-  const Wrapper = ({ children }: { children: React.ReactNode }) =>
-    compact ? (
-      <div className="space-y-3">{children}</div>
-    ) : (
-      <div className="rounded-lg border border-border/60 bg-card p-3 space-y-3">{children}</div>
-    );
+  const wrapperClass = compact
+    ? "space-y-3"
+    : "rounded-lg border border-border/60 bg-card p-3 space-y-3";
 
   return (
-    <Wrapper>
+    <div className={wrapperClass}>
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
         <MessageSquare className="h-3 w-3" /> Booking notes {notes.length > 0 && `(${notes.length})`}
       </div>
@@ -248,6 +245,6 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
         </div>
       )}
       {isAdmin && <NoteTemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />}
-    </Wrapper>
+    </div>
   );
 }
