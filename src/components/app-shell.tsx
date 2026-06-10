@@ -102,29 +102,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
-              <UserCog className="h-3 w-3" /> View as
-            </div>
-            <div className="flex gap-1 p-1 bg-muted rounded-lg">
-              {(["admin", "staff"] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRole(r)}
-                  className={cn(
-                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all",
-                    role === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {r === "admin" ? "Admin" : "Guide"}
-                </button>
-              ))}
-            </div>
-            {role === "staff" && (
+          {role === "staff" && isAdmin && (
+            <div>
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
+                <UserCog className="h-3 w-3" /> Acting as
+              </div>
               <select
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
-                className="mt-2 w-full h-8 text-xs rounded-md bg-card border border-border px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full h-8 text-xs rounded-md bg-card border border-border px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {staff.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -132,8 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </option>
                 ))}
               </select>
-            )}
-          </div>
+            </div>
+          )}
+
 
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/15">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
