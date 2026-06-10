@@ -132,7 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <button
               onClick={() => void signOut()}
-              title="Sign out"
+              title={t.shell.signOut}
               className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
