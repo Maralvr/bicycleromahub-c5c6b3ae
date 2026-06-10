@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
-type DeparturePatch = { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null };
+type DeparturePatch = { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null };
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
 type View = "day" | "week" | "month";
@@ -1076,6 +1076,7 @@ function ShiftDetailsDialog({
   showRates?: boolean;
 }) {
   const open = !!shift;
+  const [date, setDate] = useState(shift?.date ?? "");
   const [startTime, setStartTime] = useState(shift?.startTime ?? "");
   const [endTime, setEndTime] = useState(shift?.endTime ?? "");
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
@@ -1084,13 +1085,14 @@ function ShiftDetailsDialog({
   const [savingDeparture, setSavingDeparture] = useState(false);
   const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
+    setDate(shift?.date ?? "");
     setStartTime(shift?.startTime ?? "");
     setEndTime(shift?.endTime ?? "");
     setMeetingPoint(shift?.meetingPoint ?? "");
     setRate(shift?.rate != null ? String(shift.rate) : "");
     setRateTitle(shift?.rateTitle ?? "");
     setGuideSearch("");
-  }, [shift?.id, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
+  }, [shift?.id, shift?.date, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
 
   if (!shift) {
     return (
@@ -1116,15 +1118,17 @@ function ShiftDetailsDialog({
   const filteredStaff = q
     ? assignableStaff.filter((m) => m.name.toLowerCase().includes(q))
     : assignableStaff;
+  const dateChanged = !!date && date !== s.date;
   const timeChanged = startTime !== s.startTime || endTime !== s.endTime;
   const meetingChanged = meetingPoint !== (s.meetingPoint ?? "");
   const origRate = s.rate != null ? String(s.rate) : "";
   const origRateTitle = s.rateTitle ?? "";
   const rateChanged = rate !== origRate;
   const rateTitleChanged = rateTitle !== origRateTitle;
-  const departureChanged = timeChanged || meetingChanged || rateChanged || rateTitleChanged;
+  const departureChanged = dateChanged || timeChanged || meetingChanged || rateChanged || rateTitleChanged;
   const buildPatch = (): DeparturePatch => {
     const patch: DeparturePatch = {};
+    if (dateChanged) patch.date = date;
     if (timeChanged) {
       patch.startTime = startTime;
       patch.endTime = endTime;
@@ -1288,6 +1292,10 @@ function ShiftDetailsDialog({
               )}
             </div>
             <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="ov-date" className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</Label>
+                <Input id="ov-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-40 text-xs" />
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="ov-start" className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
                 <Input id="ov-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9 w-28 text-xs" />

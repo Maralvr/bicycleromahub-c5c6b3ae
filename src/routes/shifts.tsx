@@ -117,7 +117,7 @@ function ShiftsPage() {
   const handleCalendarShiftClick = (s: CalendarShift) => {
     setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
   };
-  const handleUpdateDeparture = async (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
+  const handleUpdateDeparture = async (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
     const { rate, ...rest } = patch;
     await updateShift(id, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
     toast.success("Booking updated");
@@ -681,7 +681,8 @@ function ShiftsPage() {
   );
 }
 
-function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
+function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; onUpdateDeparture: (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
+  const [date, setDate] = useState(shift.date);
   const [startTime, setStartTime] = useState(shift.startTime);
   const [endTime, setEndTime] = useState(shift.endTime);
   const [meetingPoint, setMeetingPoint] = useState(shift.meetingPoint ?? "");
@@ -689,15 +690,17 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
   const [rateTitle, setRateTitle] = useState<string>(shift.rateTitle ?? "");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
+    setDate(shift.date);
     setStartTime(shift.startTime);
     setEndTime(shift.endTime);
     setMeetingPoint(shift.meetingPoint ?? "");
     setRate(shift.rate != null ? String(shift.rate) : "");
     setRateTitle(shift.rateTitle ?? "");
-  }, [shift.id, shift.startTime, shift.endTime, shift.meetingPoint, shift.rate, shift.rateTitle]);
+  }, [shift.id, shift.date, shift.startTime, shift.endTime, shift.meetingPoint, shift.rate, shift.rateTitle]);
   const origRate = shift.rate != null ? String(shift.rate) : "";
   const origRateTitle = shift.rateTitle ?? "";
   const changed =
+    date !== shift.date ||
     startTime !== shift.startTime ||
     endTime !== shift.endTime ||
     meetingPoint !== (shift.meetingPoint ?? "") ||
@@ -707,7 +710,8 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
     if (!changed) return;
     setSaving(true);
     try {
-      const patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null } = {};
+      const patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null } = {};
+      if (date !== shift.date) patch.date = date;
       if (startTime !== shift.startTime) patch.startTime = startTime;
       if (endTime !== shift.endTime) patch.endTime = endTime;
       if (meetingPoint !== (shift.meetingPoint ?? "")) patch.meetingPoint = meetingPoint;
@@ -724,6 +728,10 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
         <Clock className="h-3 w-3 text-primary" /> Admin overrides
       </div>
       <div className="flex flex-wrap items-end gap-2">
+        <div className="space-y-1">
+          <Label htmlFor={`ov-date-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</Label>
+          <Input id={`ov-date-${shift.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9 w-40 text-xs" />
+        </div>
         <div className="space-y-1">
           <Label htmlFor={`ov-start-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Start</Label>
           <Input id={`ov-start-${shift.id}`} type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-9 w-28 text-xs" />
@@ -752,7 +760,7 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
   );
 }
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
