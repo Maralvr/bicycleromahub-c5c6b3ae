@@ -245,6 +245,6 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
         </div>
       )}
       {isAdmin && <NoteTemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />}
-    </Wrapper>
+    </div>
   );
 }
