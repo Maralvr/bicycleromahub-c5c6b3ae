@@ -27,16 +27,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     : [
         { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
         { to: "/staff", label: t.nav.staff, icon: Users },
-        { to: "/rental-points", label: "Rental points", icon: MapPin },
+        { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
         { to: "/shifts", label: t.nav.shifts, icon: CalendarRange },
-        { to: "/live-shifts", label: "Live shifts", icon: Zap },
+        { to: "/live-shifts", label: t.nav.liveShifts, icon: Zap },
         
-        { to: "/payouts", label: "Payouts", icon: Euro },
+        { to: "/payouts", label: t.nav.payouts, icon: Euro },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
-        { to: "/bokun-runs", label: "Bokun runs", icon: RefreshCw },
-        { to: "/dispatch-log", label: "Dispatch log", icon: History },
-        { to: "/users", label: "Users", icon: ShieldCheck },
+        { to: "/bokun-runs", label: t.nav.bokunRuns, icon: RefreshCw },
+        { to: "/dispatch-log", label: t.nav.dispatchLog, icon: History },
+        { to: "/users", label: t.nav.users, icon: ShieldCheck },
       ];
 
   return (
@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
-            {role === "staff" ? "My workspace" : "Workspace"}
+            {role === "staff" ? t.shell.myWorkspace : t.shell.workspace}
           </div>
           {nav.map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="p-3 border-t border-border/60 space-y-3">
           <div>
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
-              <Languages className="h-3 w-3" /> Language
+              <Languages className="h-3 w-3" /> {t.shell.language}
             </div>
             <div className="flex gap-1 p-1 bg-muted rounded-lg">
               {(["en", "it"] as const).map((l) => (
@@ -105,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {role === "staff" && isAdmin && (
             <div>
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
-                <UserCog className="h-3 w-3" /> Acting as
+                <UserCog className="h-3 w-3" /> {t.shell.actingAs}
               </div>
               <select
                 value={staffId}
@@ -132,7 +132,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <button
               onClick={() => void signOut()}
-              title="Sign out"
+              title={t.shell.signOut}
               className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -163,11 +163,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <button
                 onClick={() => void signOut()}
-                title="Sign out"
+                title={t.shell.signOut}
                 className="h-9 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-semibold border border-border bg-card text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 active:scale-95 transition-all"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="hidden xs:inline">Sign out</span>
+                <span className="hidden xs:inline">{t.shell.signOut}</span>
               </button>
             </div>
           </div>
@@ -198,10 +198,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               onClick={switchView}
               className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 active:scale-95 transition-all shadow-sm"
-              title={`Switch to ${role === "admin" ? "Guide" : "Admin"} view`}
+              title={role === "admin" ? t.shell.switchToGuide : t.shell.switchToAdmin}
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span>Switch to {role === "admin" ? "Guide" : "Admin"} view</span>
+              <span>{role === "admin" ? t.shell.switchToGuide : t.shell.switchToAdmin}</span>
             </button>
           </div>
         )}

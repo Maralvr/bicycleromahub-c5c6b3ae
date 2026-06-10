@@ -6,7 +6,8 @@ const dict = {
   en: {
     appName: "Bicycle Roma",
     tagline: "Operations Hub",
-    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", calendar: "Calendar", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Shifts", calendar: "Calendar", tasks: "Tasks", notifications: "Updates", myAvailability: "My availability", myShifts: "My shifts", rentalPoints: "Rental points", liveShifts: "Live shifts", payouts: "Payouts", bokunRuns: "Bokun runs", dispatchLog: "Dispatch log", users: "Users" },
+    shell: { language: "Language", workspace: "Workspace", myWorkspace: "My workspace", actingAs: "Acting as", signOut: "Sign out", switchToGuide: "Switch to Guide view", switchToAdmin: "Switch to Admin view" },
     common: {
       today: "Today", upcoming: "Upcoming", pending: "Pending", accepted: "Accepted",
       rejected: "Rejected", assigned: "Assigned", unassigned: "Unassigned",
@@ -53,7 +54,8 @@ const dict = {
   it: {
     appName: "Bicycle Roma",
     tagline: "Centro Operativo",
-    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni", rentalPoints: "Punti noleggio", liveShifts: "Turni live", payouts: "Pagamenti", bokunRuns: "Sync Bokun", dispatchLog: "Log invii", users: "Utenti" },
+    shell: { language: "Lingua", workspace: "Area di lavoro", myWorkspace: "La mia area", actingAs: "Stai operando come", signOut: "Esci", switchToGuide: "Passa a vista Guida", switchToAdmin: "Passa a vista Admin" },
     common: {
       today: "Oggi", upcoming: "Prossimi", pending: "In attesa", accepted: "Accettato",
       rejected: "Rifiutato", assigned: "Assegnato", unassigned: "Non assegnato",
