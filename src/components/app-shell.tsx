@@ -105,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {role === "staff" && isAdmin && (
             <div>
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
-                <UserCog className="h-3 w-3" /> Acting as
+                <UserCog className="h-3 w-3" /> {t.shell.actingAs}
               </div>
               <select
                 value={staffId}
