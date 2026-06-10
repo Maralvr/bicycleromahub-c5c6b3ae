@@ -198,10 +198,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               onClick={switchView}
               className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 active:scale-95 transition-all shadow-sm"
-              title={`Switch to ${role === "admin" ? "Guide" : "Admin"} view`}
+              title={role === "admin" ? t.shell.switchToGuide : t.shell.switchToAdmin}
             >
               <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span>Switch to {role === "admin" ? "Guide" : "Admin"} view</span>
+              <span>{role === "admin" ? t.shell.switchToGuide : t.shell.switchToAdmin}</span>
             </button>
           </div>
         )}
