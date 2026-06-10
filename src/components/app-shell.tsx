@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
-            {role === "staff" ? "My workspace" : "Workspace"}
+            {role === "staff" ? t.shell.myWorkspace : t.shell.workspace}
           </div>
           {nav.map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
