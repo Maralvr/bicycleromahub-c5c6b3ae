@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="p-3 border-t border-border/60 space-y-3">
           <div>
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
-              <Languages className="h-3 w-3" /> Language
+              <Languages className="h-3 w-3" /> {t.shell.language}
             </div>
             <div className="flex gap-1 p-1 bg-muted rounded-lg">
               {(["en", "it"] as const).map((l) => (
