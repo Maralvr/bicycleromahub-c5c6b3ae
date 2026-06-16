@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { startBokunImportFn, processBokunImportChunkFn } from "@/lib/bokun-import.functions";
 
-import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
+import { suggestStaffForShift } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
