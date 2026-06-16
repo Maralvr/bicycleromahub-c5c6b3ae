@@ -872,60 +872,14 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 )}
 
-                {/* AI suggestions panel for unassigned shifts */}
+                {/* Assign-guide combobox for unassigned shifts */}
                 {!guide && !guideView && !pastView && (
-                  <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20">
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-primary">AI suggestions</span>
-                      <span className="text-[10px] text-muted-foreground">— top 3 by tags, languages, licenses & availability</span>
-                      {onOpenAssignDialog && (
-                        <button
-                          onClick={() => onOpenAssignDialog(s)}
-                          className="ml-auto text-[10px] font-semibold text-primary hover:underline"
-                        >
-                          See all candidates →
-                        </button>
-                      )}
-                    </div>
-                    {suggestions.length === 0 ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                          No matching guide currently free.
-                        </div>
-                        {onOpenAssignDialog && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onOpenAssignDialog(s)}>
-                            Override manually
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {suggestions.map((sg, i) => (
-                          <div key={sg.staff.id} className={`flex items-center gap-2.5 p-2 rounded-md border ${i === 0 ? "bg-primary/5 border-primary/30" : "bg-card border-border/40"}`}>
-                            <Avatar name={sg.staff.name} initials={sg.staff.avatar} size="sm" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-semibold text-xs text-foreground">{sg.staff.name}</span>
-                                {i === 0 && <Badge className="text-[8px] uppercase tracking-wider h-4 px-1.5 bg-primary text-primary-foreground">Best fit</Badge>}
-                                <span className="text-[10px] text-muted-foreground tabular-nums">score {sg.score}</span>
-                              </div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                                {sg.reasons.join(" · ")}
-                                {sg.warnings.length > 0 && (
-                                  <span className="text-warning-foreground"> · ⚠ {sg.warnings.join(", ")}</span>
-                                )}
-                              </div>
-                            </div>
-                            <Button size="sm" variant={i === 0 ? "default" : "outline"} className="h-7 text-xs px-2.5" onClick={() => onAssign(s.id, sg.staff.id, sg.staff.name)}>
-                              Assign
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <AssignGuideCombobox
+                    shift={s}
+                    allStaff={allStaff}
+                    allShifts={allShifts}
+                    onAssign={onAssign}
+                  />
                 )}
 
                 {onUpdateDeparture && !guideView && !pastView && (
