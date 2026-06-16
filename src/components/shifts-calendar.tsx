@@ -504,6 +504,7 @@ export function ShiftsCalendar({
       <ShiftDetailsDialog
         shift={selectedShift}
         staff={staff}
+        allShifts={shifts}
         showRates={showRates}
         onClose={() => setSelectedShift(null)}
         onAssign={onAssign}
