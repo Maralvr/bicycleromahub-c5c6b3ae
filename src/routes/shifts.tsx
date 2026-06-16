@@ -65,12 +65,16 @@ export const Route = createFileRoute("/shifts")({
       { name: "description", content: "Bokun-synced bookings and manual shift assignments." },
     ],
   }),
-  component: ShiftsPage,
+  component: ShiftsPageRouter,
 });
 
-function ShiftsPage() {
+function ShiftsPageRouter() {
   const { isRentalStaff } = useAuth();
   if (isRentalStaff) return <RentalStaffShiftsView />;
+  return <ShiftsPage />;
+}
+
+function ShiftsPage() {
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { user } = useAuth();
