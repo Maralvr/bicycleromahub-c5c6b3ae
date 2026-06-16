@@ -216,6 +216,8 @@ export function ShiftsCalendar({
   onUpdateDeparture,
   showRates = true,
   onShiftClick,
+  renderDayOverlay,
+  renderDayDialogSection,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -223,6 +225,8 @@ export function ShiftsCalendar({
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
   onShiftClick?: (s: CalendarShift) => void;
+  renderDayOverlay?: (iso: string) => React.ReactNode;
+  renderDayDialogSection?: (iso: string) => React.ReactNode;
 }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
