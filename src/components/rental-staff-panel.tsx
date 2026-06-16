@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, X, UserPlus, Users2 } from "lucide-react";
+import { Plus, X, UserPlus, Users2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   assignRentalStaff,
@@ -66,6 +66,7 @@ export function RentalStaffPanel({
   const [staff, setStaff] = useState<RentalStaff[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(true);
   const [showRoster, setShowRoster] = useState(false);
 
   const range = useMemo(() => {
@@ -127,92 +128,106 @@ export function RentalStaffPanel({
   return (
     <Card className="p-4 mb-4 border-border/60">
       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex items-center gap-2 text-left hover:opacity-80"
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
           <Users2 className="h-4 w-4 text-primary" />
           <h3 className="font-semibold text-foreground text-sm">Rental-point staff on duty</h3>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => setShowRoster(true)}>
-          <UserPlus className="h-4 w-4 mr-1" /> Manage roster
-        </Button>
+        </button>
+        {!collapsed && (
+          <Button size="sm" variant="outline" onClick={() => setShowRoster(true)}>
+            <UserPlus className="h-4 w-4 mr-1" /> Manage roster
+          </Button>
+        )}
       </div>
 
-      {loading ? (
-        <div className="text-xs text-muted-foreground py-2">Loading…</div>
-      ) : dates.length === 0 ? (
-        <div className="text-xs text-muted-foreground py-2">
-          No upcoming bookings on this point yet.
-        </div>
-      ) : (
-        <div className="grid gap-2">
-          {dates.slice(0, 30).map((date) => {
-            const assigned = byDate.get(date) ?? [];
-            const remaining = staff.filter(
-              (s) => s.active && !assigned.some((a) => a.rental_staff_id === s.id),
-            );
-            return (
-              <div
-                key={date}
-                className="flex items-center gap-2 flex-wrap py-1.5 border-b border-border/40 last:border-b-0"
-              >
-                <span className="text-xs font-medium text-foreground w-28 shrink-0">
-                  {fmtDate(date)}
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                  {assigned.map((a) => {
-                    const s = staff.find((x) => x.id === a.rental_staff_id);
-                    if (!s) return null;
-                    return (
-                      <span
-                        key={a.id}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary pl-1 pr-2 py-0.5 text-xs"
-                      >
-                        <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-4 !w-4 text-[8px]" />
-                        {s.name}
-                        <button
-                          onClick={() => handleUnassign(a.id)}
-                          className="ml-0.5 hover:text-destructive"
-                          aria-label="Remove"
+      {!collapsed && (
+        loading ? (
+          <div className="text-xs text-muted-foreground py-2">Loading…</div>
+        ) : dates.length === 0 ? (
+          <div className="text-xs text-muted-foreground py-2">
+            No upcoming bookings on this point yet.
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            {dates.slice(0, 30).map((date) => {
+              const assigned = byDate.get(date) ?? [];
+              const remaining = staff.filter(
+                (s) => s.active && !assigned.some((a) => a.rental_staff_id === s.id),
+              );
+              return (
+                <div
+                  key={date}
+                  className="flex items-center gap-2 flex-wrap py-1.5 border-b border-border/40 last:border-b-0"
+                >
+                  <span className="text-xs font-medium text-foreground w-28 shrink-0">
+                    {fmtDate(date)}
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                    {assigned.map((a) => {
+                      const s = staff.find((x) => x.id === a.rental_staff_id);
+                      if (!s) return null;
+                      return (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary pl-1 pr-2 py-0.5 text-xs"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs"
-                        disabled={remaining.length === 0}
-                      >
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-1" align="start">
-                      {remaining.length === 0 ? (
-                        <div className="text-xs text-muted-foreground p-2">
-                          {staff.length === 0 ? "Add staff to the roster first." : "All staff already assigned."}
-                        </div>
-                      ) : (
-                        remaining.map((s) => (
+                          <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-4 !w-4 text-[8px]" />
+                          {s.name}
                           <button
-                            key={s.id}
-                            onClick={() => handleAssign(date, s.id)}
-                            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
+                            onClick={() => handleUnassign(a.id)}
+                            className="ml-0.5 hover:text-destructive"
+                            aria-label="Remove"
                           >
-                            <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-5 !w-5 text-[9px]" />
-                            <span className="truncate">{s.name}</span>
+                            <X className="h-3 w-3" />
                           </button>
-                        ))
-                      )}
-                    </PopoverContent>
-                  </Popover>
+                        </span>
+                      );
+                    })}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs"
+                          disabled={remaining.length === 0}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Add
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-1" align="start">
+                        {remaining.length === 0 ? (
+                          <div className="text-xs text-muted-foreground p-2">
+                            {staff.length === 0 ? "Add staff to the roster first." : "All staff already assigned."}
+                          </div>
+                        ) : (
+                          remaining.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => handleAssign(date, s.id)}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
+                            >
+                              <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-5 !w-5 text-[9px]" />
+                              <span className="truncate">{s.name}</span>
+                            </button>
+                          ))
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
 
       <RosterDialog
