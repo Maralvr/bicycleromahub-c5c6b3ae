@@ -614,6 +614,9 @@ function NotificationsPage() {
                                 </div>
                               )}
                             </div>
+                            {u.type === "broadcast" && (
+                              <BroadcastInteractions fieldUpdateId={u.id} />
+                            )}
                           </div>
                         </div>
                       );
