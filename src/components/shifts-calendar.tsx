@@ -833,12 +833,14 @@ function MonthView({
   onOpenDay,
   onOpenShift,
   todayISO,
+  renderDayOverlay,
 }: {
   cursor: Date;
   shiftsByDate: Record<string, CalendarShift[]>;
   onOpenDay: (d: string) => void;
   onOpenShift: (s: CalendarShift) => void;
   todayISO: string;
+  renderDayOverlay?: (iso: string) => React.ReactNode;
 }) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
