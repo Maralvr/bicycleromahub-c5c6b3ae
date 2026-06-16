@@ -216,6 +216,8 @@ export function ShiftsCalendar({
   shifts,
   staff,
   onAssign,
+  onUnassign,
+  onDelete,
   onUpdateDeparture,
   showRates = true,
   onShiftClick,
@@ -225,6 +227,8 @@ export function ShiftsCalendar({
   shifts: Shift[];
   staff: Staff[];
   onAssign?: AssignFn;
+  onUnassign?: (shiftId: string) => void | Promise<void>;
+  onDelete?: (shift: Shift) => void | Promise<void>;
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
   onShiftClick?: (s: CalendarShift) => void;
