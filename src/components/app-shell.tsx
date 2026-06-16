@@ -1,6 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ReactNode } from "react";
-import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut, ShieldCheck, RefreshCw, Euro, History, ArrowLeftRight } from "lucide-react";
+import { ReactNode, useState } from "react";
+import { LayoutDashboard, Users, CalendarRange, CalendarDays, ListChecks, Bell, Languages, UserCog, MapPin, Zap, LogOut, ShieldCheck, RefreshCw, Euro, History, ArrowLeftRight, MoreHorizontal } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 import { RentalNotificationBell } from "@/components/rental-notification-bell";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
