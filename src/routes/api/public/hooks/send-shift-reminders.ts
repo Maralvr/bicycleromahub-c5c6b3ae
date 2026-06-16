@@ -15,6 +15,11 @@ export const Route = createFileRoute("/api/public/hooks/send-shift-reminders")({
           });
         }
 
+        // Also run rental-point reminders.
+        const { data: rentalSent } = await supabaseAdmin.rpc(
+          "send_rental_point_reminders" as never,
+        );
+
         // Find staff who just received a reminder so we can wake their devices.
         const { data: recents } = await supabaseAdmin
           .from("guide_notifications")
