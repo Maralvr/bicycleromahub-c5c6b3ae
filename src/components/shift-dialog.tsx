@@ -457,7 +457,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                   </Badge>
                   {assignedGuide && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} imageUrl={assignedGuide.avatarUrl} size="sm" />
+                      <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} imageUrl={richStaff.find((s) => s.id === assignedGuide.id)?.avatarUrl} size="sm" />
                       <span className="font-medium">{assignedGuide.name}</span>
                     </div>
                   )}
