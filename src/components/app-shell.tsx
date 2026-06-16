@@ -169,6 +169,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-2">
               {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
+              <Link
+                to="/profile"
+                title="Edit my profile"
+                className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border hover:ring-primary/60 transition flex-shrink-0"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
+                    {initials}
+                  </div>
+                )}
+              </Link>
               <div className="flex gap-1 p-0.5 bg-muted rounded-md">
                 {(["en", "it"] as const).map((l) => (
                   <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
