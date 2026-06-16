@@ -1386,13 +1386,14 @@ function ShiftDetailsDialog({
               ) : (
                 filteredStaff.map((m) => {
                   const isCurrent = m.id === s.assignedStaffId;
+                  const isPending = m.id === pendingStaffId;
                   return (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => handleAssign(m.id)}
+                      onClick={() => setPendingStaffId(m.id)}
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-accent active:bg-accent ${
-                        isCurrent ? "bg-accent/50" : ""
+                        isPending ? "bg-primary/10 ring-1 ring-primary/40" : isCurrent ? "bg-accent/50" : ""
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -1402,13 +1403,37 @@ function ShiftDetailsDialog({
                           {m.role === "admin" ? " (admin)" : ""}
                         </span>
                       </span>
-                      {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
+                      <span className="flex items-center gap-1">
+                        {isPending && !isCurrent && <Badge className="text-[9px]">Selected</Badge>}
+                        {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
+                      </span>
                     </button>
                   );
                 })
               )}
             </div>
           </div>
+        )}
+        {(onUpdateDeparture || onAssign) && (
+          <DialogFooter className="mt-3 gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
