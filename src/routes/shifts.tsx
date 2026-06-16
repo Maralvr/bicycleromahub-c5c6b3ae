@@ -28,6 +28,7 @@ import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
 import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
+import { RateTitleField } from "@/components/rate-title-field";
 import { InvoiceDialog } from "@/components/invoice-dialog";
 import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
