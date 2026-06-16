@@ -882,7 +882,8 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     shift={s}
                     allStaff={allStaff}
                     allShifts={allShifts}
-                    onAssign={onAssign}
+                    onSelect={(m) => onAssign(s.id, m.id, m.name)}
+                    className="mt-4"
                   />
                 )}
 
