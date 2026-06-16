@@ -780,7 +780,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
     <div className="grid gap-4">
       {shifts.map((s) => {
         const guide = allStaff.find((p) => p.id === s.assignedStaffId);
-        const suggestions: StaffSuggestion[] = !pastView && !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
+        // No precomputed suggestions: AssignGuideCombobox handles its own ranking.
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
         const shiftNotes = notesByShift?.[s.id] || [];
         const shiftSignatures = signaturesForShift(waiverSignatures, s);
