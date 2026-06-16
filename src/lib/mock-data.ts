@@ -6,6 +6,7 @@ export type Staff = {
   isLive?: boolean;
   name: string;
   avatar: string;
+  avatarUrl?: string | null;
   role: "guide" | "rental" | "mechanic" | "admin";
   email?: string | null;
   active?: boolean;

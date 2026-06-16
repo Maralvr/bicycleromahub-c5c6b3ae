@@ -190,7 +190,7 @@ export function BulkDispatchDialog({
                         )}
                         {member && (
                           <div className="flex items-center gap-1.5 text-xs">
-                            <Avatar name={member.name} initials={member.avatar} size="sm" />
+                            <Avatar name={member.name} initials={member.avatar} imageUrl={member.avatarUrl} size="sm" />
                           </div>
                         )}
                       </div>

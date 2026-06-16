@@ -124,7 +124,7 @@ function MyAvailabilityView() {
           <Card className="p-5 border-border/60">
             <div className="flex items-start justify-between gap-2 mb-4">
               <div className="flex items-center gap-3 min-w-0">
-                <Avatar name={me.name} initials={me.avatar} size="lg" />
+                <Avatar name={me.name} initials={me.avatar} imageUrl={me.avatarUrl} size="lg" />
                 <div className="min-w-0">
                   <h3 className="font-semibold text-foreground truncate">{me.name}</h3>
                   <div className="text-xs text-muted-foreground capitalize">{me.role}</div>
@@ -331,7 +331,7 @@ function AdminStaffDirectory() {
               <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-primary/5 to-transparent rounded-full -mr-8 -mt-8 group-hover:from-primary/10 transition-colors" />
 
               <div className="flex items-start gap-4 relative">
-                <Avatar name={s.name} initials={s.avatar} size="lg" />
+                <Avatar name={s.name} initials={s.avatar} imageUrl={s.avatarUrl} size="lg" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -403,7 +403,7 @@ function AdminStaffDirectory() {
             <>
               <SheetHeader className="space-y-3 pb-4 border-b border-border/60">
                 <div className="flex items-center gap-3">
-                  <Avatar name={liveOpenStaff.name} initials={liveOpenStaff.avatar} size="lg" />
+                  <Avatar name={liveOpenStaff.name} initials={liveOpenStaff.avatar} imageUrl={liveOpenStaff.avatarUrl} size="lg" />
                   <div>
                     <SheetTitle className="text-left">{liveOpenStaff.name}</SheetTitle>
                     <SheetDescription className="capitalize text-left">{liveOpenStaff.role} · {liveOpenStaff.phone}</SheetDescription>
