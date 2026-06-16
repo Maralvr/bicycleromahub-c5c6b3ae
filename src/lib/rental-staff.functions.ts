@@ -160,9 +160,17 @@ export type MyRentalDay = {
     startTime: string;
     endTime: string | null;
     rateTitle: string | null;
+    meetingPoint: string | null;
     pax: number;
+    adults: number;
+    teens: number;
+    infants: number;
+    trailers: number;
     customerName: string | null;
     customerPhone: string | null;
+    customerEmail: string | null;
+    notes: string | null;
+    bookingRef: string | null;
     guide: { id: string; name: string; avatar: string; phone: string | null } | null;
   }>;
 };
