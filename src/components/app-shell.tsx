@@ -312,7 +312,3 @@ function MobileTabBar({
   );
 }
 
-      </div>
-    </div>
-  );
-}
