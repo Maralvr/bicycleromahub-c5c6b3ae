@@ -1169,21 +1169,15 @@ function ShiftDetailsDialog({
       await onUpdateDeparture(row.id, patch);
     }
   };
-  const assignmentChanged = pendingStaffId !== (s.assignedStaffId ?? null);
+  const assignmentChanged =
+    !!pendingStaffId && pendingStaffId !== (s.assignedStaffId ?? null);
   const hasChanges = departureChanged || assignmentChanged;
   const persistAssignmentIfChanged = async () => {
-    if (!onAssign || !assignmentChanged) return;
-    if (pendingStaffId) {
-      const member = staff.find((m) => m.id === pendingStaffId);
-      if (!member) return;
-      for (const row of bookingRows) {
-        await onAssign(row.id, pendingStaffId, member.name);
-      }
-    } else {
-      // Unassign: pass empty staffId — handlers treat falsy as unassign
-      for (const row of bookingRows) {
-        await onAssign(row.id, "", "");
-      }
+    if (!onAssign || !assignmentChanged || !pendingStaffId) return;
+    const member = staff.find((m) => m.id === pendingStaffId);
+    if (!member) return;
+    for (const row of bookingRows) {
+      await onAssign(row.id, pendingStaffId, member.name);
     }
   };
   const handleSave = async () => {
