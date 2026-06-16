@@ -48,8 +48,16 @@ export const Route = createFileRoute("/notifications")({
       { name: "description", content: "Broadcast messages and live field updates from guides." },
     ],
   }),
-  component: NotificationsPage,
+  component: NotificationsPageWrapper,
 });
+
+function NotificationsPageWrapper() {
+  return (
+    <BroadcastInteractionsProvider>
+      <NotificationsPage />
+    </BroadcastInteractionsProvider>
+  );
+}
 
 function NotificationsPage() {
   const { t } = useI18n();
