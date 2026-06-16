@@ -12,6 +12,7 @@ import { useStaffStore } from "@/lib/staff-store";
 import { Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
 import { BroadcastInteractions } from "@/components/broadcast-interactions";
+import { BroadcastInteractionsProvider } from "@/lib/broadcast-interactions-store";
 import { supabase } from "@/integrations/supabase/client";
 import {
   processFiles,
@@ -48,8 +49,16 @@ export const Route = createFileRoute("/notifications")({
       { name: "description", content: "Broadcast messages and live field updates from guides." },
     ],
   }),
-  component: NotificationsPage,
+  component: NotificationsPageWrapper,
 });
+
+function NotificationsPageWrapper() {
+  return (
+    <BroadcastInteractionsProvider>
+      <NotificationsPage />
+    </BroadcastInteractionsProvider>
+  );
+}
 
 function NotificationsPage() {
   const { t } = useI18n();
