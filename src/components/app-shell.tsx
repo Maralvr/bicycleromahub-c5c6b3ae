@@ -8,13 +8,14 @@ import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
+import { RentalNotificationBell } from "@/components/rental-notification-bell";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
-  const { signOut, isAdmin } = useAuth();
+  const { signOut, isAdmin, isRentalStaff } = useAuth();
   const switchView = () => setRole(role === "admin" ? "staff" : "admin");
 
   const nav = role === "staff"
