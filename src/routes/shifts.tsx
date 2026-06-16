@@ -68,6 +68,8 @@ export const Route = createFileRoute("/shifts")({
 });
 
 function ShiftsPage() {
+  const { isRentalStaff } = useAuth();
+  if (isRentalStaff) return <RentalStaffShiftsView />;
   const { t } = useI18n();
   const { role, staffId } = useCurrentUser();
   const { user } = useAuth();
