@@ -1104,7 +1104,8 @@ function ShiftDetailsDialog({
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
   const [rate, setRate] = useState<string>(shift?.rate != null ? String(shift.rate) : "");
   const [rateTitle, setRateTitle] = useState<string>(shift?.rateTitle ?? "");
-  const [savingDeparture, setSavingDeparture] = useState(false);
+  const [pendingStaffId, setPendingStaffId] = useState<string | null>(shift?.assignedStaffId ?? null);
+  const [saving, setSaving] = useState(false);
   const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
     setDate(shift?.date ?? "");
@@ -1113,8 +1114,9 @@ function ShiftDetailsDialog({
     setMeetingPoint(shift?.meetingPoint ?? "");
     setRate(shift?.rate != null ? String(shift.rate) : "");
     setRateTitle(shift?.rateTitle ?? "");
+    setPendingStaffId(shift?.assignedStaffId ?? null);
     setGuideSearch("");
-  }, [shift?.id, shift?.date, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
+  }, [shift?.id, shift?.date, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle, shift?.assignedStaffId]);
 
   if (!shift) {
     return (
