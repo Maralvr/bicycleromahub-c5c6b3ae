@@ -1169,25 +1169,35 @@ function ShiftDetailsDialog({
       await onUpdateDeparture(row.id, patch);
     }
   };
-  const handleSaveDeparture = async () => {
-    if (!onUpdateDeparture || !departureChanged) return;
-    setSavingDeparture(true);
+  const assignmentChanged = pendingStaffId !== (s.assignedStaffId ?? null);
+  const hasChanges = departureChanged || assignmentChanged;
+  const persistAssignmentIfChanged = async () => {
+    if (!onAssign || !assignmentChanged) return;
+    if (pendingStaffId) {
+      const member = staff.find((m) => m.id === pendingStaffId);
+      if (!member) return;
+      for (const row of bookingRows) {
+        await onAssign(row.id, pendingStaffId, member.name);
+      }
+    } else {
+      // Unassign: pass empty staffId — handlers treat falsy as unassign
+      for (const row of bookingRows) {
+        await onAssign(row.id, "", "");
+      }
+    }
+  };
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    setSaving(true);
     try {
       await persistDepartureIfChanged();
+      await persistAssignmentIfChanged();
+      onClose();
     } finally {
-      setSavingDeparture(false);
+      setSaving(false);
     }
   };
-  const handleAssign = async (staffId: string) => {
-    if (!onAssign) return;
-    const member = staff.find((m) => m.id === staffId);
-    if (!member) return;
-    await persistDepartureIfChanged();
-    for (const row of bookingRows) {
-      await onAssign(row.id, staffId, member.name);
-    }
-    onClose();
-  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
