@@ -314,7 +314,9 @@ export function RentalStaffPanel({
         bookingCount={openDay?.count ?? 0}
         staff={staff}
         assigned={openDayAssigned}
-        onToggle={(staffId) => openDate && handleToggle(openDate, staffId)}
+        onToggle={(staffId) => {
+          if (openDate) void handleToggle(openDate, staffId);
+        }}
         onManageRoster={() => {
           setOpenDate(null);
           setShowRoster(true);
