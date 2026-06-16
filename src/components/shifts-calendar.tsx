@@ -38,7 +38,9 @@ import {
   XCircle,
   Circle,
   UserPlus,
+  UserMinus,
   Search,
+  Trash2,
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
