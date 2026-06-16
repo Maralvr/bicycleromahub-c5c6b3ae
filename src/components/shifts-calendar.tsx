@@ -1095,6 +1095,7 @@ function DayDetailsDialog({
 function ShiftDetailsDialog({
   shift,
   staff,
+  allShifts,
   onClose,
   onAssign,
   onUnassign,
@@ -1104,6 +1105,7 @@ function ShiftDetailsDialog({
 }: {
   shift: CalendarShift | null;
   staff: Staff[];
+  allShifts: Shift[];
   onClose: () => void;
   onAssign?: AssignFn;
   onUnassign?: (shiftId: string) => void | Promise<void>;
