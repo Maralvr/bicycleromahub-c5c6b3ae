@@ -138,28 +138,78 @@ function RentalDayCard({ day }: { day: MyRentalDay }) {
           </div>
         ) : (
           day.bookings.map((b) => (
-            <div key={b.id} className="p-3 flex items-start gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5 text-sm font-semibold tabular-nums w-20 shrink-0">
-                <Clock className="h-3.5 w-3.5 text-primary" />
-                {b.startTime}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-foreground">{b.tourName}</div>
-                {b.rateTitle && (
-                  <div className="inline-block mt-0.5 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                    {b.rateTitle}
+            <div key={b.id} className="p-3.5 space-y-2.5">
+              {/* Header row: time + tour + booking ref */}
+              <div className="flex items-start gap-3 flex-wrap">
+                <div className="flex flex-col items-center justify-center bg-primary/10 rounded-md px-2.5 py-1.5 shrink-0">
+                  <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-primary">
+                    <Clock className="h-3.5 w-3.5" />
+                    {b.startTime}
                   </div>
-                )}
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" /> {b.pax} pax
-                  </span>
-                  {b.customerName && <span>· {b.customerName}</span>}
+                  {b.endTime && (
+                    <div className="text-[10px] text-muted-foreground tabular-nums">
+                      → {b.endTime}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-foreground">{b.tourName}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {b.rateTitle && (
+                      <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        {b.rateTitle}
+                      </span>
+                    )}
+                    {b.bookingRef && (
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        #{b.bookingRef}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="text-xs flex items-center gap-1.5 shrink-0">
+
+              {/* Pax breakdown + meeting point */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-foreground/85 pl-1">
+                <div className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-semibold">{b.pax}</span>
+                  <span className="text-muted-foreground">
+                    ({b.adults}A
+                    {b.teens > 0 && ` · ${b.teens}T`}
+                    {b.infants > 0 && ` · ${b.infants}I`}
+                    {b.trailers > 0 && ` · ${b.trailers} trailer${b.trailers === 1 ? "" : "s"}`}
+                    )
+                  </span>
+                </div>
+                {b.meetingPoint && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="truncate" title={b.meetingPoint}>
+                      {b.meetingPoint}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer + guide row */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs pl-1">
+                {b.customerName && (
+                  <div className="flex items-center gap-1.5">
+                    <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{b.customerName}</span>
+                    {b.customerPhone && (
+                      <a
+                        href={`tel:${b.customerPhone}`}
+                        className="text-primary hover:underline inline-flex items-center gap-0.5"
+                      >
+                        <Phone className="h-3 w-3" /> {b.customerPhone}
+                      </a>
+                    )}
+                  </div>
+                )}
                 {b.guide ? (
-                  <>
+                  <div className="flex items-center gap-1.5 ml-auto">
                     <Avatar
                       name={b.guide.name}
                       initials={b.guide.avatar}
@@ -170,18 +220,25 @@ function RentalDayCard({ day }: { day: MyRentalDay }) {
                     {b.guide.phone && (
                       <a
                         href={`tel:${b.guide.phone}`}
-                        className="text-primary hover:underline ml-1"
+                        className="text-primary hover:underline"
+                        title={`Call ${b.guide.name}`}
                       >
-                        <Phone className="h-3 w-3 inline" />
+                        <Phone className="h-3 w-3" />
                       </a>
                     )}
-                  </>
+                  </div>
                 ) : (
-                  <span className="text-muted-foreground italic flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" /> No guide yet
+                  <span className="ml-auto text-muted-foreground italic flex items-center gap-1">
+                    <UserIcon className="h-3 w-3" /> No guide assigned yet
                   </span>
                 )}
               </div>
+
+              {b.notes && (
+                <div className="text-xs italic text-muted-foreground bg-muted/40 rounded p-2 border border-border/30">
+                  📝 {b.notes}
+                </div>
+              )}
             </div>
           ))
         )}
