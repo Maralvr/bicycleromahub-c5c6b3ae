@@ -35,6 +35,7 @@ import { useRequireAdmin } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
+import { RentalStaffPanel } from "@/components/rental-staff-panel";
 
 type RentalTab = "calendar" | "list";
 
@@ -438,8 +439,18 @@ function RentalBookingsView({
     }
   };
 
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of scoped) if (s.date >= today) set.add(s.date);
+    return Array.from(set).sort();
+  }, [scoped, today]);
+
   return (
     <div className="mt-8">
+      {pointId && (
+        <RentalStaffPanel pointId={pointId} dates={upcomingDates} />
+      )}
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as RentalTab)}>
         <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground">

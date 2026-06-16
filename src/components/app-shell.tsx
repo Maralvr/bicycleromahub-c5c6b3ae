@@ -8,13 +8,14 @@ import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
+import { RentalNotificationBell } from "@/components/rental-notification-bell";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
-  const { signOut, isAdmin } = useAuth();
+  const { signOut, isAdmin, isRentalStaff } = useAuth();
   const switchView = () => setRole(role === "admin" ? "staff" : "admin");
 
   const nav = role === "staff"
@@ -52,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
             <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
           </div>
-          {staffId && <NotificationBell staffId={staffId} />}
+          {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -153,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {staffId && <NotificationBell staffId={staffId} />}
+              {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
               <div className="flex gap-1 p-0.5 bg-muted rounded-md">
                 {(["en", "it"] as const).map((l) => (
                   <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
