@@ -477,6 +477,7 @@ export function ShiftsCalendar({
             onOpenDay={setSelectedDay}
             onOpenShift={openShift}
             todayISO={todayISO}
+            renderDayOverlay={renderDayOverlay}
           />
         )}
       </div>
@@ -491,6 +492,7 @@ export function ShiftsCalendar({
           setSelectedDay(null);
           openShift(s);
         }}
+        renderDayDialogSection={renderDayDialogSection}
       />
       <ShiftDetailsDialog
         shift={selectedShift}
