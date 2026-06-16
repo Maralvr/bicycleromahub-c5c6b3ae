@@ -66,6 +66,7 @@ export function RentalStaffPanel({
   const [staff, setStaff] = useState<RentalStaff[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(true);
   const [showRoster, setShowRoster] = useState(false);
 
   const range = useMemo(() => {
