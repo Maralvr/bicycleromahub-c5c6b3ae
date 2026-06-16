@@ -154,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {staffId && <NotificationBell staffId={staffId} />}
+              {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
               <div className="flex gap-1 p-0.5 bg-muted rounded-md">
                 {(["en", "it"] as const).map((l) => (
                   <button key={l} onClick={() => setLang(l)} className={cn("h-6 px-2 text-[10px] font-semibold rounded", lang === l ? "bg-card shadow-sm" : "text-muted-foreground")}>
