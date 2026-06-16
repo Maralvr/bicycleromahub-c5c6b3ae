@@ -936,6 +936,14 @@ function MonthView({
                   </div>
                 )}
               </div>
+              {renderDayOverlay && (
+                <div
+                  className="mt-1.5 pt-1.5 border-t border-border/60"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {renderDayOverlay(iso)}
+                </div>
+              )}
             </div>
           );
         })}
