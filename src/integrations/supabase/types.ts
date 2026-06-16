@@ -443,6 +443,60 @@ export type Database = {
           },
         ]
       }
+      rental_point_day_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          notes: string | null
+          reminder_24h_sent_at: string | null
+          reminder_2h_sent_at: string | null
+          rental_point_id: string
+          rental_staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
+          rental_point_id: string
+          rental_staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          reminder_24h_sent_at?: string | null
+          reminder_2h_sent_at?: string | null
+          rental_point_id?: string
+          rental_staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_point_day_assignments_rental_point_id_fkey"
+            columns: ["rental_point_id"]
+            isOneToOne: false
+            referencedRelation: "rental_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_point_day_assignments_rental_staff_id_fkey"
+            columns: ["rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_points: {
         Row: {
           active: boolean
@@ -481,6 +535,99 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rental_staff: {
+        Row: {
+          active: boolean
+          avatar: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          avatar?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          avatar?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rental_staff_notifications: {
+        Row: {
+          archived_at: string | null
+          body: string
+          created_at: string
+          date: string | null
+          id: string
+          link: string | null
+          read: boolean
+          rental_point_id: string | null
+          rental_staff_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          archived_at?: string | null
+          body: string
+          created_at?: string
+          date?: string | null
+          id?: string
+          link?: string | null
+          read?: boolean
+          rental_point_id?: string | null
+          rental_staff_id: string
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+        }
+        Update: {
+          archived_at?: string | null
+          body?: string
+          created_at?: string
+          date?: string | null
+          id?: string
+          link?: string | null
+          read?: boolean
+          rental_point_id?: string | null
+          rental_staff_id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_notifications_rental_point_id_fkey"
+            columns: ["rental_point_id"]
+            isOneToOne: false
+            referencedRelation: "rental_points"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_staff_notifications_rental_staff_id_fkey"
+            columns: ["rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shift_dispatch_events: {
         Row: {
@@ -987,10 +1134,11 @@ export type Database = {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
       }
+      send_rental_point_reminders: { Args: never; Returns: number }
       send_shift_reminders: { Args: never; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "rental_staff"
       field_update_type:
         | "field"
         | "progress"
@@ -1142,7 +1290,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "rental_staff"],
       field_update_type: [
         "field",
         "progress",
