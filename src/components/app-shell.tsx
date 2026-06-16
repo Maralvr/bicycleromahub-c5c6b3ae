@@ -124,13 +124,27 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/15">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold truncate">{displayName}</div>
-              <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
-            </div>
+            <Link
+              to="/profile"
+              className="flex items-center gap-2.5 min-w-0 flex-1 group"
+              title="Edit my profile"
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={displayName}
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-border group-hover:ring-primary/50 transition"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
+                  {initials}
+                </div>
+              )}
+              <div className="min-w-0 flex-1 text-left">
+                <div className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{displayName}</div>
+                <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
+              </div>
+            </Link>
             <button
               onClick={() => void signOut()}
               title={t.shell.signOut}
