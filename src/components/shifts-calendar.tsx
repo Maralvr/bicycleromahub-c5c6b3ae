@@ -1378,13 +1378,16 @@ function ShiftDetailsDialog({
         )}
 
         {onAssign && (
-          <div className="mt-3 rounded-lg border border-border bg-card p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <UserPlus className="h-3.5 w-3.5 text-primary" />
-                {guide ? "Reassign guide" : "Assign a guide"}
-              </div>
-              {guide && onUnassign && (
+          <div className="mt-3 space-y-2">
+            <AssignGuideCombobox
+              shift={bookingRows[0] ?? s}
+              allStaff={staff}
+              allShifts={allShifts}
+              currentStaffId={pendingStaffId}
+              onSelect={(m) => setPendingStaffId(m.id)}
+            />
+            {guide && onUnassign && (
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="ghost"
@@ -1405,55 +1408,10 @@ function ShiftDetailsDialog({
                   }}
                 >
                   <UserMinus className="h-3.5 w-3.5 mr-1" />
-                  Unassign
+                  Unassign current guide
                 </Button>
-              )}
-            </div>
-            {assignableStaff.length > 5 && (
-              <div className="relative mb-2">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={guideSearch}
-                  onChange={(e) => setGuideSearch(e.target.value)}
-                  placeholder="Search guides…"
-                  className="h-9 pl-8 text-xs"
-                />
               </div>
             )}
-            <div className="max-h-64 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/60">
-              {assignableStaff.length === 0 ? (
-                <div className="p-3 text-xs text-muted-foreground italic">No guides available</div>
-              ) : filteredStaff.length === 0 ? (
-                <div className="p-3 text-xs text-muted-foreground italic">No matches</div>
-              ) : (
-                filteredStaff.map((m) => {
-                  const isCurrent = m.id === s.assignedStaffId;
-                  const isPending = m.id === pendingStaffId;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setPendingStaffId(m.id)}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-accent active:bg-accent ${
-                        isPending ? "bg-primary/10 ring-1 ring-primary/40" : isCurrent ? "bg-accent/50" : ""
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Avatar name={m.name} initials={m.avatar} size="sm" className="!h-6 !w-6 text-[10px] !rounded-full" />
-                        <span className="font-medium">
-                          {m.name}
-                          {m.role === "admin" ? " (admin)" : ""}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        {isPending && !isCurrent && <Badge className="text-[9px]">Selected</Badge>}
-                        {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
           </div>
         )}
         {onDelete && (
