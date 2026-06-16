@@ -59,12 +59,13 @@ type UnavailRow = {
 export function StaffStoreProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<StaffRow[]>([]);
   const [unavail, setUnavail] = useState<UnavailRow[]>([]);
+  const [avatars, setAvatars] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [staffRes, unavailRes] = await Promise.all([
+    const [staffRes, unavailRes, profilesRes] = await Promise.all([
       supabase
         .from("staff")
         .select("id, profile_id, name, avatar, role, email, active, status, phone, tags, languages, licenses")
@@ -72,12 +73,18 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
       supabase
         .from("staff_unavailability")
         .select("id, staff_id, date, all_day, from_time, to_time, reason"),
+      supabase.from("profiles").select("id, avatar_url"),
     ]);
     if (staffRes.error) setError(staffRes.error.message);
     else if (unavailRes.error) setError(unavailRes.error.message);
     else {
       setRows((staffRes.data ?? []) as StaffRow[]);
       setUnavail((unavailRes.data ?? []) as UnavailRow[]);
+      const map: Record<string, string | null> = {};
+      for (const p of (profilesRes.data ?? []) as { id: string; avatar_url: string | null }[]) {
+        map[p.id] = p.avatar_url;
+      }
+      setAvatars(map);
       setError(null);
     }
     setLoading(false);
@@ -109,6 +116,19 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
           setUnavail((prev) => prev.filter((r) => r.id !== oldRow.id));
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, (payload) => {
+        const newRow = payload.new as { id?: string; avatar_url?: string | null } | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if ((payload.eventType === "INSERT" || payload.eventType === "UPDATE") && newRow?.id) {
+          setAvatars((prev) => ({ ...prev, [newRow.id!]: newRow.avatar_url ?? null }));
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setAvatars((prev) => {
+            const next = { ...prev };
+            delete next[oldRow.id!];
+            return next;
+          });
+        }
+      })
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -134,6 +154,7 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
       isLive: true,
       name: r.name,
       avatar: r.avatar,
+      avatarUrl: r.profile_id ? (avatars[r.profile_id] ?? null) : null,
       role: r.role,
       email: r.email,
       active: r.active,
@@ -144,7 +165,7 @@ export function StaffStoreProvider({ children }: { children: ReactNode }) {
       phone: r.phone ?? "",
       unavailability: byStaff.get(r.id) ?? [],
     }));
-  }, [rows, unavail]);
+  }, [rows, unavail, avatars]);
 
   const setUnavailability: StaffStoreContextValue["setUnavailability"] = async (id, list) => {
     // Optimistic local update
