@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -1104,7 +1105,8 @@ function ShiftDetailsDialog({
   const [meetingPoint, setMeetingPoint] = useState(shift?.meetingPoint ?? "");
   const [rate, setRate] = useState<string>(shift?.rate != null ? String(shift.rate) : "");
   const [rateTitle, setRateTitle] = useState<string>(shift?.rateTitle ?? "");
-  const [savingDeparture, setSavingDeparture] = useState(false);
+  const [pendingStaffId, setPendingStaffId] = useState<string | null>(shift?.assignedStaffId ?? null);
+  const [saving, setSaving] = useState(false);
   const [guideSearch, setGuideSearch] = useState("");
   useEffect(() => {
     setDate(shift?.date ?? "");
@@ -1113,8 +1115,9 @@ function ShiftDetailsDialog({
     setMeetingPoint(shift?.meetingPoint ?? "");
     setRate(shift?.rate != null ? String(shift.rate) : "");
     setRateTitle(shift?.rateTitle ?? "");
+    setPendingStaffId(shift?.assignedStaffId ?? null);
     setGuideSearch("");
-  }, [shift?.id, shift?.date, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle]);
+  }, [shift?.id, shift?.date, shift?.startTime, shift?.endTime, shift?.meetingPoint, shift?.rate, shift?.rateTitle, shift?.assignedStaffId]);
 
   if (!shift) {
     return (
@@ -1167,25 +1170,29 @@ function ShiftDetailsDialog({
       await onUpdateDeparture(row.id, patch);
     }
   };
-  const handleSaveDeparture = async () => {
-    if (!onUpdateDeparture || !departureChanged) return;
-    setSavingDeparture(true);
+  const assignmentChanged =
+    !!pendingStaffId && pendingStaffId !== (s.assignedStaffId ?? null);
+  const hasChanges = departureChanged || assignmentChanged;
+  const persistAssignmentIfChanged = async () => {
+    if (!onAssign || !assignmentChanged || !pendingStaffId) return;
+    const member = staff.find((m) => m.id === pendingStaffId);
+    if (!member) return;
+    for (const row of bookingRows) {
+      await onAssign(row.id, pendingStaffId, member.name);
+    }
+  };
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    setSaving(true);
     try {
       await persistDepartureIfChanged();
+      await persistAssignmentIfChanged();
+      onClose();
     } finally {
-      setSavingDeparture(false);
+      setSaving(false);
     }
   };
-  const handleAssign = async (staffId: string) => {
-    if (!onAssign) return;
-    const member = staff.find((m) => m.id === staffId);
-    if (!member) return;
-    await persistDepartureIfChanged();
-    for (const row of bookingRows) {
-      await onAssign(row.id, staffId, member.name);
-    }
-    onClose();
-  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -1352,24 +1359,9 @@ function ShiftDetailsDialog({
                 className="h-9 text-xs"
               />
             </div>
-            <div className="mt-2 flex items-center justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 text-xs"
-                disabled={!departureChanged || savingDeparture}
-                onClick={handleSaveDeparture}
-              >
-                {savingDeparture ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
-            {departureChanged && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Changes will also be saved automatically when you assign a guide.
-              </p>
-            )}
           </div>
         )}
+
         {onAssign && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
@@ -1395,13 +1387,14 @@ function ShiftDetailsDialog({
               ) : (
                 filteredStaff.map((m) => {
                   const isCurrent = m.id === s.assignedStaffId;
+                  const isPending = m.id === pendingStaffId;
                   return (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => handleAssign(m.id)}
+                      onClick={() => setPendingStaffId(m.id)}
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-accent active:bg-accent ${
-                        isCurrent ? "bg-accent/50" : ""
+                        isPending ? "bg-primary/10 ring-1 ring-primary/40" : isCurrent ? "bg-accent/50" : ""
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -1411,13 +1404,37 @@ function ShiftDetailsDialog({
                           {m.role === "admin" ? " (admin)" : ""}
                         </span>
                       </span>
-                      {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
+                      <span className="flex items-center gap-1">
+                        {isPending && !isCurrent && <Badge className="text-[9px]">Selected</Badge>}
+                        {isCurrent && <Badge variant="secondary" className="text-[9px]">Current</Badge>}
+                      </span>
                     </button>
                   );
                 })
               )}
             </div>
           </div>
+        )}
+        {(onUpdateDeparture || onAssign) && (
+          <DialogFooter className="mt-3 gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
