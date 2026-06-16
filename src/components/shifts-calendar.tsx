@@ -216,6 +216,8 @@ export function ShiftsCalendar({
   onUpdateDeparture,
   showRates = true,
   onShiftClick,
+  renderDayOverlay,
+  renderDayDialogSection,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -223,6 +225,8 @@ export function ShiftsCalendar({
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
   onShiftClick?: (s: CalendarShift) => void;
+  renderDayOverlay?: (iso: string) => React.ReactNode;
+  renderDayDialogSection?: (iso: string) => React.ReactNode;
 }) {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState(() => new Date());
@@ -473,6 +477,7 @@ export function ShiftsCalendar({
             onOpenDay={setSelectedDay}
             onOpenShift={openShift}
             todayISO={todayISO}
+            renderDayOverlay={renderDayOverlay}
           />
         )}
       </div>
@@ -487,6 +492,7 @@ export function ShiftsCalendar({
           setSelectedDay(null);
           openShift(s);
         }}
+        renderDayDialogSection={renderDayDialogSection}
       />
       <ShiftDetailsDialog
         shift={selectedShift}
@@ -827,12 +833,14 @@ function MonthView({
   onOpenDay,
   onOpenShift,
   todayISO,
+  renderDayOverlay,
 }: {
   cursor: Date;
   shiftsByDate: Record<string, CalendarShift[]>;
   onOpenDay: (d: string) => void;
   onOpenShift: (s: CalendarShift) => void;
   todayISO: string;
+  renderDayOverlay?: (iso: string) => React.ReactNode;
 }) {
   const first = startOfMonth(cursor);
   const last = endOfMonth(cursor);
@@ -928,6 +936,14 @@ function MonthView({
                   </div>
                 )}
               </div>
+              {renderDayOverlay && (
+                <div
+                  className="mt-1.5 pt-1.5 border-t border-border/60"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {renderDayOverlay(iso)}
+                </div>
+              )}
             </div>
           );
         })}
@@ -943,6 +959,7 @@ function DayDetailsDialog({
   onClose,
   onOpenShift,
   showRates = true,
+  renderDayDialogSection,
 }: {
   dateISO: string | null;
   shifts: CalendarShift[];
@@ -950,6 +967,7 @@ function DayDetailsDialog({
   onClose: () => void;
   onOpenShift: (s: CalendarShift) => void;
   showRates?: boolean;
+  renderDayDialogSection?: (iso: string) => React.ReactNode;
 }) {
   const open = !!dateISO;
   const dateLabel = dateISO
@@ -971,6 +989,9 @@ function DayDetailsDialog({
             {shifts.length} {shifts.length === 1 ? "tour" : "tours"} scheduled
           </DialogDescription>
         </DialogHeader>
+        {dateISO && renderDayDialogSection && (
+          <div>{renderDayDialogSection(dateISO)}</div>
+        )}
         {shifts.length === 0 ? (
           <div className="text-sm text-muted-foreground italic py-8 text-center">
             No tours scheduled.

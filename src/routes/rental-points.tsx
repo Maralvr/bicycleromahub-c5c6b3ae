@@ -35,7 +35,7 @@ import { useRequireAdmin } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
-import { RentalStaffPanel } from "@/components/rental-staff-panel";
+import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 
 type RentalTab = "calendar" | "list";
 
@@ -439,35 +439,27 @@ function RentalBookingsView({
     }
   };
 
-  const today = new Date().toISOString().slice(0, 10);
-  const upcomingDates = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of scoped) {
-      if (s.date >= today) map.set(s.date, (map.get(s.date) ?? 0) + 1);
-    }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count }));
-  }, [scoped, today]);
+  const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
+    useRentalStaffBridge(pointId);
 
   return (
     <div className="mt-8">
-      {pointId && (
-        <RentalStaffPanel pointId={pointId} dates={upcomingDates} />
-      )}
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as RentalTab)}>
         <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
           <h2 className="text-lg font-semibold text-foreground">
             {pointId ? "Bookings" : "Rental bookings"}
           </h2>
-          <TabsList>
-            <TabsTrigger value="calendar">
-              <CalendarDays className="h-4 w-4 mr-1" /> Calendar
-            </TabsTrigger>
-            <TabsTrigger value="list">
-              <ListIcon className="h-4 w-4 mr-1" /> List
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            {pointId && ManageRosterButton}
+            <TabsList>
+              <TabsTrigger value="calendar">
+                <CalendarDays className="h-4 w-4 mr-1" /> Calendar
+              </TabsTrigger>
+              <TabsTrigger value="list">
+                <ListIcon className="h-4 w-4 mr-1" /> List
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="calendar" className="mt-0">
@@ -483,6 +475,8 @@ function RentalBookingsView({
               staff={staff}
               onAssign={handleAssign}
               onUpdateDeparture={handleUpdateDeparture}
+              renderDayOverlay={pointId ? renderDayOverlay : undefined}
+              renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
             />
           )}
         </TabsContent>
