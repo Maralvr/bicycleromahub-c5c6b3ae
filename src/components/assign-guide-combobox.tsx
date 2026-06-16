@@ -76,10 +76,14 @@ export function AssignGuideCombobox({
           className="p-0"
           align="start"
           style={{ width: "var(--radix-popover-trigger-width)" }}
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <Command>
             <CommandInput placeholder="Search guides by name…" className="h-9" />
-            <CommandList className="max-h-72">
+            <CommandList
+              className="max-h-[min(18rem,60vh)] overflow-y-auto overscroll-contain touch-pan-y"
+            >
               <CommandEmpty>No guide found.</CommandEmpty>
               <CommandGroup>
                 {sorted.map((m) => {
