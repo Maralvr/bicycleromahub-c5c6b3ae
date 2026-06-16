@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { startBokunImportFn, processBokunImportChunkFn } from "@/lib/bokun-import.functions";
 
-import { suggestStaffForShift, StaffSuggestion } from "@/lib/staff-matcher";
+import { suggestStaffForShift } from "@/lib/staff-matcher";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
@@ -37,7 +37,9 @@ import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { DispatchHistory } from "@/components/dispatch-history";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass } from "lucide-react";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, UserPlus, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { useEffect, useState } from "react";
@@ -768,6 +770,126 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
   );
 }
 
+function AssignGuideCombobox({
+  shift,
+  allStaff,
+  allShifts,
+  onAssign,
+}: {
+  shift: Shift;
+  allStaff: ReturnType<typeof useStaffStore>["staff"];
+  allShifts: Shift[];
+  onAssign: (shiftId: string, staffId: string, staffName: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length);
+  const byId = new Map(ranked.map((r) => [r.staff.id, r]));
+  const top = ranked[0];
+  const assignable = allStaff.filter((m) => m.role === "guide" || m.role === "admin");
+  const sorted = [...assignable].sort((a, b) => {
+    const sa = byId.get(a.id)?.score ?? -Infinity;
+    const sb = byId.get(b.id)?.score ?? -Infinity;
+    if (sa !== sb) return sb - sa;
+    return a.name.localeCompare(b.name);
+  });
+  return (
+    <div className="mt-4 p-3 rounded-lg border border-border/60 bg-card">
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[10px] uppercase tracking-wider font-bold text-primary">Assign a guide</span>
+        <span className="text-[10px] text-muted-foreground">— recommended highlighted in green</span>
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-between h-9 font-normal">
+            <span className="text-xs flex items-center gap-2 min-w-0">
+              <UserPlus className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {top
+                  ? `Pick a guide — ${top.staff.name} recommended`
+                  : "Pick a guide…"}
+              </span>
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0"
+          align="start"
+          style={{ width: "var(--radix-popover-trigger-width)" }}
+        >
+          <Command>
+            <CommandInput placeholder="Search guides by name…" className="h-9" />
+            <CommandList className="max-h-72">
+              <CommandEmpty>No guide found.</CommandEmpty>
+              <CommandGroup>
+                {sorted.map((m) => {
+                  const sg = byId.get(m.id);
+                  const isTop = !!sg && !!top && top.staff.id === m.id;
+                  const isRec = !!sg && sg.score > 0;
+                  return (
+                    <CommandItem
+                      key={m.id}
+                      value={m.name}
+                      onSelect={() => {
+                        onAssign(shift.id, m.id, m.name);
+                        setOpen(false);
+                      }}
+                      className={
+                        isRec
+                          ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
+                          : ""
+                      }
+                    >
+                      <Avatar name={m.name} initials={m.avatar} size="sm" className="!h-6 !w-6 mr-2" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-medium">{m.name}</span>
+                          {m.role === "admin" && (
+                            <Badge variant="secondary" className="text-[8px] h-4 px-1">admin</Badge>
+                          )}
+                          {isTop && (
+                            <Badge className="text-[8px] h-4 px-1.5 bg-emerald-600 hover:bg-emerald-600 text-white">
+                              Best fit
+                            </Badge>
+                          )}
+                          {isRec && !isTop && (
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] h-4 px-1.5 border-emerald-500/50 text-emerald-700 dark:text-emerald-400"
+                            >
+                              Recommended
+                            </Badge>
+                          )}
+                          {sg && (
+                            <span className="text-[10px] text-muted-foreground tabular-nums ml-auto">
+                              score {sg.score}
+                            </span>
+                          )}
+                        </div>
+                        {sg && (sg.reasons.length > 0 || sg.warnings.length > 0) && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {sg.reasons.join(" · ")}
+                            {sg.warnings.length > 0 && (
+                              <span className="text-warning-foreground"> · ⚠ {sg.warnings.join(", ")}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+
+
 function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
@@ -778,7 +900,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
     <div className="grid gap-4">
       {shifts.map((s) => {
         const guide = allStaff.find((p) => p.id === s.assignedStaffId);
-        const suggestions: StaffSuggestion[] = !pastView && !guide ? suggestStaffForShift(s, allStaff, allShifts, 3) : [];
+        // No precomputed suggestions: AssignGuideCombobox handles its own ranking.
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
         const shiftNotes = notesByShift?.[s.id] || [];
         const shiftSignatures = signaturesForShift(waiverSignatures, s);
@@ -870,60 +992,14 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 )}
 
-                {/* AI suggestions panel for unassigned shifts */}
+                {/* Assign-guide combobox for unassigned shifts */}
                 {!guide && !guideView && !pastView && (
-                  <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20">
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-primary">AI suggestions</span>
-                      <span className="text-[10px] text-muted-foreground">— top 3 by tags, languages, licenses & availability</span>
-                      {onOpenAssignDialog && (
-                        <button
-                          onClick={() => onOpenAssignDialog(s)}
-                          className="ml-auto text-[10px] font-semibold text-primary hover:underline"
-                        >
-                          See all candidates →
-                        </button>
-                      )}
-                    </div>
-                    {suggestions.length === 0 ? (
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs text-muted-foreground italic flex items-center gap-1.5">
-                          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                          No matching guide currently free.
-                        </div>
-                        {onOpenAssignDialog && (
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onOpenAssignDialog(s)}>
-                            Override manually
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {suggestions.map((sg, i) => (
-                          <div key={sg.staff.id} className={`flex items-center gap-2.5 p-2 rounded-md border ${i === 0 ? "bg-primary/5 border-primary/30" : "bg-card border-border/40"}`}>
-                            <Avatar name={sg.staff.name} initials={sg.staff.avatar} size="sm" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-semibold text-xs text-foreground">{sg.staff.name}</span>
-                                {i === 0 && <Badge className="text-[8px] uppercase tracking-wider h-4 px-1.5 bg-primary text-primary-foreground">Best fit</Badge>}
-                                <span className="text-[10px] text-muted-foreground tabular-nums">score {sg.score}</span>
-                              </div>
-                              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                                {sg.reasons.join(" · ")}
-                                {sg.warnings.length > 0 && (
-                                  <span className="text-warning-foreground"> · ⚠ {sg.warnings.join(", ")}</span>
-                                )}
-                              </div>
-                            </div>
-                            <Button size="sm" variant={i === 0 ? "default" : "outline"} className="h-7 text-xs px-2.5" onClick={() => onAssign(s.id, sg.staff.id, sg.staff.name)}>
-                              Assign
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <AssignGuideCombobox
+                    shift={s}
+                    allStaff={allStaff}
+                    allShifts={allShifts}
+                    onAssign={onAssign}
+                  />
                 )}
 
                 {onUpdateDeparture && !guideView && !pastView && (
