@@ -405,7 +405,7 @@ function RentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, updateShift, assignShift } = useRentalShifts();
+  const { shifts, loading, updateShift, assignShift, deleteShift } = useRentalShifts();
   const { staff } = useStaffStore();
 
   const scoped = useMemo(
@@ -418,6 +418,24 @@ function RentalBookingsView({
       await assignShift(shiftId, staffId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to assign");
+    }
+  };
+
+  const handleUnassign = async (shiftId: string) => {
+    try {
+      await assignShift(shiftId, null);
+      toast.success("Guide unassigned");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to unassign");
+    }
+  };
+
+  const handleDelete = async (shift: { id: string }) => {
+    try {
+      await deleteShift(shift.id);
+      toast.success("Booking deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
     }
   };
 
@@ -474,6 +492,8 @@ function RentalBookingsView({
               shifts={scoped}
               staff={staff}
               onAssign={handleAssign}
+              onUnassign={handleUnassign}
+              onDelete={handleDelete}
               onUpdateDeparture={handleUpdateDeparture}
               renderDayOverlay={pointId ? renderDayOverlay : undefined}
               renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
