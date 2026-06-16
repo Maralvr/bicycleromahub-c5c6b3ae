@@ -15,11 +15,43 @@ function hash(str: string) {
   return Math.abs(h);
 }
 
-export function Avatar({ name, initials, size = "md", className }: { name: string; initials: string; size?: "sm" | "md" | "lg"; className?: string }) {
+export function Avatar({
+  name,
+  initials,
+  imageUrl,
+  size = "md",
+  className,
+}: {
+  name: string;
+  initials: string;
+  imageUrl?: string | null;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
   const grad = palette[hash(name) % palette.length];
   const sz = { sm: "h-7 w-7 text-[10px]", md: "h-10 w-10 text-xs", lg: "h-14 w-14 text-base" }[size];
+  if (imageUrl) {
+    return (
+      <div
+        className={cn(
+          "rounded-xl overflow-hidden bg-muted flex items-center justify-center shadow-sm flex-shrink-0",
+          sz,
+          className,
+        )}
+      >
+        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+      </div>
+    );
+  }
   return (
-    <div className={cn("rounded-xl bg-gradient-to-br text-white font-bold flex items-center justify-center shadow-sm flex-shrink-0", grad, sz, className)}>
+    <div
+      className={cn(
+        "rounded-xl bg-gradient-to-br text-white font-bold flex items-center justify-center shadow-sm flex-shrink-0",
+        grad,
+        sz,
+        className,
+      )}
+    >
       {initials}
     </div>
   );
