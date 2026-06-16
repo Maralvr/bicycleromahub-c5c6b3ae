@@ -210,7 +210,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const { data: shifts, error: shErr } = await supabase
       .from("shifts")
       .select(
-        "id, tour_name, date, start_time, end_time, rate_title, adults, teens, infants, participants, customer_name, customer_phone, assigned_staff_id, rental_point_id",
+        "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id",
       )
       .in("rental_point_id", pointIds)
       .in("date", dates);
@@ -229,13 +229,20 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
       guidesById = new Map((guides ?? []).map((g) => [g.id, g]));
     }
 
-    const paxOf = (s: any) => {
+    const paxParts = (s: any) => {
       const p = s.participants;
+      let a = Number(s.adults ?? 0);
+      let t = Number(s.teens ?? 0);
+      let i = Number(s.infants ?? 0);
       if (p && typeof p === "object") {
-        const a = Number(p.adults ?? 0), t = Number(p.teens ?? 0), i = Number(p.infants ?? 0);
-        if (a + t + i > 0) return a + t + i;
+        const pa = Number(p.adults ?? 0), pt = Number(p.teens ?? 0), pi = Number(p.infants ?? 0);
+        if (pa + pt + pi > 0) {
+          a = pa;
+          t = pt;
+          i = pi;
+        }
       }
-      return (s.adults ?? 0) + (s.teens ?? 0) + (s.infants ?? 0);
+      return { adults: a, teens: t, infants: i, total: a + t + i };
     };
 
     const days: MyRentalDay[] = assigns.map((a: any) => {
@@ -254,17 +261,28 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         },
         bookings: ds
           .sort((x, y) => (x.start_time ?? "").localeCompare(y.start_time ?? ""))
-          .map((s) => ({
-            id: s.id,
-            tourName: s.tour_name ?? "",
-            startTime: (s.start_time ?? "").slice(0, 5),
-            endTime: s.end_time ? s.end_time.slice(0, 5) : null,
-            rateTitle: s.rate_title ?? null,
-            pax: paxOf(s),
-            customerName: s.customer_name ?? null,
-            customerPhone: s.customer_phone ?? null,
-            guide: s.assigned_staff_id ? guidesById.get(s.assigned_staff_id) ?? null : null,
-          })),
+          .map((s) => {
+            const parts = paxParts(s);
+            return {
+              id: s.id,
+              tourName: s.tour_name ?? "",
+              startTime: (s.start_time ?? "").slice(0, 5),
+              endTime: s.end_time ? s.end_time.slice(0, 5) : null,
+              rateTitle: s.rate_title ?? null,
+              meetingPoint: s.meeting_point ?? null,
+              pax: parts.total,
+              adults: parts.adults,
+              teens: parts.teens,
+              infants: parts.infants,
+              trailers: Number(s.trailers ?? 0),
+              customerName: s.customer_name ?? null,
+              customerPhone: s.customer_phone ?? null,
+              customerEmail: s.customer_email ?? null,
+              notes: s.notes ?? null,
+              bookingRef: s.channel_booking_ref ?? s.booking_id ?? null,
+              guide: s.assigned_staff_id ? guidesById.get(s.assigned_staff_id) ?? null : null,
+            };
+          }),
       };
     });
 
