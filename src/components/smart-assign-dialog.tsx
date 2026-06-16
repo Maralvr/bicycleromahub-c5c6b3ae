@@ -250,7 +250,7 @@ function CandidateRow({ c, isBest, onAssign }: { c: StaffCandidate; isBest: bool
           : "bg-muted/30 border-border/40 opacity-70",
       )}
     >
-      <Avatar name={c.staff.name} initials={c.staff.avatar} size="md" />
+      <Avatar name={c.staff.name} initials={c.staff.avatar} imageUrl={c.staff.avatarUrl} size="md" />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">

@@ -361,7 +361,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                             className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${picked ? "bg-success/15 border-success text-success-foreground" : "bg-success/5 border-success/30 hover:bg-success/10"}`}
                             title={c.reasons.join(" · ") || "Best fit"}
                           >
-                            <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                            <Avatar name={c.staff.name} initials={c.staff.avatar} imageUrl={c.staff.avatarUrl} size="sm" />
                             <span className="font-medium">{c.staff.name}</span>
                             <Badge variant="outline" className="h-4 px-1 text-[9px]">{Math.round(c.score)}</Badge>
                           </button>
@@ -389,7 +389,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                             className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${picked ? "bg-warning/15 border-warning" : "bg-card border-warning/30 hover:bg-warning/5"}`}
                             title={c.warnings.join(" · ")}
                           >
-                            <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                            <Avatar name={c.staff.name} initials={c.staff.avatar} imageUrl={c.staff.avatarUrl} size="sm" />
                             <span className="font-medium">{c.staff.name}</span>
                             <Badge variant="outline" className="h-4 px-1 text-[9px]">{Math.round(c.score)}</Badge>
                           </button>
@@ -412,7 +412,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                           className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground opacity-60 cursor-not-allowed line-through"
                           title={c.blockedReason ?? "Marked off"}
                         >
-                          <Avatar name={c.staff.name} initials={c.staff.avatar} size="sm" />
+                          <Avatar name={c.staff.name} initials={c.staff.avatar} imageUrl={c.staff.avatarUrl} size="sm" />
                           <span>{c.staff.name}</span>
                         </span>
                       ))}
@@ -457,7 +457,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                   </Badge>
                   {assignedGuide && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} size="sm" />
+                      <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} imageUrl={assignedGuide.avatarUrl} size="sm" />
                       <span className="font-medium">{assignedGuide.name}</span>
                     </div>
                   )}

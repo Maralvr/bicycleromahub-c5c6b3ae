@@ -895,7 +895,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   <div className="flex items-center gap-2 text-sm">
                     {guide ? (
                       <>
-                        <Avatar name={guide.name} initials={guide.avatar} size="sm" />
+                        <Avatar name={guide.name} initials={guide.avatar} imageUrl={guide.avatarUrl} size="sm" />
                         <span className="font-medium">{guide.name}</span>
                       </>
                     ) : (
