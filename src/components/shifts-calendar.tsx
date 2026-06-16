@@ -1096,6 +1096,8 @@ function ShiftDetailsDialog({
   staff,
   onClose,
   onAssign,
+  onUnassign,
+  onDelete,
   onUpdateDeparture,
   showRates = true,
 }: {
@@ -1103,6 +1105,8 @@ function ShiftDetailsDialog({
   staff: Staff[];
   onClose: () => void;
   onAssign?: AssignFn;
+  onUnassign?: (shiftId: string) => void | Promise<void>;
+  onDelete?: (shift: Shift) => void | Promise<void>;
   onUpdateDeparture?: UpdateDepartureFn;
   showRates?: boolean;
 }) {
