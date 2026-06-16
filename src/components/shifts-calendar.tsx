@@ -1358,24 +1358,9 @@ function ShiftDetailsDialog({
                 className="h-9 text-xs"
               />
             </div>
-            <div className="mt-2 flex items-center justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 text-xs"
-                disabled={!departureChanged || savingDeparture}
-                onClick={handleSaveDeparture}
-              >
-                {savingDeparture ? "Saving…" : "Save changes"}
-              </Button>
-            </div>
-            {departureChanged && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Changes will also be saved automatically when you assign a guide.
-              </p>
-            )}
           </div>
         )}
+
         {onAssign && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
             <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
