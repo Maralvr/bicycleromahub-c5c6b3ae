@@ -28,6 +28,7 @@ import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
 import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
+import { RateTitleField } from "@/components/rate-title-field";
 import { InvoiceDialog } from "@/components/invoice-dialog";
 import { ManualShiftDialog } from "@/components/manual-shift-dialog";
 import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
@@ -750,7 +751,7 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
         </div>
         <div className="flex-1 min-w-[200px] space-y-1">
           <Label htmlFor={`ov-lang-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
-          <Input id={`ov-lang-${shift.id}`} value={rateTitle} onChange={(e) => setRateTitle(e.target.value)} placeholder="e.g. Public tour in Spanish" className="h-9 text-xs" />
+          <RateTitleField id={`ov-lang-${shift.id}`} value={rateTitle} onChange={setRateTitle} className="h-9 text-xs" />
         </div>
         <Button size="sm" variant="outline" className="h-9 text-xs" disabled={!changed || saving} onClick={save}>
           {saving ? "Saving…" : "Save"}
