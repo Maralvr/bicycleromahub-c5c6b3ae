@@ -507,6 +507,8 @@ export function ShiftsCalendar({
         showRates={showRates}
         onClose={() => setSelectedShift(null)}
         onAssign={onAssign}
+        onUnassign={onUnassign}
+        onDelete={onDelete}
         onUpdateDeparture={onUpdateDeparture}
       />
     </Card>
