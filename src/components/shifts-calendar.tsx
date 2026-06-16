@@ -582,7 +582,7 @@ function ShiftChip({
             <span className={`ml-auto h-1.5 w-1.5 rounded-full ${meta.dot}`} />
           </div>
         )}
-        <div className="text-[11px] text-foreground font-semibold leading-tight line-clamp-2">
+        <div className="text-[11px] text-foreground font-semibold leading-tight break-words">
           {s.tourName}
         </div>
         {s.rateTitle && (
