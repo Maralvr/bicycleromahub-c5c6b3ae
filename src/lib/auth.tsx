@@ -19,6 +19,7 @@ type AuthContextValue = {
   profile: Profile | null;
   roles: AppRole[];
   isAdmin: boolean;
+  isRentalStaff: boolean;
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
