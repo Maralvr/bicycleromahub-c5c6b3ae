@@ -104,6 +104,79 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_comments: {
+        Row: {
+          author_initials: string | null
+          author_name: string
+          author_profile_id: string
+          created_at: string
+          field_update_id: string
+          id: string
+          message: string
+          updated_at: string
+        }
+        Insert: {
+          author_initials?: string | null
+          author_name: string
+          author_profile_id: string
+          created_at?: string
+          field_update_id: string
+          id?: string
+          message: string
+          updated_at?: string
+        }
+        Update: {
+          author_initials?: string | null
+          author_name?: string
+          author_profile_id?: string
+          created_at?: string
+          field_update_id?: string
+          id?: string
+          message?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_comments_field_update_id_fkey"
+            columns: ["field_update_id"]
+            isOneToOne: false
+            referencedRelation: "field_updates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          field_update_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          field_update_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          field_update_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_reactions_field_update_id_fkey"
+            columns: ["field_update_id"]
+            isOneToOne: false
+            referencedRelation: "field_updates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       field_updates: {
         Row: {
           attachments: Json
