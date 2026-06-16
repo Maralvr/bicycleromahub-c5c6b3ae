@@ -252,7 +252,7 @@ function MobileTabBar({
               key={item.to}
               to={item.to}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors active:scale-95",
+                "relative flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors active:scale-95",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
