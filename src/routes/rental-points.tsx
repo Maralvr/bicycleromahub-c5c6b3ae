@@ -492,6 +492,8 @@ function RentalBookingsView({
               shifts={scoped}
               staff={staff}
               onAssign={handleAssign}
+              onUnassign={handleUnassign}
+              onDelete={handleDelete}
               onUpdateDeparture={handleUpdateDeparture}
               renderDayOverlay={pointId ? renderDayOverlay : undefined}
               renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
