@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar } from "@/components/avatar";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -14,11 +15,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Plus, X, UserPlus, Users2, ChevronDown, ChevronRight } from "lucide-react";
+  Plus,
+  X,
+  UserPlus,
+  Users2,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  CalendarDays,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   assignRentalStaff,
@@ -45,9 +50,34 @@ type Assignment = {
   notes: string | null;
 };
 
-function fmtDate(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+export type DayInfo = { date: string; count: number };
+
+function parseDate(iso: string) {
+  return new Date(iso + "T00:00:00");
+}
+
+function fmtDay(iso: string) {
+  return parseDate(iso).toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function fmtNum(iso: string) {
+  return parseDate(iso).getDate();
+}
+
+function fmtMonth(iso: string) {
+  return parseDate(iso).toLocaleDateString(undefined, { month: "short" });
+}
+
+function fmtFull(iso: string) {
+  return parseDate(iso).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function isToday(iso: string) {
+  return iso === new Date().toISOString().slice(0, 10);
 }
 
 export function RentalStaffPanel({
@@ -55,8 +85,17 @@ export function RentalStaffPanel({
   dates,
 }: {
   pointId: string;
-  dates: string[]; // upcoming dates with bookings, sorted ascending
+  dates: DayInfo[] | string[];
 }) {
+  // Backward compat: accept string[] or {date,count}[]
+  const days: DayInfo[] = useMemo(
+    () =>
+      (dates as Array<string | DayInfo>).map((d) =>
+        typeof d === "string" ? { date: d, count: 0 } : d,
+      ),
+    [dates],
+  );
+
   const list = useServerFn(listRentalStaff);
   const listA = useServerFn(listAssignmentsForPoint);
   const assign = useServerFn(assignRentalStaff);
@@ -68,14 +107,15 @@ export function RentalStaffPanel({
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(true);
   const [showRoster, setShowRoster] = useState(false);
+  const [openDate, setOpenDate] = useState<string | null>(null);
 
   const range = useMemo(() => {
-    if (dates.length === 0) {
+    if (days.length === 0) {
       const today = new Date().toISOString().slice(0, 10);
       return { from: today, to: today };
     }
-    return { from: dates[0], to: dates[dates.length - 1] };
-  }, [dates]);
+    return { from: days[0].date, to: days[days.length - 1].date };
+  }, [days]);
 
   const reload = async () => {
     setLoading(true);
@@ -106,24 +146,29 @@ export function RentalStaffPanel({
     return map;
   }, [assignments]);
 
-  const handleAssign = async (date: string, staffId: string) => {
+  const handleToggle = async (date: string, staffId: string) => {
+    const existing = (byDate.get(date) ?? []).find(
+      (a) => a.rental_staff_id === staffId,
+    );
     try {
-      await assign({ data: { pointId, staffId, date } });
+      if (existing) {
+        await unassign({ data: { id: existing.id } });
+      } else {
+        await assign({ data: { pointId, staffId, date } });
+      }
       await reload();
-      toast.success("Assigned");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to assign");
+      toast.error(e instanceof Error ? e.message : "Failed to update");
     }
   };
 
-  const handleUnassign = async (id: string) => {
-    try {
-      await unassign({ data: { id } });
-      await reload();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to unassign");
-    }
-  };
+  const totalAssigned = assignments.length;
+  const daysWithStaff = byDate.size;
+  const daysMissing = days.filter((d) => !(byDate.get(d.date)?.length)).length;
+
+  const visibleDays = days.slice(0, 21);
+  const openDay = openDate ? days.find((d) => d.date === openDate) : null;
+  const openDayAssigned = openDate ? byDate.get(openDate) ?? [] : [];
 
   return (
     <Card className="p-4 mb-4 border-border/60">
@@ -140,7 +185,16 @@ export function RentalStaffPanel({
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
           <Users2 className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-foreground text-sm">Rental-point staff on duty</h3>
+          <h3 className="font-semibold text-foreground text-sm">
+            Rental-point staff on duty
+          </h3>
+          {collapsed && days.length > 0 && (
+            <span className="text-[11px] text-muted-foreground ml-1">
+              {daysMissing > 0
+                ? `${daysMissing} day${daysMissing === 1 ? "" : "s"} need staff`
+                : `All ${days.length} day${days.length === 1 ? "" : "s"} covered`}
+            </span>
+          )}
         </button>
         {!collapsed && (
           <Button size="sm" variant="outline" onClick={() => setShowRoster(true)}>
@@ -149,86 +203,123 @@ export function RentalStaffPanel({
         )}
       </div>
 
-      {!collapsed && (
-        loading ? (
+      {!collapsed &&
+        (loading ? (
           <div className="text-xs text-muted-foreground py-2">Loading…</div>
-        ) : dates.length === 0 ? (
+        ) : days.length === 0 ? (
           <div className="text-xs text-muted-foreground py-2">
             No upcoming bookings on this point yet.
           </div>
         ) : (
-          <div className="grid gap-2">
-            {dates.slice(0, 30).map((date) => {
-              const assigned = byDate.get(date) ?? [];
-              const remaining = staff.filter(
-                (s) => s.active && !assigned.some((a) => a.rental_staff_id === s.id),
-              );
-              return (
-                <div
-                  key={date}
-                  className="flex items-center gap-2 flex-wrap py-1.5 border-b border-border/40 last:border-b-0"
-                >
-                  <span className="text-xs font-medium text-foreground w-28 shrink-0">
-                    {fmtDate(date)}
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                    {assigned.map((a) => {
-                      const s = staff.find((x) => x.id === a.rental_staff_id);
-                      if (!s) return null;
-                      return (
-                        <span
-                          key={a.id}
-                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary pl-1 pr-2 py-0.5 text-xs"
-                        >
-                          <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-4 !w-4 text-[8px]" />
-                          {s.name}
-                          <button
-                            onClick={() => handleUnassign(a.id)}
-                            className="ml-0.5 hover:text-destructive"
-                            aria-label="Remove"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+          <>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-2">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                {days.length} upcoming day{days.length === 1 ? "" : "s"}
+              </span>
+              <span>·</span>
+              <span>
+                {daysWithStaff}/{days.length} covered
+              </span>
+              <span>·</span>
+              <span>{totalAssigned} assignments</span>
+            </div>
+
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
+              {visibleDays.map((d) => {
+                const assigned = byDate.get(d.date) ?? [];
+                const missing = assigned.length === 0;
+                const today = isToday(d.date);
+                return (
+                  <button
+                    key={d.date}
+                    type="button"
+                    onClick={() => setOpenDate(d.date)}
+                    className={cn(
+                      "group relative flex flex-col items-stretch gap-1.5 rounded-lg border p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5",
+                      missing
+                        ? "border-dashed border-border/70 bg-muted/30 hover:border-primary/60"
+                        : "border-primary/30 bg-primary/[0.04] hover:border-primary/60",
+                      today && "ring-1 ring-primary/40",
+                    )}
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                          {fmtDay(d.date)}
                         </span>
-                      );
-                    })}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs"
-                          disabled={remaining.length === 0}
-                        >
-                          <Plus className="h-3 w-3 mr-1" /> Add
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-1" align="start">
-                        {remaining.length === 0 ? (
-                          <div className="text-xs text-muted-foreground p-2">
-                            {staff.length === 0 ? "Add staff to the roster first." : "All staff already assigned."}
-                          </div>
-                        ) : (
-                          remaining.map((s) => (
-                            <button
-                              key={s.id}
-                              onClick={() => handleAssign(date, s.id)}
-                              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left"
-                            >
-                              <Avatar name={s.name} initials={s.avatar} size="sm" className="!h-5 !w-5 text-[9px]" />
-                              <span className="truncate">{s.name}</span>
-                            </button>
-                          ))
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
-      )}
+                        <span className="text-base font-bold text-foreground leading-none">
+                          {fmtNum(d.date)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {fmtMonth(d.date)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {d.count > 0 && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {d.count} booking{d.count === 1 ? "" : "s"}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-1 min-h-5">
+                      {assigned.length === 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Plus className="h-3 w-3" /> Assign
+                        </span>
+                      ) : (
+                        <div className="flex -space-x-1.5">
+                          {assigned.slice(0, 3).map((a) => {
+                            const s = staff.find(
+                              (x) => x.id === a.rental_staff_id,
+                            );
+                            if (!s) return null;
+                            return (
+                              <Avatar
+                                key={a.id}
+                                name={s.name}
+                                initials={s.avatar}
+                                size="sm"
+                                className="!h-5 !w-5 text-[8px] ring-2 ring-background"
+                              />
+                            );
+                          })}
+                          {assigned.length > 3 && (
+                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[9px] font-medium ring-2 ring-background">
+                              +{assigned.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {days.length > visibleDays.length && (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                + {days.length - visibleDays.length} more day
+                {days.length - visibleDays.length === 1 ? "" : "s"} not shown
+              </div>
+            )}
+          </>
+        ))}
+
+      <DayAssignDialog
+        open={!!openDate}
+        onClose={() => setOpenDate(null)}
+        date={openDate}
+        bookingCount={openDay?.count ?? 0}
+        staff={staff}
+        assigned={openDayAssigned}
+        onToggle={(staffId) => openDate && handleToggle(openDate, staffId)}
+        onManageRoster={() => {
+          setOpenDate(null);
+          setShowRoster(true);
+        }}
+      />
 
       <RosterDialog
         open={showRoster}
@@ -245,6 +336,105 @@ export function RentalStaffPanel({
         }}
       />
     </Card>
+  );
+}
+
+function DayAssignDialog({
+  open,
+  onClose,
+  date,
+  bookingCount,
+  staff,
+  assigned,
+  onToggle,
+  onManageRoster,
+}: {
+  open: boolean;
+  onClose: () => void;
+  date: string | null;
+  bookingCount: number;
+  staff: RentalStaff[];
+  assigned: Assignment[];
+  onToggle: (staffId: string) => void | Promise<void>;
+  onManageRoster: () => void;
+}) {
+  const active = staff.filter((s) => s.active);
+  const isAssigned = (id: string) =>
+    assigned.some((a) => a.rental_staff_id === id);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{date ? fmtFull(date) : "Assign staff"}</DialogTitle>
+          <DialogDescription>
+            {bookingCount > 0
+              ? `${bookingCount} booking${bookingCount === 1 ? "" : "s"} on this day. Tap a staff member to toggle.`
+              : "Tap a staff member to toggle their assignment."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {active.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">
+            No staff in the roster yet.
+            <div className="mt-3">
+              <Button size="sm" variant="outline" onClick={onManageRoster}>
+                <UserPlus className="h-4 w-4 mr-1" /> Add staff
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1.5 max-h-80 overflow-auto">
+            {active.map((s) => {
+              const on = isAssigned(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onToggle(s.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-md border text-left transition-colors",
+                    on
+                      ? "bg-primary/10 border-primary/40 hover:bg-primary/15"
+                      : "border-border/60 hover:bg-accent",
+                  )}
+                >
+                  <Avatar name={s.name} initials={s.avatar} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">
+                      {s.name}
+                    </div>
+                    {(s.email || s.phone) && (
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {s.email || s.phone}
+                      </div>
+                    )}
+                  </div>
+                  {on ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-primary font-medium">
+                      <Check className="h-3.5 w-3.5" /> On duty
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Plus className="h-3.5 w-3.5" /> Assign
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="ghost" size="sm" onClick={onManageRoster}>
+            <UserPlus className="h-4 w-4 mr-1" /> Manage roster
+          </Button>
+          <Button size="sm" onClick={onClose}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -288,13 +478,16 @@ function RosterDialog({
         <DialogHeader>
           <DialogTitle>Rental-point staff roster</DialogTitle>
           <DialogDescription>
-            People who work at the rental points. They sign in with their email and see the days they're scheduled.
+            People who work at the rental points. They sign in with their email
+            and see the days they're scheduled.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 max-h-60 overflow-auto">
           {staff.length === 0 ? (
-            <div className="text-xs text-muted-foreground py-4 text-center">No staff yet.</div>
+            <div className="text-xs text-muted-foreground py-4 text-center">
+              No staff yet.
+            </div>
           ) : (
             staff.map((s) => (
               <div
@@ -324,16 +517,38 @@ function RosterDialog({
           </div>
           <div className="space-y-2">
             <div>
-              <Label htmlFor="rs-name" className="text-xs">Name *</Label>
-              <Input id="rs-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9" />
+              <Label htmlFor="rs-name" className="text-xs">
+                Name *
+              </Label>
+              <Input
+                id="rs-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9"
+              />
             </div>
             <div>
-              <Label htmlFor="rs-email" className="text-xs">Email (for sign-in)</Label>
-              <Input id="rs-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-9" />
+              <Label htmlFor="rs-email" className="text-xs">
+                Email (for sign-in)
+              </Label>
+              <Input
+                id="rs-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-9"
+              />
             </div>
             <div>
-              <Label htmlFor="rs-phone" className="text-xs">Phone</Label>
-              <Input id="rs-phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-9" />
+              <Label htmlFor="rs-phone" className="text-xs">
+                Phone
+              </Label>
+              <Input
+                id="rs-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-9"
+              />
             </div>
           </div>
         </div>
