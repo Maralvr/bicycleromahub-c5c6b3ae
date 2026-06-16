@@ -201,27 +201,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           </div>
-          <nav className="flex overflow-x-auto px-2 gap-1.5 pb-2 pt-1 scrollbar-none">
-            {nav.map((item) => {
-              const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex-shrink-0 flex flex-col items-center justify-center gap-1 min-w-[68px] px-3 py-2 text-[11px] font-semibold rounded-lg border transition-all active:scale-95",
-                    active
-                      ? "bg-primary text-primary-foreground border-primary shadow-[var(--shadow-elegant)]"
-                      : "bg-card text-muted-foreground border-border/60 hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="leading-none">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
         </header>
         {isAdmin && (
           <div className="sticky top-0 md:top-0 z-10 flex justify-end px-4 md:px-10 pt-3 md:pt-4">
@@ -235,7 +214,104 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         )}
-        <main className="flex-1 p-5 md:p-10 overflow-x-hidden max-w-[1400px] w-full">{children}</main>
+        <main className="flex-1 p-5 md:p-10 overflow-x-hidden max-w-[1400px] w-full pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10">
+          {children}
+        </main>
+
+        {/* Mobile bottom tab bar */}
+        <MobileTabBar nav={nav} pathname={location.pathname} />
+      </div>
+    </div>
+  );
+}
+
+function MobileTabBar({
+  nav,
+  pathname,
+}: {
+  nav: { to: string; label: string; icon: typeof LayoutDashboard }[];
+  pathname: string;
+}) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primary = nav.slice(0, 4);
+  const overflow = nav.slice(4);
+  const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
+  const overflowActive = overflow.some((i) => isActive(i.to));
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-30 glass border-t border-border/60 pb-[env(safe-area-inset-bottom)]"
+      aria-label="Primary"
+    >
+      <div className="grid grid-cols-5 h-16">
+        {primary.map((item) => {
+          const active = isActive(item.to);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors active:scale-95",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+              <span className="leading-none truncate max-w-[64px]">{item.label}</span>
+              {active && <span className="absolute top-0 h-0.5 w-10 rounded-b-full bg-primary" />}
+            </Link>
+          );
+        })}
+        {overflow.length > 0 ? (
+          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+            <SheetTrigger asChild>
+              <button
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors active:scale-95",
+                  overflowActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+                aria-label="More"
+              >
+                <MoreHorizontal className="h-5 w-5" />
+                <span className="leading-none">More</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <SheetHeader>
+                <SheetTitle>More</SheetTitle>
+              </SheetHeader>
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                {overflow.map((item) => {
+                  const active = isActive(item.to);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 px-2 py-3 rounded-xl border text-xs font-semibold transition-all active:scale-95",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-foreground border-border/60 hover:bg-accent",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-center leading-tight">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <div />
+        )}
+      </div>
+    </nav>
+  );
+}
+
       </div>
     </div>
   );
