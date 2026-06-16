@@ -1376,9 +1376,35 @@ function ShiftDetailsDialog({
 
         {onAssign && (
           <div className="mt-3 rounded-lg border border-border bg-card p-3">
-            <div className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-              <UserPlus className="h-3.5 w-3.5 text-primary" />
-              {guide ? "Reassign guide" : "Assign a guide"}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <UserPlus className="h-3.5 w-3.5 text-primary" />
+                {guide ? "Reassign guide" : "Assign a guide"}
+              </div>
+              {guide && onUnassign && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!confirm(`Remove ${guide.name} from this booking?`)) return;
+                    setSaving(true);
+                    try {
+                      for (const row of bookingRows) {
+                        await onUnassign(row.id);
+                      }
+                      onClose();
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  <UserMinus className="h-3.5 w-3.5 mr-1" />
+                  Unassign
+                </Button>
+              )}
             </div>
             {assignableStaff.length > 5 && (
               <div className="relative mb-2">
@@ -1424,6 +1450,46 @@ function ShiftDetailsDialog({
                   );
                 })
               )}
+            </div>
+          </div>
+        )}
+        {onDelete && (
+          <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs">
+                <div className="font-semibold text-destructive flex items-center gap-1.5">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {bookingRows.length > 1 ? `Delete ${bookingRows.length} bookings` : "Delete booking"}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  This permanently removes the booking. Cannot be undone.
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={saving}
+                onClick={async () => {
+                  const label = bookingRows.length > 1
+                    ? `Delete all ${bookingRows.length} bookings for ${s.tourName} on ${s.date} at ${s.startTime}?`
+                    : `Delete this booking?\n\n${s.tourName} — ${s.date} ${s.startTime}`;
+                  if (!confirm(`${label}\n\nThis cannot be undone.`)) return;
+                  setSaving(true);
+                  try {
+                    for (const row of bookingRows) {
+                      await onDelete(row);
+                    }
+                    onClose();
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete
+              </Button>
             </div>
           </div>
         )}
