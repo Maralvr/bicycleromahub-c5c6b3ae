@@ -43,7 +43,7 @@ export const upsertRentalStaff = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    const row: Record<string, unknown> = {
+    const row = {
       name: data.name.trim(),
       email: data.email?.trim() || null,
       phone: data.phone?.trim() || null,
