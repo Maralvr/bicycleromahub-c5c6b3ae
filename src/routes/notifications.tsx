@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { Attachment } from "@/lib/mock-data";
 import { useNotesStore } from "@/lib/notes-store";
+import { BroadcastInteractions } from "@/components/broadcast-interactions";
 import { supabase } from "@/integrations/supabase/client";
 import {
   processFiles,
@@ -614,6 +615,9 @@ function NotificationsPage() {
                                 </div>
                               )}
                             </div>
+                            {u.type === "broadcast" && (
+                              <BroadcastInteractions fieldUpdateId={u.id} />
+                            )}
                           </div>
                         </div>
                       );
