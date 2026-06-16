@@ -1324,11 +1324,10 @@ function ShiftDetailsDialog({
             </div>
             <div className="mt-2 space-y-1">
               <Label htmlFor="ov-lang" className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
-              <Input
+              <RateTitleField
                 id="ov-lang"
                 value={rateTitle}
-                onChange={(e) => setRateTitle(e.target.value)}
-                placeholder="e.g. Public tour in Spanish"
+                onChange={setRateTitle}
                 className="h-9 text-xs"
               />
             </div>
