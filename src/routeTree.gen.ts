@@ -15,6 +15,7 @@ import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
@@ -56,6 +57,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RentalPointsRoute = RentalPointsRouteImport.update({
   id: '/rental-points',
   path: '/rental-points',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayoutsRoute = PayoutsRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
+  '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
+  '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
   '/payouts': typeof PayoutsRoute
+  '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
+    | '/profile'
     | '/rental-points'
     | '/reset-password'
     | '/shifts'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
+    | '/profile'
     | '/rental-points'
     | '/reset-password'
     | '/shifts'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/live-shifts'
     | '/notifications'
     | '/payouts'
+    | '/profile'
     | '/rental-points'
     | '/reset-password'
     | '/shifts'
@@ -255,6 +267,7 @@ export interface RootRouteChildren {
   LiveShiftsRoute: typeof LiveShiftsRoute
   NotificationsRoute: typeof NotificationsRoute
   PayoutsRoute: typeof PayoutsRoute
+  ProfileRoute: typeof ProfileRoute
   RentalPointsRoute: typeof RentalPointsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ShiftsRoute: typeof ShiftsRoute
@@ -309,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/rental-points'
       fullPath: '/rental-points'
       preLoaderRoute: typeof RentalPointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payouts': {
@@ -407,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveShiftsRoute: LiveShiftsRoute,
   NotificationsRoute: NotificationsRoute,
   PayoutsRoute: PayoutsRoute,
+  ProfileRoute: ProfileRoute,
   RentalPointsRoute: RentalPointsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ShiftsRoute: ShiftsRoute,
