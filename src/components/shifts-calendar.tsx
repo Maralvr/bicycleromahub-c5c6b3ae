@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar } from "@/components/avatar";
 import { RateTitleField } from "@/components/rate-title-field";
+import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
 import { Shift, Staff } from "@/lib/mock-data";
 import {
   ChevronLeft,
