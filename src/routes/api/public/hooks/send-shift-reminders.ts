@@ -46,6 +46,7 @@ export const Route = createFileRoute("/api/public/hooks/send-shift-reminders")({
 
         return Response.json({
           reminders: sent ?? 0,
+          rentalReminders: rentalSent ?? 0,
           push: { sent: pushSent, failed: pushFailed, expired: pushExpired },
         });
       },
