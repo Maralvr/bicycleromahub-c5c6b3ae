@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, X, UserPlus, Users2 } from "lucide-react";
+import { Plus, X, UserPlus, Users2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   assignRentalStaff,
