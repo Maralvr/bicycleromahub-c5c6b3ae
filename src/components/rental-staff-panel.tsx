@@ -225,78 +225,117 @@ export function RentalStaffPanel({
               <span>{totalAssigned} assignments</span>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(118px,1fr))] gap-2.5">
               {visibleDays.map((d) => {
                 const assigned = byDate.get(d.date) ?? [];
                 const missing = assigned.length === 0;
                 const today = isToday(d.date);
+                const weekend = [0, 6].includes(parseDate(d.date).getDay());
                 return (
                   <button
                     key={d.date}
                     type="button"
                     onClick={() => setOpenDate(d.date)}
                     className={cn(
-                      "group relative flex flex-col items-stretch gap-1.5 rounded-lg border p-2 text-left transition-all hover:shadow-sm hover:-translate-y-0.5",
+                      "group relative flex flex-col items-stretch overflow-hidden rounded-xl border text-left transition-all duration-200",
+                      "hover:-translate-y-0.5 hover:shadow-md",
                       missing
-                        ? "border-dashed border-border/70 bg-muted/30 hover:border-primary/60"
-                        : "border-primary/30 bg-primary/[0.04] hover:border-primary/60",
-                      today && "ring-1 ring-primary/40",
+                        ? "border-dashed border-border bg-card hover:border-primary/50 hover:bg-primary/[0.02]"
+                        : "border-transparent bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-sm hover:shadow-primary/20",
+                      today && "ring-2 ring-primary ring-offset-1 ring-offset-background",
                     )}
                   >
-                    <div className="flex items-baseline justify-between">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-                          {fmtDay(d.date)}
-                        </span>
-                        <span className="text-base font-bold text-foreground leading-none">
-                          {fmtNum(d.date)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {fmtMonth(d.date)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {d.count > 0 && (
-                      <div className="text-[10px] text-muted-foreground">
-                        {d.count} booking{d.count === 1 ? "" : "s"}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-1 min-h-5">
-                      {assigned.length === 0 ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Plus className="h-3 w-3" /> Assign
-                        </span>
-                      ) : (
-                        <div className="flex -space-x-1.5">
-                          {assigned.slice(0, 3).map((a) => {
-                            const s = staff.find(
-                              (x) => x.id === a.rental_staff_id,
-                            );
-                            if (!s) return null;
-                            return (
-                              <Avatar
-                                key={a.id}
-                                name={s.name}
-                                initials={s.avatar}
-                                size="sm"
-                                className="!h-5 !w-5 text-[8px] ring-2 ring-background"
-                              />
-                            );
-                          })}
-                          {assigned.length > 3 && (
-                            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[9px] font-medium ring-2 ring-background">
-                              +{assigned.length - 3}
-                            </span>
-                          )}
-                        </div>
+                    {/* Top accent bar — status at a glance */}
+                    <div
+                      className={cn(
+                        "h-1 w-full",
+                        missing
+                          ? "bg-muted"
+                          : "bg-gradient-to-r from-primary to-primary/60",
                       )}
+                    />
+
+                    <div className="flex flex-col gap-2 p-2.5">
+                      {/* Date block */}
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex flex-col leading-none">
+                          <span
+                            className={cn(
+                              "text-[10px] uppercase tracking-wider font-semibold",
+                              today
+                                ? "text-primary"
+                                : weekend
+                                  ? "text-foreground/60"
+                                  : "text-muted-foreground",
+                            )}
+                          >
+                            {today ? "Today" : fmtDay(d.date)}
+                          </span>
+                          <span className="mt-0.5 text-2xl font-bold tabular-nums text-foreground leading-none tracking-tight">
+                            {fmtNum(d.date)}
+                          </span>
+                          <span className="mt-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
+                            {fmtMonth(d.date)}
+                          </span>
+                        </div>
+
+                        {d.count > 0 && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold tabular-nums",
+                              missing
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                                : "bg-primary/15 text-primary",
+                            )}
+                            title={`${d.count} booking${d.count === 1 ? "" : "s"}`}
+                          >
+                            {d.count}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Staff row */}
+                      <div className="flex items-center min-h-6 pt-1.5 border-t border-border/50">
+                        {assigned.length === 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">
+                            <Plus className="h-3 w-3" /> Assign staff
+                          </span>
+                        ) : (
+                          <>
+                            <div className="flex -space-x-1.5">
+                              {assigned.slice(0, 3).map((a) => {
+                                const s = staff.find(
+                                  (x) => x.id === a.rental_staff_id,
+                                );
+                                if (!s) return null;
+                                return (
+                                  <Avatar
+                                    key={a.id}
+                                    name={s.name}
+                                    initials={s.avatar}
+                                    size="sm"
+                                    className="!h-6 !w-6 text-[9px] ring-2 ring-background"
+                                  />
+                                );
+                              })}
+                              {assigned.length > 3 && (
+                                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/20 text-primary text-[9px] font-semibold ring-2 ring-background">
+                                  +{assigned.length - 3}
+                                </span>
+                              )}
+                            </div>
+                            <span className="ml-auto text-[10px] font-medium text-primary">
+                              {assigned.length} on duty
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
+
 
             {days.length > visibleDays.length && (
               <div className="mt-2 text-[11px] text-muted-foreground">
