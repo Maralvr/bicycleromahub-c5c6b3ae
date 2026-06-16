@@ -35,7 +35,7 @@ import { useRequireAdmin } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
-import { RentalStaffPanel } from "@/components/rental-staff-panel";
+import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 
 type RentalTab = "calendar" | "list";
 
