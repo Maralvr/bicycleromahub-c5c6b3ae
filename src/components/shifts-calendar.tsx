@@ -959,6 +959,7 @@ function DayDetailsDialog({
   onClose,
   onOpenShift,
   showRates = true,
+  renderDayDialogSection,
 }: {
   dateISO: string | null;
   shifts: CalendarShift[];
@@ -966,6 +967,7 @@ function DayDetailsDialog({
   onClose: () => void;
   onOpenShift: (s: CalendarShift) => void;
   showRates?: boolean;
+  renderDayDialogSection?: (iso: string) => React.ReactNode;
 }) {
   const open = !!dateISO;
   const dateLabel = dateISO
@@ -987,6 +989,9 @@ function DayDetailsDialog({
             {shifts.length} {shifts.length === 1 ? "tour" : "tours"} scheduled
           </DialogDescription>
         </DialogHeader>
+        {dateISO && renderDayDialogSection && (
+          <div>{renderDayDialogSection(dateISO)}</div>
+        )}
         {shifts.length === 0 ? (
           <div className="text-sm text-muted-foreground italic py-8 text-center">
             No tours scheduled.
