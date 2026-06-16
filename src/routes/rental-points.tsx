@@ -441,9 +441,13 @@ function RentalBookingsView({
 
   const today = new Date().toISOString().slice(0, 10);
   const upcomingDates = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of scoped) if (s.date >= today) set.add(s.date);
-    return Array.from(set).sort();
+    const map = new Map<string, number>();
+    for (const s of scoped) {
+      if (s.date >= today) map.set(s.date, (map.get(s.date) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
   }, [scoped, today]);
 
   return (
