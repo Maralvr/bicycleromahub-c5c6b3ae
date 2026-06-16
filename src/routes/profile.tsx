@@ -1,0 +1,247 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Loader2, User, Phone as PhoneIcon, Trash2 } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/profile")({
+  head: () => ({
+    meta: [
+      { title: "My profile · Bicycle Roma" },
+      { name: "description", content: "Edit your display name, phone number and profile photo." },
+    ],
+  }),
+  component: ProfilePage,
+});
+
+const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+
+function initialsFromName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "U";
+  const parts = trimmed.split(/\s+/);
+  const a = parts[0]?.[0] ?? "";
+  const b = parts.length > 1 ? parts[parts.length - 1][0] : parts[0]?.[1] ?? "";
+  return (a + b).toUpperCase();
+}
+
+function ProfilePage() {
+  const { user, profile, refresh, loading } = useAuth();
+  const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.display_name ?? "");
+      setPhone(profile.phone ?? "");
+      setAvatarUrl(profile.avatar_url ?? null);
+    }
+  }, [profile?.id, profile?.display_name, profile?.phone, profile?.avatar_url]);
+
+  if (loading || !user) {
+    return (
+      <AppShell>
+        <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+      </AppShell>
+    );
+  }
+
+  const handlePickFile = () => fileRef.current?.click();
+
+  const handleUpload = async (file: File) => {
+    if (!user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please pick an image file");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${user.id}/avatar-${Date.now()}.${ext || "jpg"}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(path, TEN_YEARS);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Could not sign URL");
+      const url = signed.signedUrl;
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: url })
+        .eq("id", user.id);
+      if (updErr) throw updErr;
+      setAvatarUrl(url);
+      await refresh();
+      toast.success("Photo updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", user.id);
+      if (error) throw error;
+      setAvatarUrl(null);
+      await refresh();
+      toast.success("Photo removed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    const name = displayName.trim();
+    if (!name) {
+      toast.error("Display name is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: name,
+          avatar_initials: initialsFromName(name),
+          phone: phone.trim() || null,
+        })
+        .eq("id", user.id);
+      if (error) throw error;
+      await refresh();
+      toast.success("Profile saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const initials = initialsFromName(displayName || profile?.display_name || user.email || "U");
+
+  return (
+    <AppShell>
+      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">My profile</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Update your display name, phone and profile photo. These are visible to your team.
+          </p>
+        </div>
+
+        <Card className="p-6 space-y-6">
+          {/* Avatar */}
+          <div className="flex items-center gap-5">
+            <div className="relative">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="h-24 w-24 rounded-full object-cover ring-2 ring-border"
+                />
+              ) : (
+                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-primary/60 text-primary-foreground flex items-center justify-center text-2xl font-bold ring-2 ring-border">
+                  {initials}
+                </div>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handlePickFile} disabled={uploading}>
+                <Camera className="h-4 w-4 mr-1.5" />
+                {avatarUrl ? "Change photo" : "Upload photo"}
+              </Button>
+              {avatarUrl && (
+                <Button type="button" variant="ghost" size="sm" onClick={handleRemovePhoto} disabled={uploading} className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Remove
+                </Button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleUpload(f);
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">JPG, PNG or GIF. Max 5 MB.</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-display-name" className="flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground" /> Display name
+            </Label>
+            <Input
+              id="profile-display-name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name"
+              maxLength={60}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-phone" className="flex items-center gap-1.5">
+              <PhoneIcon className="h-3.5 w-3.5 text-muted-foreground" /> Phone
+            </Label>
+            <Input
+              id="profile-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+39 …"
+              maxLength={30}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5 text-muted-foreground">
+              Email
+            </Label>
+            <Input value={user.email ?? ""} disabled />
+            <p className="text-[11px] text-muted-foreground">Email is managed by your sign-in provider.</p>
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-border/60">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </AppShell>
+  );
+}
