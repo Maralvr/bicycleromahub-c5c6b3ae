@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar } from "@/components/avatar";
+import { RateTitleField } from "@/components/rate-title-field";
 import { Shift, Staff } from "@/lib/mock-data";
 import {
   ChevronLeft,
