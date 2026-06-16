@@ -742,9 +742,49 @@ function NewTaskDialog({
                       : "Clear all"
                     : guideQuery.trim()
                       ? "Select filtered"
-                      : "Select all guides"}
+                      : "Select all"}
                 </Button>
               </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    assigneeIds.length === guideOptions.length && guideOptions.length > 0
+                      ? "default"
+                      : "outline"
+                  }
+                  className="h-8 text-xs"
+                  onClick={() => setAssigneeIds(guideOptions.map((g) => g.id))}
+                  disabled={guideOptions.length === 0}
+                >
+                  👥 Assign to everyone ({guideOptions.length})
+                </Button>
+                {currentStaffId && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => setAssigneeIds([currentStaffId])}
+                  >
+                    Just me
+                  </Button>
+                )}
+                {assigneeIds.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => setAssigneeIds([])}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -774,11 +814,13 @@ function NewTaskDialog({
                   })
                 )}
               </div>
-              {assigneeIds.length === guideOptions.length && guideOptions.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  This task will be created for every guide.
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {assigneeIds.length === guideOptions.length && guideOptions.length > 0
+                  ? "Every guide will receive a private copy. Each guide sees only their own; admins see all."
+                  : assigneeIds.length > 1
+                    ? `Each of the ${assigneeIds.length} selected guides gets a private copy — only they and admins can see it.`
+                    : "Only the assigned guide and admins will see this task."}
+              </p>
             </div>
           ) : (
             <div className="text-xs text-muted-foreground">
