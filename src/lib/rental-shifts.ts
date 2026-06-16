@@ -191,5 +191,18 @@ export function useRentalShifts() {
     [updateShift],
   );
 
-  return { shifts, loading, error, refresh: fetchAll, updateShift, assignShift };
+  const deleteShift = useCallback(
+    async (id: string) => {
+      // Optimistic local removal
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      const { error: err } = await supabase.from("shifts").delete().eq("id", id);
+      if (err) {
+        void fetchAll();
+        throw err;
+      }
+    },
+    [fetchAll],
+  );
+
+  return { shifts, loading, error, refresh: fetchAll, updateShift, assignShift, deleteShift };
 }
