@@ -197,7 +197,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const { data: assigns, error: aErr } = await supabase
       .from("rental_point_day_assignments")
       .select(
-        "id, date, notes, rental_point_id, rental_points (id, name, address, phone)",
+        "id, date, notes, status, pending_expires_at, rental_point_id, rental_points (id, name, address, phone)",
       )
       .eq("rental_staff_id", staffRow.id)
       .gte("date", from)
