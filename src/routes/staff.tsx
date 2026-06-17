@@ -251,6 +251,26 @@ function AdminStaffDirectory() {
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [nudging, setNudging] = useState(false);
+  const nudge = useServerFn(nudgeIncompleteProfiles);
+
+  const handleNudge = async () => {
+    setNudging(true);
+    try {
+      const res = await nudge({});
+      if (res.notified === 0) {
+        toast.success("Everyone's profile is complete 🎉");
+      } else {
+        toast.success(`Reminder sent to ${res.notified} ${res.notified === 1 ? "person" : "people"}`, {
+          description: `${res.push.sent} push notification(s) delivered`,
+        });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send reminders");
+    } finally {
+      setNudging(false);
+    }
+  };
 
   const derived = useMemo(() => {
     const map = new Map<string, ReturnType<typeof deriveStaffStatus>>();
