@@ -14,12 +14,14 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { Staff } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
-import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
+import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil, BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { deriveStaffStatus } from "@/lib/staff-status";
+import { useServerFn } from "@tanstack/react-start";
+import { nudgeIncompleteProfiles } from "@/lib/profile-nudge.functions";
 
 
 export const Route = createFileRoute("/staff")({
@@ -249,6 +251,26 @@ function AdminStaffDirectory() {
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
   const [openStaff, setOpenStaff] = useState<Staff | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [nudging, setNudging] = useState(false);
+  const nudge = useServerFn(nudgeIncompleteProfiles);
+
+  const handleNudge = async () => {
+    setNudging(true);
+    try {
+      const res = await nudge({});
+      if (res.notified === 0) {
+        toast.success("Everyone's profile is complete 🎉");
+      } else {
+        toast.success(`Reminder sent to ${res.notified} ${res.notified === 1 ? "person" : "people"}`, {
+          description: `${res.push.sent} push notification(s) delivered`,
+        });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send reminders");
+    } finally {
+      setNudging(false);
+    }
+  };
 
   const derived = useMemo(() => {
     const map = new Map<string, ReturnType<typeof deriveStaffStatus>>();
@@ -289,9 +311,15 @@ function AdminStaffDirectory() {
         title={t.staff.title}
         subtitle={t.staff.subtitle}
         actions={
-          <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={handleNudge} disabled={nudging}>
+              <BellRing className="h-4 w-4 mr-1" />
+              {nudging ? "Sending…" : "Nudge incomplete profiles"}
+            </Button>
+            <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
+            </Button>
+          </div>
         }
       />
 
