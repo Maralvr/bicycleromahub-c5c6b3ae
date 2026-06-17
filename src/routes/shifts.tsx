@@ -825,7 +825,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     {!pastView && s.status === "pending" && s.pendingExpiresAt && (
                       <PendingCountdown expiresAt={s.pendingExpiresAt} />
                     )}
-                    {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
+                    {!pastView && <WaiverStatusBadge signed={isSigned} />}
                   </div>
                 </div>
 
