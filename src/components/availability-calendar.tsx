@@ -144,7 +144,7 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
           const isPartial = unavail && !unavail.allDay;
 
           const cellClasses = cn(
-            "relative aspect-square rounded-md border text-xs p-1.5 flex flex-col items-start transition-all overflow-hidden",
+            "relative min-h-[56px] sm:min-h-0 sm:aspect-square rounded-md border text-xs p-1.5 flex flex-col items-start transition-all overflow-hidden",
             cell.outside ? "opacity-30" : "hover:border-primary/40",
             isToday && "ring-2 ring-primary/40",
             hasShift && "bg-primary/15 border-primary/40",
