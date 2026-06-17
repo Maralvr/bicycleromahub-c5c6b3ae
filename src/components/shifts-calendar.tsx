@@ -236,7 +236,23 @@ export function ShiftsCalendar({
   renderDayOverlay?: (iso: string) => React.ReactNode;
   renderDayDialogSection?: (iso: string) => React.ReactNode;
 }) {
-  const [view, setView] = useState<View>("week");
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setIsNarrow(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  const [view, setView] = useState<View>(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
+  ));
+  // On small screens, week/month grids are too cramped to read — force day view.
+  useEffect(() => {
+    if (isNarrow && view !== "day") setView("day");
+  }, [isNarrow, view]);
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
@@ -381,10 +397,10 @@ export function ShiftsCalendar({
                 <TabsTrigger value="day" className="text-xs">
                   Day
                 </TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">
+                <TabsTrigger value="week" className="text-xs hidden lg:inline-flex">
                   Week
                 </TabsTrigger>
-                <TabsTrigger value="month" className="text-xs">
+                <TabsTrigger value="month" className="text-xs hidden lg:inline-flex">
                   Month
                 </TabsTrigger>
               </TabsList>
