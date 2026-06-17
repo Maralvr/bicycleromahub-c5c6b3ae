@@ -838,7 +838,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 )}
 
-                {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
+                {!pastView && isAdminView && <WaiverSignersList signatures={shiftSignatures} />}
 
                 {s.customer && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs">
