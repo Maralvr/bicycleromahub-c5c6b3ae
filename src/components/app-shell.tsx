@@ -216,6 +216,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
         <main className="flex-1 p-5 md:p-10 overflow-x-hidden max-w-[1400px] w-full pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10">
+          <ProfileCompletionPrompt />
           {children}
         </main>
 
