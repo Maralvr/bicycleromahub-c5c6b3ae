@@ -1222,6 +1222,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      my_signed_waiver_shift_ids: { Args: never; Returns: string[] }
       next_invoice_number: { Args: { _year: number }; Returns: number }
       reject_rental_day: {
         Args: { _assignment_id: string; _reason?: string }
