@@ -38,6 +38,9 @@ type Assignment = {
   rental_staff_id: string;
   date: string;
   notes: string | null;
+  status: "pending" | "accepted" | null;
+  pending_expires_at: string | null;
+  rejection_reason: string | null;
 };
 
 /**
