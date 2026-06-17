@@ -27,7 +27,7 @@ import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
-import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
+import { useWaiverSignatures, signaturesForShift, useMySignedShiftIds } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { RateTitleField } from "@/components/rate-title-field";
 import { RentalStaffShiftsView } from "@/components/rental-staff-shifts-view";
