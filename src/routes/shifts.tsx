@@ -789,7 +789,8 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         // No precomputed suggestions: AssignGuideCombobox handles its own ranking.
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
         const shiftNotes = notesByShift?.[s.id] || [];
-        const shiftSignatures = signaturesForShift(waiverSignatures, s);
+        const shiftSignatures = isAdminView ? signaturesForShift(waiverSignatures, s) : [];
+        const isSigned = isAdminView ? shiftSignatures.length > 0 : signedShiftIds.has(s.id);
 
         return (
           <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${isUrgent ? "ring-1 ring-warning/20" : ""}`}>
