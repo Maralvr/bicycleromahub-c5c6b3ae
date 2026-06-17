@@ -36,7 +36,7 @@ export const Route = createFileRoute("/profile")({
 
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 
-const SUGGESTED_TAGS = ["e-bike", "vintage", "food-tour", "rental", "maintenance", "night-tour", "kids-friendly", "long-distance", "trailers", "VIP"];
+const SUGGESTED_TAGS = ["e-bike", "food-tour", "rental", "maintenance", "night-tour", "kids-friendly", "long-distance", "trailers", "VIP"];
 const SUGGESTED_LANGS = ["English", "Italian", "Spanish", "French", "German", "Portuguese", "Mandarin"];
 const SUGGESTED_LICENSES = ["Tour guide A", "Tour guide B", "Driver B", "First aid", "Mechanic L1", "Mechanic L2"];
 
