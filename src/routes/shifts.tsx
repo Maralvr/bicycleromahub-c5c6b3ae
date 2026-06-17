@@ -779,6 +779,8 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
   const { signatures: waiverSignatures } = useWaiverSignatures();
+  const { signedShiftIds } = useMySignedShiftIds();
+  const isAdminView = currentRole === "admin";
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
   return (
     <div className="grid gap-4">
