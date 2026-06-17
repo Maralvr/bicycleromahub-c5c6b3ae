@@ -255,6 +255,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         assignmentId: a.id,
         date: a.date,
         notes: a.notes ?? null,
+        status: (a.status ?? "accepted") as "pending" | "accepted",
+        pendingExpiresAt: a.pending_expires_at ?? null,
         rentalPoint: {
           id: a.rental_points?.id ?? a.rental_point_id,
           name: a.rental_points?.name ?? "",
