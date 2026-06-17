@@ -31,7 +31,7 @@ import {
 import { MapPin, Phone, Clock, Plus, Pencil, Trash2, CalendarDays, List as ListIcon, ArrowLeft, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-points";
-import { useRequireAdmin } from "@/lib/require-admin";
+import { useRequireAdminOrRental } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
