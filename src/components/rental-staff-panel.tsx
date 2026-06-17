@@ -137,14 +137,18 @@ export function useRentalStaffBridge(pointId: string | null) {
                   ? "ring-success"
                   : "ring-warning"; // pending (default)
               return (
-                <Avatar
+                <span
                   key={a.id}
-                  name={s.name}
-                  initials={s.avatar}
-                  size="sm"
-                  className={cn("!h-4 !w-4 text-[7px] ring-2", ring)}
+                  className={cn("inline-block rounded-full ring-2", ring)}
                   title={`${s.name} — ${a.status === "accepted" ? "accepted" : "awaiting response"}`}
-                />
+                >
+                  <Avatar
+                    name={s.name}
+                    initials={s.avatar}
+                    size="sm"
+                    className="!h-4 !w-4 text-[7px]"
+                  />
+                </span>
               );
             })}
             {assigned.length > 3 && (
