@@ -132,13 +132,18 @@ export function useRentalStaffBridge(pointId: string | null) {
             {assigned.slice(0, 3).map((a) => {
               const s = staff.find((x) => x.id === a.rental_staff_id);
               if (!s) return null;
+              const ring =
+                a.status === "accepted"
+                  ? "ring-success"
+                  : "ring-warning"; // pending (default)
               return (
                 <Avatar
                   key={a.id}
                   name={s.name}
                   initials={s.avatar}
                   size="sm"
-                  className="!h-4 !w-4 text-[7px] ring-1 ring-background"
+                  className={cn("!h-4 !w-4 text-[7px] ring-2", ring)}
+                  title={`${s.name} — ${a.status === "accepted" ? "accepted" : "awaiting response"}`}
                 />
               );
             })}
