@@ -397,7 +397,7 @@ export function ShiftsCalendar({
                 <TabsTrigger value="week" className="text-xs">
                   Week
                 </TabsTrigger>
-                <TabsTrigger value="month" className="text-xs hidden lg:inline-flex">
+                <TabsTrigger value="month" className="text-xs">
                   Month
                 </TabsTrigger>
               </TabsList>
