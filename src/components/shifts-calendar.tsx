@@ -939,6 +939,70 @@ function WeekViewMobile({
   );
 }
 
+function MonthViewMobile({
+  cursor,
+  shiftsByDate,
+  staff,
+  onOpenDay,
+  onOpenShift,
+  todayISO,
+}: {
+  cursor: Date;
+  shiftsByDate: Record<string, CalendarShift[]>;
+  staff: Staff[];
+  onOpenDay: (d: string) => void;
+  onOpenShift: (s: CalendarShift) => void;
+  todayISO: string;
+}) {
+  const first = startOfMonth(cursor);
+  const last = endOfMonth(cursor);
+  const days: Date[] = [];
+  for (let d = new Date(first); d <= last; d = addDays(d, 1)) days.push(new Date(d));
+  const hasAny = days.some((d) => (shiftsByDate[toISO(d)] || []).length > 0);
+
+  if (!hasAny) {
+    return (
+      <div className="text-sm text-muted-foreground italic py-12 text-center border border-dashed border-border rounded-lg">
+        No tours scheduled this month.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {days.map((d) => {
+        const iso = toISO(d);
+        const list = shiftsByDate[iso] || [];
+        if (list.length === 0) return null;
+        const isToday = iso === todayISO;
+        const label = d.toLocaleDateString(undefined, {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        });
+        return (
+          <section key={iso} className="space-y-2">
+            <button
+              type="button"
+              onClick={() => onOpenDay(iso)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md border text-left transition ${
+                isToday ? "bg-primary/5 border-primary/40" : "bg-card border-border/60"
+              }`}
+            >
+              <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
+                {label}
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {list.length} {list.length === 1 ? "tour" : "tours"}
+              </span>
+            </button>
+            <DayView dateISO={iso} shifts={list} staff={staff} onOpenShift={onOpenShift} />
+          </section>
+        );
+      })}
+    </div>
+  );
+}
 
 
 function MonthView({
