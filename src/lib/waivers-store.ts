@@ -81,3 +81,39 @@ export function waiverStatusForShift(
 ): WaiverStatus {
   return signaturesForShift(signatures, shift).length > 0 ? "signed" : "not_signed";
 }
+
+/**
+ * Guides cannot read waiver_signatures directly (PII). This hook calls a
+ * security-definer RPC that returns just the shift IDs the current guide is
+ * assigned to that have at least one signature on file — enough to render a
+ * signed/not-signed badge without exposing customer name/email/payload.
+ */
+export function useMySignedShiftIds() {
+  const [ids, setIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    const { data, error } = await supabase.rpc("my_signed_waiver_shift_ids" as never);
+    if (!error && Array.isArray(data)) {
+      setIds(new Set((data as unknown as string[]).filter(Boolean)));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const channel = supabase
+      .channel(`my-signed-waivers-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "waiver_signatures" },
+        () => void refresh(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  return { signedShiftIds: ids, loading, refresh };
+}
