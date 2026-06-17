@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 import { RentalNotificationBell } from "@/components/rental-notification-bell";
+import { ProfileCompletionPrompt } from "@/components/profile-completion-prompt";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 
