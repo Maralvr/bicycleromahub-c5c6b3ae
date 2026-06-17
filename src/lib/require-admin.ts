@@ -21,3 +21,20 @@ export function useRequireAdmin() {
 
   return { ready: !loading && isAuthenticated && isAdmin };
 }
+
+/** Allows admins and rental_staff users (rental-points view). */
+export function useRequireAdminOrRental() {
+  const { loading, isAuthenticated, isAdmin, isRentalStaff } = useAuth();
+  const navigate = useNavigate();
+  const allowed = isAdmin || isRentalStaff;
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) return;
+    if (!allowed) {
+      void navigate({ to: "/shifts", replace: true });
+    }
+  }, [loading, isAuthenticated, allowed, navigate]);
+
+  return { ready: !loading && isAuthenticated && allowed };
+}
