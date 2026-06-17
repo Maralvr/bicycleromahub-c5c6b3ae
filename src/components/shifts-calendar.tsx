@@ -249,9 +249,9 @@ export function ShiftsCalendar({
   const [view, setView] = useState<View>(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
   ));
-  // On small screens, week/month grids are too cramped to read — force day view.
+  // On small screens, the month grid is too cramped — force day if user lands there.
   useEffect(() => {
-    if (isNarrow && view !== "day") setView("day");
+    if (isNarrow && view === "month") setView("day");
   }, [isNarrow, view]);
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
