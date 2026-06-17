@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "rstaff_rental_staff_select" ON public.rental_staff;
