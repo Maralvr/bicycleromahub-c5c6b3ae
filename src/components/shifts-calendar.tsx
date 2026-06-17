@@ -501,7 +501,7 @@ export function ShiftsCalendar({
             todayISO={todayISO}
           />
         )}
-        {view === "month" && (
+        {view === "month" && !isNarrow && (
           <MonthView
             cursor={cursor}
             shiftsByDate={shiftsByDate}
@@ -509,6 +509,16 @@ export function ShiftsCalendar({
             onOpenShift={openShift}
             todayISO={todayISO}
             renderDayOverlay={renderDayOverlay}
+          />
+        )}
+        {view === "month" && isNarrow && (
+          <MonthViewMobile
+            cursor={cursor}
+            shiftsByDate={shiftsByDate}
+            staff={staff}
+            onOpenDay={setSelectedDay}
+            onOpenShift={openShift}
+            todayISO={todayISO}
           />
         )}
       </div>
