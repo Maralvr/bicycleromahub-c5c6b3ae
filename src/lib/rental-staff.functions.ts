@@ -336,3 +336,36 @@ export const markRentalNotificationRead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// -------------------- Accept / reject (rental staff) --------------------
+
+export const acceptRentalDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { assignmentId: string }) => {
+    if (!input?.assignmentId) throw new Error("assignmentId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("accept_rental_day" as never, {
+      _assignment_id: data.assignmentId,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const rejectRentalDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { assignmentId: string; reason?: string }) => {
+    if (!input?.assignmentId) throw new Error("assignmentId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("reject_rental_day" as never, {
+      _assignment_id: data.assignmentId,
+      _reason: data.reason?.trim() || null,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
