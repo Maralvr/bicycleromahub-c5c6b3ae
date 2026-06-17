@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { WaiverSignature } from "@/lib/waivers-store";
 
-export function WaiverStatusBadge({ signatures }: { signatures: WaiverSignature[] }) {
-  const signed = signatures.length > 0;
-  if (signed) {
+export function WaiverStatusBadge({ signatures, signed }: { signatures?: WaiverSignature[]; signed?: boolean }) {
+  const isSigned = typeof signed === "boolean" ? signed : (signatures?.length ?? 0) > 0;
+  if (isSigned) {
     return (
       <Badge className="bg-success/15 text-success-foreground border-success/40 text-[10px] uppercase tracking-wider font-bold gap-1">
         <CheckCircle2 className="h-3 w-3" /> Waiver signed

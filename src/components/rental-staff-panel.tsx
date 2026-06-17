@@ -38,6 +38,9 @@ type Assignment = {
   rental_staff_id: string;
   date: string;
   notes: string | null;
+  status: "pending" | "accepted" | null;
+  pending_expires_at: string | null;
+  rejection_reason: string | null;
 };
 
 /**
@@ -129,14 +132,23 @@ export function useRentalStaffBridge(pointId: string | null) {
             {assigned.slice(0, 3).map((a) => {
               const s = staff.find((x) => x.id === a.rental_staff_id);
               if (!s) return null;
+              const ring =
+                a.status === "accepted"
+                  ? "ring-success"
+                  : "ring-warning"; // pending (default)
               return (
-                <Avatar
+                <span
                   key={a.id}
-                  name={s.name}
-                  initials={s.avatar}
-                  size="sm"
-                  className="!h-4 !w-4 text-[7px] ring-1 ring-background"
-                />
+                  className={cn("inline-block rounded-full ring-2", ring)}
+                  title={`${s.name} — ${a.status === "accepted" ? "accepted" : "awaiting response"}`}
+                >
+                  <Avatar
+                    name={s.name}
+                    initials={s.avatar}
+                    size="sm"
+                    className="!h-4 !w-4 text-[7px]"
+                  />
+                </span>
               );
             })}
             {assigned.length > 3 && (
@@ -193,17 +205,25 @@ export function useRentalStaffBridge(pointId: string | null) {
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {active.map((s) => {
-                const on = assigned.some((a) => a.rental_staff_id === s.id);
+                const a = assigned.find((x) => x.rental_staff_id === s.id);
+                const on = !!a;
+                const status = a?.status ?? null;
+                const reason = a?.rejection_reason ?? null;
+                const tone =
+                  status === "accepted"
+                    ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
+                    : on
+                      ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
+                      : "bg-card border-border hover:bg-accent";
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => void handleToggle(iso, s.id)}
+                    title={reason ? `Last rejection: ${reason}` : undefined}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
-                      on
-                        ? "bg-primary/15 border-primary/40 text-primary hover:bg-primary/20"
-                        : "bg-card border-border hover:bg-accent",
+                      tone,
                     )}
                   >
                     <Avatar
@@ -213,11 +233,13 @@ export function useRentalStaffBridge(pointId: string | null) {
                       className="!h-4 !w-4 text-[8px]"
                     />
                     <span className="truncate max-w-32">{s.name}</span>
-                    {on ? (
-                      <Check className="h-3 w-3" />
-                    ) : (
-                      <Plus className="h-3 w-3 opacity-60" />
+                    {on && status === "accepted" && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
                     )}
+                    {on && status !== "accepted" && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
+                    )}
+                    {!on && <Plus className="h-3 w-3 opacity-60" />}
                   </button>
                 );
               })}

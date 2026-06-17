@@ -27,7 +27,7 @@ import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
 import { useNotesStore } from "@/lib/notes-store";
-import { useWaiverSignatures, signaturesForShift } from "@/lib/waivers-store";
+import { useWaiverSignatures, signaturesForShift, useMySignedShiftIds } from "@/lib/waivers-store";
 import { WaiverStatusBadge, WaiverSignersList } from "@/components/waiver-status-badge";
 import { RateTitleField } from "@/components/rate-title-field";
 import { RentalStaffShiftsView } from "@/components/rental-staff-shifts-view";
@@ -779,6 +779,8 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
   const { signatures: waiverSignatures } = useWaiverSignatures();
+  const { signedShiftIds } = useMySignedShiftIds();
+  const isAdminView = currentRole === "admin";
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
   return (
     <div className="grid gap-4">
@@ -787,7 +789,8 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         // No precomputed suggestions: AssignGuideCombobox handles its own ranking.
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
         const shiftNotes = notesByShift?.[s.id] || [];
-        const shiftSignatures = signaturesForShift(waiverSignatures, s);
+        const shiftSignatures = isAdminView ? signaturesForShift(waiverSignatures, s) : [];
+        const isSigned = isAdminView ? shiftSignatures.length > 0 : signedShiftIds.has(s.id);
 
         return (
           <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${isUrgent ? "ring-1 ring-warning/20" : ""}`}>
@@ -822,7 +825,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     {!pastView && s.status === "pending" && s.pendingExpiresAt && (
                       <PendingCountdown expiresAt={s.pendingExpiresAt} />
                     )}
-                    {!pastView && <WaiverStatusBadge signatures={shiftSignatures} />}
+                    {!pastView && <WaiverStatusBadge signed={isSigned} />}
                   </div>
                 </div>
 
@@ -835,7 +838,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 )}
 
-                {!pastView && <WaiverSignersList signatures={shiftSignatures} />}
+                {!pastView && isAdminView && <WaiverSignersList signatures={shiftSignatures} />}
 
                 {s.customer && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 p-3 rounded-lg bg-muted/40 border border-border/40 text-xs">
