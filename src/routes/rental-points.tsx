@@ -58,7 +58,7 @@ export const Route = createFileRoute("/rental-points")({
 });
 
 function RentalPointsPage() {
-  const { ready } = useRequireAdmin();
+  const { ready } = useRequireAdminOrRental();
   const { points, loading, error, create, update, remove } = useRentalPoints();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
