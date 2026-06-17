@@ -311,9 +311,15 @@ function AdminStaffDirectory() {
         title={t.staff.title}
         subtitle={t.staff.subtitle}
         actions={
-          <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
-            <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={handleNudge} disabled={nudging}>
+              <BellRing className="h-4 w-4 mr-1" />
+              {nudging ? "Sending…" : "Nudge incomplete profiles"}
+            </Button>
+            <Button onClick={() => setAddOpen(true)} className="shadow-[var(--shadow-elegant)]">
+              <Plus className="h-4 w-4 mr-1" /> {t.staff.addStaff}
+            </Button>
+          </div>
         }
       />
 
