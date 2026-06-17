@@ -144,7 +144,7 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
           const isPartial = unavail && !unavail.allDay;
 
           const cellClasses = cn(
-            "relative aspect-square rounded-md border text-xs p-1.5 flex flex-col items-start transition-all overflow-hidden",
+            "relative min-h-[56px] sm:min-h-0 sm:aspect-square rounded-md border text-xs p-1.5 flex flex-col items-start transition-all overflow-hidden",
             cell.outside ? "opacity-30" : "hover:border-primary/40",
             isToday && "ring-2 ring-primary/40",
             hasShift && "bg-primary/15 border-primary/40",
@@ -158,23 +158,23 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
           const dayContent = (
             <>
               <div className="flex items-center justify-between w-full">
-                <span className={cn("font-semibold tabular-nums", isToday && "text-primary")}>{cell.date.getDate()}</span>
-                {isOff && <CalendarOff className="h-2.5 w-2.5 text-destructive shrink-0" />}
-                {isPartial && !isOff && <Clock className="h-2.5 w-2.5 text-warning-foreground shrink-0" />}
+                <span className={cn("font-semibold tabular-nums text-sm sm:text-xs", isToday && "text-primary")}>{cell.date.getDate()}</span>
+                {isOff && <CalendarOff className="h-3 w-3 sm:h-2.5 sm:w-2.5 text-destructive shrink-0" />}
+                {isPartial && !isOff && <Clock className="h-3 w-3 sm:h-2.5 sm:w-2.5 text-warning-foreground shrink-0" />}
               </div>
               {hasShift && (
-                <div className="text-[9px] text-primary font-medium mt-auto truncate w-full leading-tight">
+                <div className="text-[10px] sm:text-[9px] text-primary font-medium mt-auto truncate w-full leading-tight">
                   {cellShifts[0].startTime}
                   {cellShifts.length > 1 && ` +${cellShifts.length - 1}`}
                 </div>
               )}
               {isPartial && !hasShift && unavail?.from && (
-                <div className="text-[9px] text-warning-foreground mt-auto truncate w-full leading-tight">
+                <div className="text-[10px] sm:text-[9px] text-warning-foreground mt-auto truncate w-full leading-tight">
                   {unavail.from}–{unavail.to}
                 </div>
               )}
               {isOff && !hasShift && (
-                <div className="text-[9px] text-destructive font-medium mt-auto leading-tight">Off</div>
+                <div className="text-[10px] sm:text-[9px] text-destructive font-medium mt-auto leading-tight">Off</div>
               )}
             </>
           );
