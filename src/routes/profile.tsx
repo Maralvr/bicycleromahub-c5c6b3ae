@@ -1,26 +1,44 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, User, Phone as PhoneIcon, Trash2 } from "lucide-react";
+import {
+  Camera,
+  Loader2,
+  User,
+  Phone as PhoneIcon,
+  Trash2,
+  Tag,
+  Languages as LangIcon,
+  Award,
+  MapPin,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ChipsEditor } from "@/components/chips-editor";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useRentalPoints } from "@/lib/rental-points";
+import { useStaffRentalPoints } from "@/lib/staff-rental-points";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
       { title: "My profile · Bicycle Roma" },
-      { name: "description", content: "Edit your display name, phone number and profile photo." },
+      { name: "description", content: "Edit your details, skills, languages, certifications and rental points." },
     ],
   }),
   component: ProfilePage,
 });
 
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+
+const SUGGESTED_TAGS = ["e-bike", "vintage", "food-tour", "rental", "maintenance", "night-tour", "kids-friendly", "long-distance", "trailers", "VIP"];
+const SUGGESTED_LANGS = ["English", "Italian", "Spanish", "French", "German", "Portuguese", "Mandarin"];
+const SUGGESTED_LICENSES = ["Tour guide A", "Tour guide B", "Driver B", "First aid", "Mechanic L1", "Mechanic L2"];
 
 function initialsFromName(name: string): string {
   const trimmed = name.trim();
@@ -40,6 +58,17 @@ function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  // Staff record
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [licenses, setLicenses] = useState<string[]>([]);
+
+  // Rental points
+  const { points } = useRentalPoints();
+  const { assignments, assign, unassign } = useStaffRentalPoints(user?.id ?? null);
+
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
@@ -47,6 +76,29 @@ function ProfilePage() {
       setAvatarUrl(profile.avatar_url ?? null);
     }
   }, [profile?.id, profile?.display_name, profile?.phone, profile?.avatar_url]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, role, phone, tags, languages, licenses")
+        .eq("profile_id", user.id)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      setStaffId(data.id);
+      setStaffRole(data.role);
+      setTags(data.tags ?? []);
+      setLanguages(data.languages ?? []);
+      setLicenses(data.licenses ?? []);
+      if (!phone && data.phone) setPhone(data.phone);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   if (loading || !user) {
     return (
@@ -116,6 +168,16 @@ function ProfilePage() {
     }
   };
 
+  const togglePoint = async (pointId: string) => {
+    const assigned = assignments.some((a) => a.rental_point_id === pointId);
+    try {
+      if (assigned) await unassign(pointId);
+      else await assign(pointId);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update rental point");
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
     const name = displayName.trim();
@@ -125,7 +187,7 @@ function ProfilePage() {
     }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error: pErr } = await supabase
         .from("profiles")
         .update({
           display_name: name,
@@ -133,7 +195,22 @@ function ProfilePage() {
           phone: phone.trim() || null,
         })
         .eq("id", user.id);
-      if (error) throw error;
+      if (pErr) throw pErr;
+
+      if (staffId) {
+        const { error: sErr } = await supabase
+          .from("staff")
+          .update({
+            name,
+            phone: phone.trim() || null,
+            tags,
+            languages,
+            licenses,
+          })
+          .eq("id", staffId);
+        if (sErr) throw sErr;
+      }
+
       await refresh();
       toast.success("Profile saved");
     } catch (err) {
@@ -144,6 +221,8 @@ function ProfilePage() {
   };
 
   const initials = initialsFromName(displayName || profile?.display_name || user.email || "U");
+  const assignedIds = new Set(assignments.map((a) => a.rental_point_id));
+  const activePoints = points.filter((p) => p.active);
 
   return (
     <AppShell>
@@ -151,7 +230,7 @@ function ProfilePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">My profile</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Update your display name, phone and profile photo. These are visible to your team.
+            Update your details, skills and rental points. These are visible to your team and used by dispatch.
           </p>
         </div>
 
@@ -228,19 +307,114 @@ function ProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-muted-foreground">
-              Email
-            </Label>
+            <Label className="flex items-center gap-1.5 text-muted-foreground">Email</Label>
             <Input value={user.email ?? ""} disabled />
             <p className="text-[11px] text-muted-foreground">Email is managed by your sign-in provider.</p>
           </div>
-
-          <div className="flex justify-end pt-2 border-t border-border/60">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
         </Card>
+
+        {staffId && (
+          <Card className="p-6 space-y-6">
+            <div>
+              <h2 className="text-base font-semibold">Skills & experience</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Keep these accurate so dispatch can match you to the right tours.
+              </p>
+            </div>
+
+            <ChipsEditor
+              label="Skills & tags"
+              icon={Tag}
+              values={tags}
+              onChange={setTags}
+              suggestions={SUGGESTED_TAGS}
+              placeholder="Add a tag (e.g. food-tour)"
+            />
+
+            <ChipsEditor
+              label="Languages"
+              icon={LangIcon}
+              values={languages}
+              onChange={setLanguages}
+              suggestions={SUGGESTED_LANGS}
+              placeholder="Add a language"
+            />
+
+            <ChipsEditor
+              label="Licenses & certifications"
+              icon={Award}
+              values={licenses}
+              onChange={setLicenses}
+              suggestions={SUGGESTED_LICENSES}
+              placeholder="Add a license"
+            />
+          </Card>
+        )}
+
+        <Card className="p-6 space-y-4">
+          <div>
+            <h2 className="text-base font-semibold flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-muted-foreground" /> Rental points
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Pick every rental point you work at. You can choose more than one. Changes save instantly.
+            </p>
+          </div>
+
+          {activePoints.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No rental points available yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {activePoints.map((p) => {
+                const active = assignedIds.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePoint(p.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted border-border"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {assignments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/60">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground self-center mr-1">
+                You work at:
+              </span>
+              {assignments.map((a) => {
+                const point = points.find((p) => p.id === a.rental_point_id);
+                if (!point) return null;
+                return (
+                  <Badge key={a.id} variant="secondary" className="text-xs">
+                    {point.name}
+                    {a.is_primary && <span className="ml-1 text-[9px] uppercase">primary</span>}
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving} size="lg">
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+
+        {staffRole === "admin" && (
+          <p className="text-[11px] text-muted-foreground text-center">
+            Admin: role and account status can only be changed from the Staff page.
+          </p>
+        )}
       </div>
     </AppShell>
   );
