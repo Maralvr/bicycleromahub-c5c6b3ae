@@ -24,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? [
         { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
         { to: "/staff", label: t.nav.myAvailability, icon: Users },
+        ...(isRentalStaff ? [{ to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin }] : []),
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
       ]

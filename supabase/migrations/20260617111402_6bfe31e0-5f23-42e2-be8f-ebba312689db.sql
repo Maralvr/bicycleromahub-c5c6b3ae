@@ -1,0 +1,2 @@
+CREATE POLICY "rpda_rental_staff_select" ON public.rental_point_day_assignments FOR SELECT TO authenticated USING (has_role(auth.uid(), 'rental_staff'::app_role));
+CREATE POLICY "rstaff_rental_staff_select" ON public.rental_staff FOR SELECT TO authenticated USING (has_role(auth.uid(), 'rental_staff'::app_role));
