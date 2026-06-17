@@ -153,6 +153,8 @@ export type MyRentalDay = {
   assignmentId: string;
   date: string;
   notes: string | null;
+  status: "pending" | "accepted";
+  pendingExpiresAt: string | null;
   rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
   bookings: Array<{
     id: string;
@@ -195,7 +197,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const { data: assigns, error: aErr } = await supabase
       .from("rental_point_day_assignments")
       .select(
-        "id, date, notes, rental_point_id, rental_points (id, name, address, phone)",
+        "id, date, notes, status, pending_expires_at, rental_point_id, rental_points (id, name, address, phone)",
       )
       .eq("rental_staff_id", staffRow.id)
       .gte("date", from)
@@ -253,6 +255,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         assignmentId: a.id,
         date: a.date,
         notes: a.notes ?? null,
+        status: (a.status ?? "accepted") as "pending" | "accepted",
+        pendingExpiresAt: a.pending_expires_at ?? null,
         rentalPoint: {
           id: a.rental_points?.id ?? a.rental_point_id,
           name: a.rental_points?.name ?? "",
@@ -329,6 +333,39 @@ export const markRentalNotificationRead = createServerFn({ method: "POST" })
       .eq("rental_staff_id", staffRow.id);
     if (data.id) q = q.eq("id", data.id);
     const { error } = await q;
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// -------------------- Accept / reject (rental staff) --------------------
+
+export const acceptRentalDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { assignmentId: string }) => {
+    if (!input?.assignmentId) throw new Error("assignmentId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("accept_rental_day" as never, {
+      _assignment_id: data.assignmentId,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const rejectRentalDay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { assignmentId: string; reason?: string }) => {
+    if (!input?.assignmentId) throw new Error("assignmentId required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.rpc("reject_rental_day" as never, {
+      _assignment_id: data.assignmentId,
+      _reason: data.reason?.trim() || null,
+    } as never);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

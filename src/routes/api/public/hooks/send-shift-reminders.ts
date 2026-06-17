@@ -15,12 +15,11 @@ export const Route = createFileRoute("/api/public/hooks/send-shift-reminders")({
           });
         }
 
-        // Also run rental-point reminders.
         const { data: rentalSent } = await supabaseAdmin.rpc(
           "send_rental_point_reminders" as never,
         );
 
-        // Find staff who just received a reminder so we can wake their devices.
+        // Wake guides
         const { data: recents } = await supabaseAdmin
           .from("guide_notifications")
           .select("staff_id")
@@ -31,12 +30,41 @@ export const Route = createFileRoute("/api/public/hooks/send-shift-reminders")({
           new Set((recents ?? []).map((r) => r.staff_id).filter((id): id is string => !!id)),
         );
 
+        // Wake rental staff
+        const { data: rentalRecents } = await supabaseAdmin
+          .from("rental_staff_notifications")
+          .select("rental_staff_id")
+          .eq("type", "reminder")
+          .gte("created_at", cutoff);
+
+        const rentalStaffIds = Array.from(
+          new Set(
+            (rentalRecents ?? [])
+              .map((r) => r.rental_staff_id)
+              .filter((id): id is string => !!id),
+          ),
+        );
+
+        let profileIds: string[] = [];
+        if (rentalStaffIds.length > 0) {
+          const { data: profs } = await supabaseAdmin
+            .from("rental_staff")
+            .select("profile_id")
+            .in("id", rentalStaffIds);
+          profileIds = (profs ?? [])
+            .map((p) => p.profile_id)
+            .filter((id): id is string => !!id);
+        }
+
         let pushSent = 0;
         let pushFailed = 0;
         let pushExpired = 0;
-        if (staffIds.length > 0) {
-          const { sendPushToStaffId } = await import("@/lib/push.server");
-          const results = await Promise.all(staffIds.map((id) => sendPushToStaffId(id)));
+        if (staffIds.length > 0 || profileIds.length > 0) {
+          const { sendPushToStaffId, sendPushToProfileId } = await import("@/lib/push.server");
+          const results = await Promise.all([
+            ...staffIds.map((id) => sendPushToStaffId(id)),
+            ...profileIds.map((id) => sendPushToProfileId(id)),
+          ]);
           for (const r of results) {
             pushSent += r.sent;
             pushFailed += r.failed;

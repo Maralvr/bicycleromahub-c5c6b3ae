@@ -521,39 +521,51 @@ export type Database = {
       }
       rental_point_day_assignments: {
         Row: {
+          accepted_at: string | null
           created_at: string
           created_by: string | null
           date: string
           id: string
           notes: string | null
+          pending_expires_at: string | null
+          rejection_reason: string | null
           reminder_24h_sent_at: string | null
           reminder_2h_sent_at: string | null
           rental_point_id: string
           rental_staff_id: string
+          status: string
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           date: string
           id?: string
           notes?: string | null
+          pending_expires_at?: string | null
+          rejection_reason?: string | null
           reminder_24h_sent_at?: string | null
           reminder_2h_sent_at?: string | null
           rental_point_id: string
           rental_staff_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
           id?: string
           notes?: string | null
+          pending_expires_at?: string | null
+          rejection_reason?: string | null
           reminder_24h_sent_at?: string | null
           reminder_2h_sent_at?: string | null
           rental_point_id?: string
           rental_staff_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -1191,11 +1203,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_rental_day: {
+        Args: { _assignment_id: string }
+        Returns: undefined
+      }
       accept_shift: { Args: { _shift_id: string }; Returns: undefined }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
       }
+      expire_rental_day_requests: { Args: never; Returns: number }
       expire_shift_requests: { Args: never; Returns: number }
       get_bokun_cron_status: { Args: never; Returns: Json }
       has_role: {
@@ -1206,6 +1223,10 @@ export type Database = {
         Returns: boolean
       }
       next_invoice_number: { Args: { _year: number }; Returns: number }
+      reject_rental_day: {
+        Args: { _assignment_id: string; _reason?: string }
+        Returns: undefined
+      }
       reject_shift: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined

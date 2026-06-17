@@ -150,3 +150,33 @@ export async function sendPushToStaffId(
     expired: expiredIds.length,
   };
 }
+
+/**
+ * Send a wake-up push to every active subscription for one profile id.
+ * Use this for non-staff users (e.g. rental_staff) whose push_subscriptions
+ * rows may not have a staff_id set.
+ */
+export async function sendPushToProfileId(
+  profileId: string,
+): Promise<{ sent: number; failed: number; expired: number }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: subs, error } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("profile_id", profileId);
+  if (error || !subs || subs.length === 0) {
+    return { sent: 0, failed: 0, expired: 0 };
+  }
+  const results = await Promise.all(subs.map((s) => sendPushToSubscription(s)));
+  const expiredIds = results
+    .map((r, i) => (r.expired ? subs[i].id : null))
+    .filter((id): id is string => !!id);
+  if (expiredIds.length > 0) {
+    await supabaseAdmin.from("push_subscriptions").delete().in("id", expiredIds);
+  }
+  return {
+    sent: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok && !r.expired).length,
+    expired: expiredIds.length,
+  };
+}
