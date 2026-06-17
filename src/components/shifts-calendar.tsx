@@ -249,9 +249,9 @@ export function ShiftsCalendar({
   const [view, setView] = useState<View>(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
   ));
-  // On small screens, week/month grids are too cramped to read — force day view.
+  // On small screens, the month grid is too cramped — force day if user lands there.
   useEffect(() => {
-    if (isNarrow && view !== "day") setView("day");
+    if (isNarrow && view === "month") setView("day");
   }, [isNarrow, view]);
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -397,7 +397,7 @@ export function ShiftsCalendar({
                 <TabsTrigger value="day" className="text-xs">
                   Day
                 </TabsTrigger>
-                <TabsTrigger value="week" className="text-xs hidden lg:inline-flex">
+                <TabsTrigger value="week" className="text-xs">
                   Week
                 </TabsTrigger>
                 <TabsTrigger value="month" className="text-xs hidden lg:inline-flex">
@@ -484,8 +484,18 @@ export function ShiftsCalendar({
             onOpenShift={openShift}
           />
         )}
-        {view === "week" && (
+        {view === "week" && !isNarrow && (
           <WeekView
+            cursor={cursor}
+            shiftsByDate={shiftsByDate}
+            staff={staff}
+            onOpenDay={setSelectedDay}
+            onOpenShift={openShift}
+            todayISO={todayISO}
+          />
+        )}
+        {view === "week" && isNarrow && (
+          <WeekViewMobile
             cursor={cursor}
             shiftsByDate={shiftsByDate}
             staff={staff}
@@ -853,6 +863,76 @@ function WeekView({
     </div>
   );
 }
+
+function WeekViewMobile({
+  cursor,
+  shiftsByDate,
+  staff,
+  onOpenDay,
+  onOpenShift,
+  todayISO,
+}: {
+  cursor: Date;
+  shiftsByDate: Record<string, CalendarShift[]>;
+  staff: Staff[];
+  onOpenDay: (d: string) => void;
+  onOpenShift: (s: CalendarShift) => void;
+  todayISO: string;
+}) {
+  const start = startOfWeek(cursor);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const hasAny = days.some((d) => (shiftsByDate[toISO(d)] || []).length > 0);
+
+  if (!hasAny) {
+    return (
+      <div className="text-sm text-muted-foreground italic py-12 text-center border border-dashed border-border rounded-lg">
+        No tours scheduled this week.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {days.map((d) => {
+        const iso = toISO(d);
+        const list = shiftsByDate[iso] || [];
+        const isToday = iso === todayISO;
+        const label = d.toLocaleDateString(undefined, {
+          weekday: "long",
+          day: "numeric",
+          month: "short",
+        });
+        return (
+          <section key={iso} className="space-y-2">
+            <button
+              type="button"
+              onClick={() => onOpenDay(iso)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md border text-left transition ${
+                isToday ? "bg-primary/5 border-primary/40" : "bg-card border-border/60"
+              }`}
+            >
+              <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
+                {label}
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {list.length} {list.length === 1 ? "tour" : "tours"}
+              </span>
+            </button>
+            {list.length === 0 ? (
+              <div className="text-xs text-muted-foreground italic px-3 py-3 border border-dashed border-border/60 rounded-md">
+                No tours.
+              </div>
+            ) : (
+              <DayView dateISO={iso} shifts={list} staff={staff} onOpenShift={onOpenShift} />
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+
 
 function MonthView({
   cursor,
