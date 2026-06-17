@@ -249,10 +249,7 @@ export function ShiftsCalendar({
   const [view, setView] = useState<View>(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
   ));
-  // On small screens, the month grid is too cramped — force day if user lands there.
-  useEffect(() => {
-    if (isNarrow && view === "month") setView("day");
-  }, [isNarrow, view]);
+  // (Month view has a mobile-friendly variant below.)
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
