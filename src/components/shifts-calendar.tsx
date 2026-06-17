@@ -484,8 +484,18 @@ export function ShiftsCalendar({
             onOpenShift={openShift}
           />
         )}
-        {view === "week" && (
+        {view === "week" && !isNarrow && (
           <WeekView
+            cursor={cursor}
+            shiftsByDate={shiftsByDate}
+            staff={staff}
+            onOpenDay={setSelectedDay}
+            onOpenShift={openShift}
+            todayISO={todayISO}
+          />
+        )}
+        {view === "week" && isNarrow && (
+          <WeekViewMobile
             cursor={cursor}
             shiftsByDate={shiftsByDate}
             staff={staff}
