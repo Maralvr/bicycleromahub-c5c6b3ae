@@ -153,6 +153,8 @@ export type MyRentalDay = {
   assignmentId: string;
   date: string;
   notes: string | null;
+  status: "pending" | "accepted";
+  pendingExpiresAt: string | null;
   rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
   bookings: Array<{
     id: string;
