@@ -14,12 +14,14 @@ import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { Staff } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
-import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil } from "lucide-react";
+import { Plus, Search, CalendarOff, Phone, Languages as LangIcon, Award, CalendarDays, Briefcase, ChevronRight, Pencil, BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import { StaffRentalPointsPanel } from "@/components/staff-rental-points-panel";
 import { AddStaffDialog } from "@/components/add-staff-dialog";
 import { deriveStaffStatus } from "@/lib/staff-status";
+import { useServerFn } from "@tanstack/react-start";
+import { nudgeIncompleteProfiles } from "@/lib/profile-nudge.functions";
 
 
 export const Route = createFileRoute("/staff")({
