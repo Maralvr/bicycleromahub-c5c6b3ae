@@ -1552,7 +1552,17 @@ function ShiftDetailsDialog({
               allStaff={staff}
               allShifts={allShifts}
               currentStaffId={pendingStaffId}
-              onSelect={(m) => setPendingStaffId(m.id)}
+              onSelect={async (m) => {
+                setPendingStaffId(m.id);
+                setSaving(true);
+                try {
+                  for (const row of bookingRows) {
+                    await onAssign(row.id, m.id, m.name);
+                  }
+                } finally {
+                  setSaving(false);
+                }
+              }}
             />
             {guide && onUnassign && (
               <div className="flex justify-end">
