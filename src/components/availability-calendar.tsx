@@ -169,8 +169,10 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
                 </div>
               )}
               {isPartial && !hasShift && unavail?.from && (
-                <div className="text-[10px] sm:text-[9px] text-warning-foreground mt-auto truncate w-full leading-tight">
-                  {unavail.from}–{unavail.to}
+                <div className="text-[9px] sm:text-[9px] text-warning-foreground mt-auto w-full leading-tight tabular-nums flex flex-col sm:block">
+                  <span className="sm:hidden">{unavail.from}</span>
+                  <span className="sm:hidden">–{unavail.to}</span>
+                  <span className="hidden sm:inline truncate">{unavail.from}–{unavail.to}</span>
                 </div>
               )}
               {isOff && !hasShift && (
