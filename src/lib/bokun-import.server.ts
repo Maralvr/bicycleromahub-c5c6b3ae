@@ -8,6 +8,28 @@ const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
   infant: "infants", infants: "infants", baby: "infants",
 };
 
+// In-memory cache of rental point name → id map.
+// Rental points change very rarely, but the Bokun sync re-fetches this list
+// for every chunk (many times per run). A short TTL keeps the data fresh
+// while collapsing thousands of identical SELECTs into one.
+const RENTAL_POINT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let rentalPointCache: { map: Map<string, string>; expiresAt: number } | null = null;
+
+async function getRentalPointNameMap(): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (rentalPointCache && rentalPointCache.expiresAt > now) {
+    return rentalPointCache.map;
+  }
+  const { data: rpRows } = await supabaseAdmin
+    .from("rental_points")
+    .select("id, name");
+  const map = new Map<string, string>(
+    (rpRows ?? []).map((r) => [r.name.toLowerCase(), r.id]),
+  );
+  rentalPointCache = { map, expiresAt: now + RENTAL_POINT_CACHE_TTL_MS };
+  return map;
+}
+
 type BokunDateValue = string | number;
 type BokunAddress = {
   addressLine1?: string;
