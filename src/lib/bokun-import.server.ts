@@ -418,7 +418,9 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       // detail fetch entirely. (Existing bookings are never re-imported anyway,
       // see comment near the upsert below; this just avoids the wasted Bokun
       // API call + JSON download.)
-      const CUTOFF_MS = 10 * 60 * 60 * 1000;
+      // Bokun cutoff is 10h. We use 9h 30min as an extra safety margin
+      // so we only skip bookings that are well inside the locked window.
+      const CUTOFF_MS = (9 * 60 + 30) * 60 * 1000;
       const cutoffThreshold = Date.now() + CUTOFF_MS;
 
       const summaryBookingId = (s: BokunBookingFull): string | null => {
