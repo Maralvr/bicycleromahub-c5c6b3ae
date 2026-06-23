@@ -362,12 +362,10 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
     const toMs = Date.parse(`${run.to_date}T23:59:59Z`);
 
     // Build name → id map of rental points so rental bookings can be routed.
-    const { data: rpRows } = await supabaseAdmin
-      .from("rental_points")
-      .select("id, name");
-    const rentalPointIdByName = new Map<string, string>(
-      (rpRows ?? []).map((r) => [r.name.toLowerCase(), r.id]),
-    );
+    // Cached for 5 minutes — rental points rarely change and this function is
+    // invoked many times per sync run (once per chunk). Avoids thousands of
+    // identical SELECTs against rental_points (major Cloud egress saver).
+    const rentalPointIdByName = await getRentalPointNameMap();
 
     const searchRes = await bokunFetch("POST", "/booking.json/booking-search", {
       bookingRole: "SELLER",
