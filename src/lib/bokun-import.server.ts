@@ -411,9 +411,63 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         liveSummaries.push(summary);
       }
 
+      // Bokun 10-hour cutoff optimization:
+      // Bookings cannot be modified by customers within 10 hours of departure.
+      // For any summary whose start time is < 10h away AND already exists in our
+      // DB, we are guaranteed it cannot have changed — so we skip the expensive
+      // detail fetch entirely. (Existing bookings are never re-imported anyway,
+      // see comment near the upsert below; this just avoids the wasted Bokun
+      // API call + JSON download.)
+      const CUTOFF_MS = 10 * 60 * 60 * 1000;
+      const cutoffThreshold = Date.now() + CUTOFF_MS;
+
+      const summaryBookingId = (s: BokunBookingFull): string | null => {
+        const id = s.productConfirmationCode ?? s.confirmationCode ?? s.bookingId ?? s.id;
+        return id != null ? String(id) : null;
+      };
+      const summaryStartMs = (s: BokunBookingFull): number | null => {
+        const raw = s.startDateTime ?? s.startDate;
+        if (raw == null) return null;
+        const ms = typeof raw === "number" ? raw : Date.parse(String(raw));
+        return Number.isFinite(ms) ? ms : null;
+      };
+
+      // Candidates inside the 10h cutoff window — check which are already in DB.
+      const insideCutoffIds: string[] = [];
+      for (const s of liveSummaries) {
+        const startMs = summaryStartMs(s);
+        const bId = summaryBookingId(s);
+        if (bId && startMs !== null && startMs <= cutoffThreshold) {
+          insideCutoffIds.push(bId);
+        }
+      }
+
+      const lockedExistingIds = new Set<string>();
+      if (insideCutoffIds.length > 0) {
+        const { data: lockedRows } = await supabaseAdmin
+          .from("shifts")
+          .select("booking_id")
+          .eq("source", "bokun")
+          .in("booking_id", insideCutoffIds);
+        for (const r of lockedRows ?? []) {
+          if (r.booking_id) lockedExistingIds.add(r.booking_id as string);
+        }
+      }
+
+      const summariesToFetch: BokunBookingFull[] = [];
+      for (const s of liveSummaries) {
+        const bId = summaryBookingId(s);
+        if (bId && lockedExistingIds.has(bId)) {
+          // Inside 10h cutoff + already imported → cannot have changed. Skip.
+          skipped++;
+          continue;
+        }
+        summariesToFetch.push(s);
+      }
+
       const fullBookings: BokunBookingFull[] = [];
-      for (let i = 0; i < liveSummaries.length; i += detailConcurrency) {
-        const batch = liveSummaries.slice(i, i + detailConcurrency);
+      for (let i = 0; i < summariesToFetch.length; i += detailConcurrency) {
+        const batch = summariesToFetch.slice(i, i + detailConcurrency);
         const settled = await Promise.all(batch.map(async (summary) => {
           const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
           if (detailId == null) return summary;
