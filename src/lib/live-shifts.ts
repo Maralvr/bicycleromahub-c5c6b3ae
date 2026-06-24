@@ -76,9 +76,26 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    // Date window: 60 days back to 180 days forward. Cuts egress dramatically
+    // vs fetching every historical row, and covers all calendar views.
+    const today = new Date();
+    const from = new Date(today);
+    from.setUTCDate(from.getUTCDate() - 60);
+    const to = new Date(today);
+    to.setUTCDate(to.getUTCDate() + 180);
+    const isoFrom = from.toISOString().slice(0, 10);
+    const isoTo = to.toISOString().slice(0, 10);
+
+    // Explicit column list — skip wide/unused columns (payout_*, reminder_*,
+    // rejected_by_staff_ids, etc.) to reduce payload size.
+    const cols =
+      "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, rental_point_id, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, bokun_created_at, ticket_sent, notes, operations_notes, required_tags, assigned_staff_id, status, created_at, updated_at";
+
     let q = supabase
       .from("shifts")
-      .select("*")
+      .select(cols)
+      .gte("date", isoFrom)
+      .lte("date", isoTo)
       .order("date", { ascending: true })
       .order("start_time", { ascending: true });
     if (opts?.rentalPointId) q = q.eq("rental_point_id", opts.rentalPointId);
