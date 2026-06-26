@@ -255,6 +255,10 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  console.log("[bokun] Incoming payload:", JSON.stringify(body).slice(0, 2000));
+
+
+
   const v = validate(body);
   if (!v.ok) {
     return new Response(JSON.stringify({ error: v.error }), {
