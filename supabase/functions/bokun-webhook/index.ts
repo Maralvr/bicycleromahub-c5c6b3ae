@@ -95,6 +95,27 @@ function bookingKeys(p: BokunEventPayload) {
   return Array.from(keys);
 }
 
+async function signedFetch(path: string, accessKey: string, secretKey: string) {
+  const method = "GET";
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+  const stringToSign = `${date}${accessKey}${method}${path}`;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(secretKey), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(stringToSign));
+  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+  return fetch(`https://api.bokun.io${path}`, {
+    method,
+    headers: {
+      "X-Bokun-Date": date,
+      "X-Bokun-AccessKey": accessKey,
+      "X-Bokun-Signature": signature,
+      "Content-Type": "application/json;charset=UTF-8",
+    },
+  });
+}
+
 async function fetchBokunBooking(bookingId: string | number): Promise<FullBookingPayload | null> {
   // @ts-ignore Deno globals
   const accessKey = Deno.env.get("BOKUN_ACCESS_KEY");
@@ -105,41 +126,33 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
     return null;
   }
 
-  const method = "GET";
-  const path = `/booking.json/${bookingId}`;
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const date = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-
-  const stringToSign = `${date}${accessKey}${method}${path}`;
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secretKey),
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"],
-  );
-  const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(stringToSign));
-  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
-
-  const res = await fetch(`https://api.bokun.io${path}`, {
-    method,
-    headers: {
-      "X-Bokun-Date": date,
-      "X-Bokun-AccessKey": accessKey,
-      "X-Bokun-Signature": signature,
-      "Content-Type": "application/json;charset=UTF-8",
-    },
-  });
-
-  if (!res.ok) {
+  // Try parent booking first, then activity-booking (experience booking IDs)
+  const paths = [`/booking.json/${bookingId}`, `/activity-booking.json/${bookingId}`];
+  let raw: any = null;
+  for (const path of paths) {
+    const res = await signedFetch(path, accessKey, secretKey);
+    if (res.ok) {
+      raw = await res.json();
+      console.log(`[bokun] Fetched ${path}`);
+      break;
+    }
     const text = await res.text();
-    console.error(`[bokun] API ${res.status} for booking ${bookingId}: ${text}`);
+    console.warn(`[bokun] ${path} → ${res.status}: ${text.slice(0, 200)}`);
+  }
+  if (!raw) {
+    console.error(`[bokun] All endpoints failed for booking ${bookingId}`);
     return null;
   }
 
-  const raw = await res.json();
+  // If activity-booking returned a parentBookingId, fetch the full parent for richer data
+  if (raw.parentBookingId && !raw.customer) {
+    const parentRes = await signedFetch(`/booking.json/${raw.parentBookingId}`, accessKey, secretKey);
+    if (parentRes.ok) {
+      const parent = await parentRes.json();
+      raw = { ...raw, ...parent };
+    }
+  }
+
   // Normalize Bokun API response to our FullBookingPayload shape
   return {
     bookingId: raw.id ?? raw.bookingId ?? bookingId,
