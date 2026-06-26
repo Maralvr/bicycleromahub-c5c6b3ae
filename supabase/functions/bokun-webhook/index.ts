@@ -341,8 +341,11 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // If Bokun sent only an event (bookingId), call back to their API for full details.
-  let fullPayload: FullBookingPayload | null = hasFullBookingDetails(v.data) ? v.data : null;
+  // Bokun's webhook (and Make.com bridge) sends the full booking payload.
+  // Normalize it directly — only fall back to API if even basic fields are missing.
+  let fullPayload: FullBookingPayload | null = hasFullBookingDetails(v.data)
+    ? normalizeWebhookPayload(v.data)
+    : null;
   if (!fullPayload) {
     fullPayload = await fetchBokunBooking(v.data.bookingId);
     if (!fullPayload) {
@@ -350,9 +353,10 @@ Deno.serve(async (req: Request) => {
         ok: false,
         action: "fetch_failed",
         bookingId: String(v.data.bookingId),
-        hint: "Set BOKUN_ACCESS_KEY and BOKUN_SECRET_KEY secrets, or check Bokun API logs.",
+        hint: "Webhook payload missing fields and Bokun API fetch failed.",
       }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
     // Re-check cancel status now that we have full details
     if (fullPayload.status === "CANCELLED" && existing) {
       await supabase.from("shifts").delete().eq("id", existing.id);
