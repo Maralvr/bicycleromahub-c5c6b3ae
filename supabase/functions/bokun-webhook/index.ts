@@ -80,20 +80,66 @@ function validate(input: unknown): { ok: true; data: BokunEventPayload } | { ok:
 }
 
 function hasFullBookingDetails(p: BokunEventPayload): p is FullBookingPayload {
-  const candidate = p as Partial<FullBookingPayload>;
-  return typeof candidate.productTitle === "string" && candidate.productTitle.length > 0
-    && typeof candidate.startDateTime === "string" && candidate.startDateTime.length > 0
-    && typeof candidate.customer === "object" && candidate.customer !== null;
+  const c = p as Record<string, unknown>;
+  // Accept either our schema (productTitle) OR Bokun's native webhook shape (title + startDateTime)
+  const hasTitle = typeof c.productTitle === "string" || typeof c.title === "string";
+  const hasStart = c.startDateTime !== undefined && c.startDateTime !== null;
+  return hasTitle && hasStart;
+}
+
+function toIsoDateTime(v: unknown): string {
+  if (typeof v === "number") return new Date(v).toISOString();
+  if (typeof v === "string") {
+    // numeric string (epoch ms)
+    if (/^\d+$/.test(v)) return new Date(Number(v)).toISOString();
+    return new Date(v).toISOString();
+  }
+  return new Date().toISOString();
+}
+
+function normalizeWebhookPayload(raw: any): FullBookingPayload {
+  // Bokun's webhook delivers an activity-booking-like shape.
+  // Map its native fields to our FullBookingPayload schema.
+  const customer = raw.customer ?? raw.parentBooking?.customer ?? {};
+  const fields = raw.fields ?? raw.parentBooking?.fields ?? {};
+  return {
+    bookingId: raw.bookingId ?? raw.id,
+    confirmationCode: raw.productConfirmationCode ?? raw.confirmationCode,
+    productTitle: raw.productTitle ?? raw.title ?? raw.product?.title ?? "Bokun booking",
+    startDateTime: toIsoDateTime(raw.startDateTime ?? raw.startDate),
+    endDateTime: raw.endDateTime ? toIsoDateTime(raw.endDateTime) : undefined,
+    durationMinutes: raw.durationMinutes ?? raw.product?.durationMinutes,
+    pickupPlace: raw.pickupPlace,
+    startPoint: raw.startPoint ?? raw.product?.startPoints?.[0],
+    customer: {
+      firstName: customer.firstName ?? fields.firstName,
+      lastName: customer.lastName ?? fields.lastName,
+      fullName: customer.fullName ?? fields.fullName,
+      phoneNumber: customer.phoneNumber ?? customer.phone ?? fields.phoneNumber,
+      email: customer.email ?? fields.email,
+    },
+    pricingCategoryBookings: raw.pricingCategoryBookings,
+    extraBookings: raw.extraBookings,
+    totalPrice: raw.totalPrice,
+    currency: raw.currency ?? raw.product?.vendor?.currencyCode,
+    notes: raw.notes ?? customer.notes,
+    productTags: raw.productTags ?? raw.product?.tags,
+    status: raw.status,
+  };
 }
 
 function bookingKeys(p: BokunEventPayload) {
   const raw = String(p.bookingId);
   const keys = new Set([raw]);
-  const confirmationCode = (p as Partial<FullBookingPayload>).confirmationCode;
+  const c = p as Record<string, unknown>;
+  const confirmationCode = c.confirmationCode as string | undefined;
+  const productConfirmationCode = c.productConfirmationCode as string | undefined;
   if (confirmationCode) keys.add(confirmationCode);
+  if (productConfirmationCode) keys.add(productConfirmationCode);
   if (!raw.startsWith("BKN-")) keys.add(`BKN-${raw}`);
   return Array.from(keys);
 }
+
 
 async function signedFetch(path: string, accessKey: string, secretKey: string) {
   const method = "GET";
