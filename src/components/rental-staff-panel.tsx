@@ -50,7 +50,7 @@ type Assignment = {
  *   - renderDayDialogSection(iso): assignment toggles for the day-details dialog
  *   - ManageRosterButton: button + dialog to edit the staff roster
  */
-export function useRentalStaffBridge(pointId: string | null) {
+export function useRentalStaffBridge(pointId: string | null, enabled = true) {
   const list = useServerFn(listRentalStaff);
   const listA = useServerFn(listAssignmentsForPoint);
   const assign = useServerFn(assignRentalStaff);
@@ -62,7 +62,7 @@ export function useRentalStaffBridge(pointId: string | null) {
   const [showRoster, setShowRoster] = useState(false);
 
   const reload = useCallback(async () => {
-    if (!pointId) {
+    if (!pointId || !enabled) {
       setStaff([]);
       setAssignments([]);
       return;
@@ -84,7 +84,7 @@ export function useRentalStaffBridge(pointId: string | null) {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load rental staff");
     }
-  }, [pointId, list, listA]);
+  }, [pointId, enabled, list, listA]);
 
   useEffect(() => {
     void reload();
@@ -117,7 +117,7 @@ export function useRentalStaffBridge(pointId: string | null) {
 
   const renderDayOverlay = useCallback(
     (iso: string) => {
-      if (!pointId) return null;
+      if (!pointId || !enabled) return null;
       const assigned = byDate.get(iso) ?? [];
       if (assigned.length === 0) {
         return (
@@ -160,12 +160,12 @@ export function useRentalStaffBridge(pointId: string | null) {
         </div>
       );
     },
-    [byDate, staff, pointId],
+    [byDate, staff, pointId, enabled],
   );
 
   const renderDayDialogSection = useCallback(
     (iso: string) => {
-      if (!pointId) return null;
+      if (!pointId || !enabled) return null;
       const assigned = byDate.get(iso) ?? [];
       const active = staff.filter((s) => s.active);
       return (
@@ -249,7 +249,7 @@ export function useRentalStaffBridge(pointId: string | null) {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId],
+    [byDate, staff, pointId, enabled],
   );
 
   const ManageRosterButton = (

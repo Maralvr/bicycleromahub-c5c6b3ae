@@ -43,9 +43,9 @@ function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
     externalBookingRef: r.external_booking_ref,
     tourName: r.tour_name,
     date: r.date,
-    startTime: r.start_time.slice(0, 5),
-    endTime: r.end_time.slice(0, 5),
-    meetingPoint: r.meeting_point,
+    startTime: (r.start_time ?? "").slice(0, 5),
+    endTime: (r.end_time ?? "").slice(0, 5),
+    meetingPoint: r.meeting_point ?? "",
     customer:
       r.customer_name || r.customer_phone || r.customer_email
         ? { name: r.customer_name ?? "—", phone: r.customer_phone ?? "—", email: r.customer_email }

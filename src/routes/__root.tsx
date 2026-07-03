@@ -162,9 +162,9 @@ function RootComponent() {
 }
 
 function AuthenticatedDataProviders({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || loading) {
     return <>{children}</>;
   }
 
