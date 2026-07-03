@@ -19,6 +19,7 @@ type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   roles: AppRole[];
+  rolesLoaded: boolean;
   isAdmin: boolean;
   isRentalStaff: boolean;
   isAuthenticated: boolean;
@@ -33,27 +34,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
 
   const loadUserData = async (userId: string) => {
     try {
+      setRolesLoaded(false);
       const profileRequest = supabase
         .from("profiles")
         .select("id, display_name, avatar_initials, avatar_url, phone, staff_id")
         .eq("id", userId)
-        .maybeSingle()
-        .then((res) => res);
+        .maybeSingle();
       const rolesRequest = supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .then((res) => res);
+        .eq("user_id", userId);
 
-      const { data: profileRow } = await profileRequest;
+      const [profileRes, rolesRes] = await Promise.all([profileRequest, rolesRequest]);
+      if (profileRes.error) throw profileRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+
+      const profileRow = profileRes.data;
       setProfile((profileRow as Profile) ?? null);
-
-      const { data: roleRows, error: roleErr } = await rolesRequest;
-      console.log("[auth] loadUserData", { userId, roleRows, roleErr });
+      const roleRows = rolesRes.data;
       setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
+      setRolesLoaded(true);
+    } catch (error) {
+      console.error("[auth] failed to load profile/roles", error);
+      setProfile(null);
+      setRoles([]);
+      setRolesLoaded(false);
     } finally {
       // Roles are now known — safe to release the AuthGate. Releasing earlier
       // causes an admin to briefly see the guide view on refresh because
@@ -63,14 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Safety net: never let the app hang on the loading screen.
-    const safetyTimer = setTimeout(() => {
-      setLoading((prev) => {
-        if (prev) console.warn("[auth] safety timeout — forcing loading=false");
-        return false;
-      });
-    }, 6000);
-
     // Set up listener BEFORE getting initial session
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setRoles([]);
+        setRolesLoaded(false);
         setLoading(false);
       }
     });
@@ -95,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session?.user) {
         await loadUserData(data.session.user.id);
       } else {
+        setRolesLoaded(false);
         setLoading(false);
       }
     });
@@ -128,7 +131,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      clearTimeout(safetyTimer);
       sub.subscription.unsubscribe();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
@@ -142,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     profile,
     roles,
+    rolesLoaded,
     isAdmin: roles.includes("admin"),
     isRentalStaff: roles.includes("rental_staff") && !roles.includes("admin"),
     isAuthenticated: !!session,
