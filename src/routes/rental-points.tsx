@@ -37,6 +37,8 @@ import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import type { Staff } from "@/lib/mock-data";
 
 type RentalTab = "calendar" | "list";
 
@@ -539,6 +541,53 @@ function AdminRentalBookingsView({
   );
 }
 
+/**
+ * Rental-staff sessions don't get StaffStoreProvider (see
+ * AuthenticatedDataProviders in __root.tsx -- it's intentionally skipped for
+ * rental-only accounts to keep their session light). The read-only rental
+ * calendar only ever needs the name + initials of guides who are actually
+ * assigned to a visible booking, so fetch just that instead of depending on
+ * the global staff store.
+ */
+function useRentalCalendarStaff(staffIds: string[]): Staff[] {
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const key = useMemo(() => staffIds.slice().sort().join(","), [staffIds]);
+
+  useEffect(() => {
+    if (!key) {
+      setStaff([]);
+      return;
+    }
+    let cancelled = false;
+    void supabase
+      .from("staff")
+      .select("id, name, avatar")
+      .in("id", key.split(","))
+      .then(({ data }) => {
+        if (cancelled) return;
+        setStaff(
+          ((data ?? []) as { id: string; name: string; avatar: string }[]).map((r) => ({
+            id: r.id,
+            name: r.name,
+            avatar: r.avatar,
+            role: "guide",
+            tags: [],
+            languages: [],
+            licenses: [],
+            status: "available",
+            phone: "",
+            unavailability: [],
+          })),
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  return staff;
+}
+
 function RentalReadOnlyBookingsView({
   points,
   pointId,
@@ -551,11 +600,15 @@ function RentalReadOnlyBookingsView({
   onTabChange: (t: RentalTab) => void;
 }) {
   const { shifts, loading } = useRentalShifts();
-  const { staff } = useStaffStore();
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
     [shifts, pointId],
   );
+  const assignedStaffIds = useMemo(
+    () => Array.from(new Set(scoped.map((s) => s.assignedStaffId).filter((id): id is string => !!id))),
+    [scoped],
+  );
+  const staff = useRentalCalendarStaff(assignedStaffIds);
 
   return (
     <div className="mt-8">
