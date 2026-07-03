@@ -113,7 +113,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, rolesLoaded } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some((p) => location.pathname.startsWith(p));
@@ -124,7 +124,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [loading, isAuthenticated, isPublic, location.pathname, navigate]);
 
-  if (loading) {
+  if (loading || (isAuthenticated && !rolesLoaded && !isPublic)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
         <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin" />
@@ -162,9 +162,9 @@ function RootComponent() {
 }
 
 function AuthenticatedDataProviders({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, isRentalStaff, isAdmin } = useAuth();
+  const { isAuthenticated, loading, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
 
-  if (!isAuthenticated || loading) {
+  if (!isAuthenticated || loading || !rolesLoaded) {
     return <>{children}</>;
   }
 
