@@ -169,11 +169,7 @@ function AuthenticatedDataProviders({ children }: { children: React.ReactNode })
   }
 
   if (isRentalStaff && !isAdmin) {
-    return (
-      <StaffStoreProvider>
-        <CurrentUserProvider>{children}</CurrentUserProvider>
-      </StaffStoreProvider>
-    );
+    return <>{children}</>;
   }
 
   return (
