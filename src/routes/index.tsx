@@ -33,7 +33,16 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
+  // Guard first — do NOT call any store hooks here. Non-admin users (guides,
+  // rental_staff) get redirected to their own workspace; store providers may
+  // not be fully mounted yet during the sign-in transition, and reading them
+  // in this component would throw and blank the whole app.
   const { ready } = useRequireAdmin();
+  if (!ready) return null;
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
   const { t } = useI18n();
   const { staff } = useStaffStore();
   const { tasks } = useTasksStore();
@@ -41,7 +50,6 @@ function DashboardPage() {
   const { shifts } = useShiftsStore();
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-  if (!ready) return null;
   const todayShifts = shifts.filter((s) => s.date === today);
   const pending = shifts.filter((s) => s.status === "pending");
   
