@@ -415,9 +415,27 @@ function RentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
+  const { isAdmin } = useAuth();
+  return isAdmin ? (
+    <AdminRentalBookingsView points={points} pointId={pointId} tab={tab} onTabChange={onTabChange} />
+  ) : (
+    <RentalReadOnlyBookingsView points={points} pointId={pointId} tab={tab} onTabChange={onTabChange} />
+  );
+}
+
+function AdminRentalBookingsView({
+  points,
+  pointId,
+  tab,
+  onTabChange,
+}: {
+  points: RentalPoint[];
+  pointId: string | null;
+  tab: RentalTab;
+  onTabChange: (t: RentalTab) => void;
+}) {
   const { shifts, loading, updateShift, assignShift, deleteShift } = useRentalShifts();
   const { staff } = useStaffStore();
-  const { isAdmin } = useAuth();
 
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
@@ -469,7 +487,7 @@ function RentalBookingsView({
   };
 
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
-    useRentalStaffBridge(pointId, isAdmin);
+    useRentalStaffBridge(pointId, true);
 
   return (
     <div className="mt-8">
@@ -479,7 +497,7 @@ function RentalBookingsView({
             {pointId ? "Bookings" : "Rental bookings"}
           </h2>
           <div className="flex items-center gap-2">
-            {pointId && isAdmin && ManageRosterButton}
+            {pointId && ManageRosterButton}
             <TabsList>
               <TabsTrigger value="calendar">
                 <CalendarDays className="h-4 w-4 mr-1" /> Calendar
@@ -502,14 +520,68 @@ function RentalBookingsView({
             <ShiftsCalendar
               shifts={scoped}
               staff={staff}
-              onAssign={isAdmin ? handleAssign : undefined}
-              onUnassign={isAdmin ? handleUnassign : undefined}
-              onDelete={isAdmin ? handleDelete : undefined}
-              onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
-              showRates={isAdmin}
-              renderDayOverlay={pointId && isAdmin ? renderDayOverlay : undefined}
-              renderDayDialogSection={pointId && isAdmin ? renderDayDialogSection : undefined}
+                onAssign={handleAssign}
+                onUnassign={handleUnassign}
+                onDelete={handleDelete}
+                onUpdateDeparture={handleUpdateDeparture}
+                showRates
+                renderDayOverlay={pointId ? renderDayOverlay : undefined}
+                renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
             />
+          )}
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-0">
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function RentalReadOnlyBookingsView({
+  points,
+  pointId,
+  tab,
+  onTabChange,
+}: {
+  points: RentalPoint[];
+  pointId: string | null;
+  tab: RentalTab;
+  onTabChange: (t: RentalTab) => void;
+}) {
+  const { shifts, loading } = useRentalShifts();
+  const scoped = useMemo(
+    () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
+    [shifts, pointId],
+  );
+
+  return (
+    <div className="mt-8">
+      <Tabs value={tab} onValueChange={(v) => onTabChange(v as RentalTab)}>
+        <div className="flex items-baseline justify-between mb-3 gap-3 flex-wrap">
+          <h2 className="text-lg font-semibold text-foreground">
+            {pointId ? "Bookings" : "Rental bookings"}
+          </h2>
+          <TabsList>
+            <TabsTrigger value="calendar">
+              <CalendarDays className="h-4 w-4 mr-1" /> Calendar
+            </TabsTrigger>
+            <TabsTrigger value="list">
+              <ListIcon className="h-4 w-4 mr-1" /> List
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="calendar" className="mt-0">
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
+          ) : scoped.length === 0 ? (
+            <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
+              No rental bookings.
+            </Card>
+          ) : (
+            <ShiftsCalendar shifts={scoped} staff={[]} showRates={false} />
           )}
         </TabsContent>
 
