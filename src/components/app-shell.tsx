@@ -34,7 +34,6 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
     ? [
         { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
         { to: "/staff", label: t.nav.myAvailability, icon: Users },
-        ...(isRentalStaff ? [{ to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin }] : []),
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
       ]
@@ -66,7 +65,7 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
             <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
             <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
           </div>
-          {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
+          {staffId && <NotificationBell staffId={staffId} />}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -181,7 +180,7 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isRentalStaff ? <RentalNotificationBell /> : staffId && <NotificationBell staffId={staffId} />}
+              {staffId && <NotificationBell staffId={staffId} />}
               <Link
                 to="/profile"
                 title="Edit my profile"
