@@ -487,7 +487,7 @@ function AdminRentalBookingsView({
   };
 
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
-    useRentalStaffBridge(pointId, isAdmin);
+    useRentalStaffBridge(pointId, true);
 
   return (
     <div className="mt-8">
@@ -497,7 +497,7 @@ function AdminRentalBookingsView({
             {pointId ? "Bookings" : "Rental bookings"}
           </h2>
           <div className="flex items-center gap-2">
-            {pointId && isAdmin && ManageRosterButton}
+            {pointId && ManageRosterButton}
             <TabsList>
               <TabsTrigger value="calendar">
                 <CalendarDays className="h-4 w-4 mr-1" /> Calendar
