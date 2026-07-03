@@ -25,7 +25,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" }) as Search;
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -35,10 +35,12 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      void navigate({ to: search.redirect ?? "/" });
+    if (!loading && isAuthenticated && rolesLoaded) {
+      const requested = search.redirect ?? "/";
+      const destination = isRentalStaff && !isAdmin && requested === "/" ? "/shifts" : requested;
+      void navigate({ to: destination });
     }
-  }, [loading, isAuthenticated, navigate, search.redirect]);
+  }, [loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin, navigate, search.redirect]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -21,6 +21,7 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
 const PUBLIC_ROUTES = ["/auth", "/reset-password"];
+const RENTAL_ROUTES = ["/shifts", "/rental-points", "/profile"];
 
 function NotFoundComponent() {
   return (
@@ -113,18 +114,31 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some((p) => location.pathname.startsWith(p));
+  const isRentalAllowed = RENTAL_ROUTES.some((p) => location.pathname.startsWith(p));
 
   useEffect(() => {
-    if (!loading && !isAuthenticated && !isPublic) {
+    if (loading) return;
+    if (!isAuthenticated && !isPublic) {
       void navigate({ to: "/auth", search: { redirect: location.pathname } });
+      return;
     }
-  }, [loading, isAuthenticated, isPublic, location.pathname, navigate]);
+    if (
+      isAuthenticated &&
+      rolesLoaded &&
+      isRentalStaff &&
+      !isAdmin &&
+      !isPublic &&
+      !isRentalAllowed
+    ) {
+      void navigate({ to: "/shifts", replace: true });
+    }
+  }, [loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin, isPublic, isRentalAllowed, location.pathname, navigate]);
 
-  if (loading) {
+  if (loading || (isAuthenticated && !rolesLoaded && !isPublic)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
         <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin" />
@@ -133,6 +147,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
   if (!isAuthenticated && !isPublic) return null;
+  if (isAuthenticated && rolesLoaded && isRentalStaff && !isAdmin && !isPublic && !isRentalAllowed) return null;
   return <>{children}</>;
 }
 
@@ -162,9 +177,9 @@ function RootComponent() {
 }
 
 function AuthenticatedDataProviders({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, isRentalStaff, isAdmin } = useAuth();
+  const { isAuthenticated, loading, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
 
-  if (!isAuthenticated || loading) {
+  if (!isAuthenticated || loading || !rolesLoaded) {
     return <>{children}</>;
   }
 
