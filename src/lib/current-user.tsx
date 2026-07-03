@@ -18,6 +18,16 @@ const CurrentUserContext = createContext<CurrentUserContextValue | null>(null);
 
 const STORAGE_KEY = "ebr.currentUser";
 
+const FALLBACK_CURRENT_USER: CurrentUserContextValue = {
+  role: "staff",
+  staffId: "",
+  setRole: () => {},
+  setStaffId: () => {},
+  displayName: "Team member",
+  initials: "TM",
+  subtitle: "Loading",
+};
+
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const { isAdmin, profile, user } = useAuth();
   const { staff } = useStaffStore();
@@ -105,6 +115,5 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
 export function useCurrentUser() {
   const ctx = useContext(CurrentUserContext);
-  if (!ctx) throw new Error("useCurrentUser must be used within CurrentUserProvider");
-  return ctx;
+  return ctx ?? FALLBACK_CURRENT_USER;
 }
