@@ -502,10 +502,10 @@ function RentalBookingsView({
             <ShiftsCalendar
               shifts={scoped}
               staff={staff}
-              onAssign={handleAssign}
-              onUnassign={handleUnassign}
-              onDelete={handleDelete}
-              onUpdateDeparture={handleUpdateDeparture}
+              onAssign={isAdmin ? handleAssign : undefined}
+              onUnassign={isAdmin ? handleUnassign : undefined}
+              onDelete={isAdmin ? handleDelete : undefined}
+              onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
               showRates={isAdmin}
               renderDayOverlay={pointId && isAdmin ? renderDayOverlay : undefined}
               renderDayDialogSection={pointId && isAdmin ? renderDayDialogSection : undefined}
