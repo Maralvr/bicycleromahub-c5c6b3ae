@@ -53,6 +53,7 @@ export const Route = createFileRoute("/users")({
 });
 
 type StaffJobRole = "guide" | "rental" | "mechanic" | "admin";
+type AppRole = "admin" | "staff" | "rental_staff";
 
 type Row = {
   id: string;
@@ -62,12 +63,13 @@ type Row = {
   staff_name: string | null;
   staff_email: string | null;
   staff_role: StaffJobRole | null;
+  rental_email: string | null;
   active: boolean;
   banned: boolean;
-  roles: ("admin" | "staff")[];
+  roles: AppRole[];
 };
 
-type Filter = "all" | "admin" | "guide" | "banned" | "inactive";
+type Filter = "all" | "admin" | "guide" | "rental" | "banned" | "inactive";
 
 function UsersPage() {
   const { ready } = useRequireAdmin();
@@ -81,9 +83,10 @@ function UsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [profilesRes, staffRes, rolesRes] = await Promise.all([
+    const [profilesRes, staffRes, rentalStaffRes, rolesRes] = await Promise.all([
       supabase.from("profiles").select("id, display_name, avatar_initials, staff_id"),
       supabase.from("staff").select("id, profile_id, name, email, role, active"),
+      supabase.from("rental_staff").select("id, profile_id, email, active"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
 
@@ -92,14 +95,20 @@ function UsersPage() {
         .filter((s) => s.profile_id)
         .map((s) => [s.profile_id as string, s]),
     );
-    const rolesByUser = new Map<string, ("admin" | "staff")[]>();
+    const rentalStaffByProfile = new Map(
+      (rentalStaffRes.data ?? [])
+        .filter((s) => s.profile_id)
+        .map((s) => [s.profile_id as string, s]),
+    );
+    const rolesByUser = new Map<string, AppRole[]>();
     for (const r of rolesRes.data ?? []) {
       const list = rolesByUser.get(r.user_id) ?? [];
-      list.push(r.role as "admin" | "staff");
+      list.push(r.role as AppRole);
       rolesByUser.set(r.user_id, list);
     }
     const merged: Row[] = (profilesRes.data ?? []).map((p) => {
       const s = staffByProfile.get(p.id);
+      const rentalStaff = rentalStaffByProfile.get(p.id);
       return {
         id: p.id,
         display_name: p.display_name,
@@ -107,8 +116,9 @@ function UsersPage() {
         staff_id: p.staff_id,
         staff_name: s?.name ?? null,
         staff_email: s?.email ?? null,
-        staff_role: (s?.role ?? null) as StaffJobRole | null,
-        active: s?.active ?? true,
+        staff_role: (s?.role ?? (rentalStaff ? "rental" : null)) as StaffJobRole | null,
+        rental_email: rentalStaff?.email ?? null,
+        active: s?.active ?? rentalStaff?.active ?? true,
         banned: false, // banned state lives in auth.users; surface via 'inactive' if needed
         roles: rolesByUser.get(p.id) ?? [],
       };
@@ -215,13 +225,15 @@ function UsersPage() {
     const needle = q.trim().toLowerCase();
     return rows.filter((r) => {
       if (filter === "admin" && !r.roles.includes("admin")) return false;
-      if (filter === "guide" && r.roles.includes("admin")) return false;
+      if (filter === "guide" && (r.roles.includes("admin") || r.roles.includes("rental_staff"))) return false;
+      if (filter === "rental" && !r.roles.includes("rental_staff")) return false;
       if (filter === "inactive" && r.active) return false;
       if (filter === "banned" && !r.banned) return false;
       if (!needle) return true;
       return (
         r.display_name.toLowerCase().includes(needle) ||
         (r.staff_email ?? "").toLowerCase().includes(needle) ||
+        (r.rental_email ?? "").toLowerCase().includes(needle) ||
         (r.staff_name ?? "").toLowerCase().includes(needle) ||
         (r.staff_role ?? "").toLowerCase().includes(needle)
       );
@@ -256,6 +268,7 @@ function UsersPage() {
             <SelectItem value="all">All users</SelectItem>
             <SelectItem value="admin">Admins only</SelectItem>
             <SelectItem value="guide">Guides only</SelectItem>
+            <SelectItem value="rental">Rental only</SelectItem>
             <SelectItem value="inactive">Deactivated</SelectItem>
           </SelectContent>
         </Select>
@@ -270,6 +283,7 @@ function UsersPage() {
           <div className="divide-y divide-border/60">
             {filtered.map((row) => {
               const isAdmin = row.roles.includes("admin");
+              const isRental = row.roles.includes("rental_staff");
               const isMe = row.id === me?.id;
               return (
                 <div
@@ -285,7 +299,7 @@ function UsersPage() {
                       {isMe && <Badge variant="outline" className="text-[10px]">You</Badge>}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {row.staff_email ?? "—"}
+                      {row.staff_email ?? row.rental_email ?? "—"}
                     </div>
                   </div>
 
@@ -295,10 +309,11 @@ function UsersPage() {
                         <Shield className="h-3 w-3" /> Admin
                       </Badge>
                     )}
+                    {isRental && !isAdmin && <Badge variant="secondary">Rental</Badge>}
                     {!row.active && <Badge variant="destructive">Inactive</Badge>}
                   </div>
 
-                  {row.staff_id && (
+                  {row.staff_id ? (
                     <Select
                       value={row.staff_role ?? "guide"}
                       onValueChange={(v) => void setStaffRole(row, v as StaffJobRole)}
@@ -314,7 +329,11 @@ function UsersPage() {
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}
+                  ) : isRental ? (
+                    <Badge variant="outline" className="h-8 px-3 text-xs">
+                      Rental
+                    </Badge>
+                  ) : null}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
