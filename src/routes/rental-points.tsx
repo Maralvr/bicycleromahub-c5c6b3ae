@@ -36,6 +36,7 @@ import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
+import { useAuth } from "@/lib/auth";
 
 type RentalTab = "calendar" | "list";
 
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/rental-points")({
 
 function RentalPointsPage() {
   const { ready } = useRequireAdminOrRental();
+  const { isAdmin } = useAuth();
   const { points, loading, error, create, update, remove } = useRentalPoints();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -105,9 +107,11 @@ function RentalPointsPage() {
             title="Rental points"
             subtitle="Pickup & return locations across Rome."
             actions={
-              <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
-                <Plus className="h-4 w-4 mr-1" /> Add point
-              </Button>
+              isAdmin ? (
+                <Button onClick={() => setCreating(true)} className="shadow-[var(--shadow-elegant)]">
+                  <Plus className="h-4 w-4 mr-1" /> Add point
+                </Button>
+              ) : undefined
             }
           />
 
@@ -124,11 +128,13 @@ function RentalPointsPage() {
               <MapPin className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
               <h3 className="font-semibold text-foreground">No rental points yet</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Add your first pickup location to get started.
+                {isAdmin ? "Add your first pickup location to get started." : "No pickup locations are available yet."}
               </p>
-              <Button onClick={() => setCreating(true)} className="mt-4">
-                <Plus className="h-4 w-4 mr-1" /> Add point
-              </Button>
+              {isAdmin && (
+                <Button onClick={() => setCreating(true)} className="mt-4">
+                  <Plus className="h-4 w-4 mr-1" /> Add point
+                </Button>
+              )}
             </Card>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -149,24 +155,28 @@ function RentalPointsPage() {
                       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">(inactive)</span>
                     )}
                   </Link>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setEditing(p)}
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setConfirmDelete(p)}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setEditing(p)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setConfirmDelete(p)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -407,6 +417,7 @@ function RentalBookingsView({
 }) {
   const { shifts, loading, updateShift, assignShift, deleteShift } = useRentalShifts();
   const { staff } = useStaffStore();
+  const { isAdmin } = useAuth();
 
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
@@ -458,7 +469,7 @@ function RentalBookingsView({
   };
 
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
-    useRentalStaffBridge(pointId);
+    useRentalStaffBridge(pointId, isAdmin);
 
   return (
     <div className="mt-8">
@@ -468,7 +479,7 @@ function RentalBookingsView({
             {pointId ? "Bookings" : "Rental bookings"}
           </h2>
           <div className="flex items-center gap-2">
-            {pointId && ManageRosterButton}
+            {pointId && isAdmin && ManageRosterButton}
             <TabsList>
               <TabsTrigger value="calendar">
                 <CalendarDays className="h-4 w-4 mr-1" /> Calendar
@@ -495,8 +506,9 @@ function RentalBookingsView({
               onUnassign={handleUnassign}
               onDelete={handleDelete}
               onUpdateDeparture={handleUpdateDeparture}
-              renderDayOverlay={pointId ? renderDayOverlay : undefined}
-              renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
+              showRates={isAdmin}
+              renderDayOverlay={pointId && isAdmin ? renderDayOverlay : undefined}
+              renderDayDialogSection={pointId && isAdmin ? renderDayDialogSection : undefined}
             />
           )}
         </TabsContent>
