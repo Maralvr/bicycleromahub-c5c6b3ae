@@ -108,30 +108,46 @@ Deno.serve(async (req) => {
         // Keep user_roles + rental_staff roster in sync with the job role.
         // Rental users need role='rental_staff' AND a rental_staff row; other roles use 'staff'.
         if (action.role === "rental") {
+          const { data: prof } = await admin
+            .from("profiles")
+            .select("display_name, avatar_initials")
+            .eq("id", action.userId)
+            .maybeSingle();
+          const { data: st } = await admin
+            .from("staff")
+            .select("name, email, avatar, phone, active")
+            .eq("profile_id", action.userId)
+            .maybeSingle();
+
           // Ensure rental_staff row exists linked to this profile
           const { data: existing } = await admin
             .from("rental_staff")
             .select("id")
-            .eq("profile_id", action.userId)
+            .or(`profile_id.eq.${action.userId}${st?.email ? `,email.ilike.${st.email}` : ""}`)
             .maybeSingle();
           if (!existing) {
-            const { data: prof } = await admin
-              .from("profiles")
-              .select("display_name, avatar_initials")
-              .eq("id", action.userId)
-              .maybeSingle();
-            const { data: st } = await admin
-              .from("staff")
-              .select("name, email, avatar")
-              .eq("profile_id", action.userId)
-              .maybeSingle();
             await admin.from("rental_staff").insert({
               profile_id: action.userId,
               name: st?.name ?? prof?.display_name ?? "User",
               email: st?.email ?? null,
+              phone: st?.phone ?? null,
               avatar: st?.avatar ?? prof?.avatar_initials ?? "US",
+              active: st?.active ?? true,
             });
+          } else {
+            await admin
+              .from("rental_staff")
+              .update({
+                profile_id: action.userId,
+                name: st?.name ?? prof?.display_name ?? "User",
+                email: st?.email ?? null,
+                phone: st?.phone ?? null,
+                avatar: st?.avatar ?? prof?.avatar_initials ?? "US",
+                active: st?.active ?? true,
+              })
+              .eq("id", existing.id);
           }
+          await admin.from("profiles").update({ staff_id: null }).eq("id", action.userId);
           await admin
             .from("user_roles")
             .delete()
@@ -143,6 +159,14 @@ Deno.serve(async (req) => {
             .then(() => {}, () => {}); // ignore unique-conflict
         } else {
           // Non-rental role: remove rental_staff role & unlink rental_staff roster row
+          const { data: staffRow } = await admin
+            .from("staff")
+            .select("id")
+            .eq("profile_id", action.userId)
+            .maybeSingle();
+          if (staffRow?.id) {
+            await admin.from("profiles").update({ staff_id: staffRow.id }).eq("id", action.userId);
+          }
           await admin
             .from("user_roles")
             .delete()
