@@ -103,6 +103,12 @@ function namesMatch(a: string, b: string): boolean {
   return shared >= 2;
 }
 
+type ShiftMatchRow = {
+  id: string;
+  date: string;
+  customer_name?: string | null;
+};
+
 async function findMatchingShiftId(
   supabaseAdmin: any,
   bookingId: string | null,
@@ -139,7 +145,7 @@ async function findMatchingShiftId(
       .order("date", { ascending: true });
     if (data && data.length > 0) {
       // Prefer the shift closest to signedAt
-      const best = data.reduce((a, b) =>
+      const best = (data as ShiftMatchRow[]).reduce((a, b) =>
         Math.abs(new Date(a.date).getTime() - signedDate.getTime()) <=
         Math.abs(new Date(b.date).getTime() - signedDate.getTime())
           ? a
@@ -159,7 +165,7 @@ async function findMatchingShiftId(
         .not("customer_name", "is", null)
         .gte("date", windowFrom)
         .lte("date", windowTo);
-      const candidates = (data ?? []).filter((s) =>
+      const candidates = ((data ?? []) as ShiftMatchRow[]).filter((s) =>
         namesMatch(normalizedSigner, normalizeName(s.customer_name)),
       );
       if (candidates.length === 1) return candidates[0].id;
