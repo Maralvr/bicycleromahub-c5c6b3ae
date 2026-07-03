@@ -37,8 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesLoaded, setRolesLoaded] = useState(false);
 
   const loadUserData = async (userId: string) => {
+    // NOTE: intentionally do NOT reset rolesLoaded=false here. Once roles are
+    // known, keep the UI unblocked; a refresh just replaces the values in
+    // place. Flipping this back to false during focus refresh caused the
+    // AuthGate to fall back to the "Loading…" spinner mid-session.
     try {
-      setRolesLoaded(false);
       const profileRequest = supabase
         .from("profiles")
         .select("id, display_name, avatar_initials, avatar_url, phone, staff_id")
@@ -50,23 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId);
 
       const [profileRes, rolesRes] = await Promise.all([profileRequest, rolesRequest]);
-      if (profileRes.error) throw profileRes.error;
-      if (rolesRes.error) throw rolesRes.error;
+      if (profileRes.error) console.error("[auth] profile load error", profileRes.error);
+      if (rolesRes.error) console.error("[auth] roles load error", rolesRes.error);
 
       const profileRow = profileRes.data;
-      setProfile((profileRow as Profile) ?? null);
+      if (profileRow) setProfile(profileRow as Profile);
       const roleRows = rolesRes.data;
-      setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
-      setRolesLoaded(true);
+      if (!rolesRes.error) {
+        setRoles(((roleRows ?? []) as { role: AppRole }[]).map((r) => r.role));
+      }
     } catch (error) {
       console.error("[auth] failed to load profile/roles", error);
-      setProfile(null);
-      setRoles([]);
-      setRolesLoaded(false);
     } finally {
-      // Roles are now known — safe to release the AuthGate. Releasing earlier
-      // causes an admin to briefly see the guide view on refresh because
-      // `isAdmin` defaults to false until roles arrive.
+      // Always unblock the UI, even if the role fetch failed. Keeping
+      // rolesLoaded=false here previously trapped rental users on the sign-in
+      // spinner when a transient PostgREST error hit either query.
+      setRolesLoaded(true);
       setLoading(false);
     }
   };
