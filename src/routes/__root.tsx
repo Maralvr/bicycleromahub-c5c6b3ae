@@ -162,10 +162,18 @@ function RootComponent() {
 }
 
 function AuthenticatedDataProviders({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, isRentalStaff, isAdmin } = useAuth();
 
   if (!isAuthenticated || loading) {
     return <>{children}</>;
+  }
+
+  if (isRentalStaff && !isAdmin) {
+    return (
+      <StaffStoreProvider>
+        <CurrentUserProvider>{children}</CurrentUserProvider>
+      </StaffStoreProvider>
+    );
   }
 
   return (
