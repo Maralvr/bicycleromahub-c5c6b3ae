@@ -14,13 +14,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { t, lang, setLang } = useI18n();
   const { isRentalStaff } = useAuth();
+  return isRentalStaff ? (
+    <RentalAppShell>{children}</RentalAppShell>
+  ) : (
+    <GuideAdminAppShell>{children}</GuideAdminAppShell>
+  );
+}
 
-  if (isRentalStaff) {
-    return <RentalAppShell>{children}</RentalAppShell>;
-  }
-
+function GuideAdminAppShell({ children }: { children: ReactNode }) {
+  const { t, lang, setLang } = useI18n();
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
