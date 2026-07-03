@@ -104,6 +104,59 @@ Deno.serve(async (req) => {
           .update({ role: action.role })
           .eq("profile_id", action.userId);
         if (error) throw error;
+
+        // Keep user_roles + rental_staff roster in sync with the job role.
+        // Rental users need role='rental_staff' AND a rental_staff row; other roles use 'staff'.
+        if (action.role === "rental") {
+          // Ensure rental_staff row exists linked to this profile
+          const { data: existing } = await admin
+            .from("rental_staff")
+            .select("id")
+            .eq("profile_id", action.userId)
+            .maybeSingle();
+          if (!existing) {
+            const { data: prof } = await admin
+              .from("profiles")
+              .select("display_name, avatar_initials")
+              .eq("id", action.userId)
+              .maybeSingle();
+            const { data: st } = await admin
+              .from("staff")
+              .select("name, email, avatar")
+              .eq("profile_id", action.userId)
+              .maybeSingle();
+            await admin.from("rental_staff").insert({
+              profile_id: action.userId,
+              name: st?.name ?? prof?.display_name ?? "User",
+              email: st?.email ?? null,
+              avatar: st?.avatar ?? prof?.avatar_initials ?? "US",
+            });
+          }
+          await admin
+            .from("user_roles")
+            .delete()
+            .eq("user_id", action.userId)
+            .eq("role", "staff");
+          await admin
+            .from("user_roles")
+            .insert({ user_id: action.userId, role: "rental_staff" })
+            .then(() => {}, () => {}); // ignore unique-conflict
+        } else {
+          // Non-rental role: remove rental_staff role & unlink rental_staff roster row
+          await admin
+            .from("user_roles")
+            .delete()
+            .eq("user_id", action.userId)
+            .eq("role", "rental_staff");
+          await admin
+            .from("rental_staff")
+            .update({ profile_id: null })
+            .eq("profile_id", action.userId);
+          await admin
+            .from("user_roles")
+            .insert({ user_id: action.userId, role: "staff" })
+            .then(() => {}, () => {});
+        }
         break;
       }
       default:
