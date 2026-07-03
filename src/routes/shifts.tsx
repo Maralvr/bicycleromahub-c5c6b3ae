@@ -72,13 +72,13 @@ export const Route = createFileRoute("/shifts")({
 });
 
 function ShiftsPageRouter() {
-  const { isRentalStaff, isAuthenticated, loading } = useAuth();
+  const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
   // Guard against rendering ShiftsPage/RentalStaffShiftsView before the auth
   // providers (CurrentUserProvider, StaffStoreProvider, etc.) are mounted.
   // AuthGate in __root normally handles this, but during the auth transition
   // there can be a render frame where isAuthenticated flips and the child
   // hooks would throw "must be used within Provider".
-  if (loading || !isAuthenticated) return null;
+  if (loading || !isAuthenticated || !rolesLoaded) return null;
   if (isRentalStaff) return <RentalStaffShiftsView />;
   return <ShiftsPage />;
 }
