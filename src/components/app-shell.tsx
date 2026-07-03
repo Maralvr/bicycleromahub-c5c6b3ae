@@ -15,10 +15,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t, lang, setLang } = useI18n();
+  const { isRentalStaff } = useAuth();
+
+  if (isRentalStaff) {
+    return <RentalAppShell>{children}</RentalAppShell>;
+  }
+
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
-  const { signOut, isAdmin, isRentalStaff, profile } = useAuth();
+  const { signOut, isAdmin, profile } = useAuth();
   const switchView = () => setRole(role === "admin" ? "staff" : "admin");
 
   const nav = role === "staff"
@@ -222,6 +228,151 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         {/* Mobile bottom tab bar */}
+        <MobileTabBar nav={nav} pathname={location.pathname} />
+      </div>
+    </div>
+  );
+}
+
+function RentalAppShell({ children }: { children: ReactNode }) {
+  const { t, lang, setLang } = useI18n();
+  const location = useLocation();
+  const { signOut, profile } = useAuth();
+  const displayName = profile?.display_name || "Rental staff";
+  const initials = profile?.avatar_initials || "RS";
+  const subtitle = "Rental operations";
+  const nav = [
+    { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
+    { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
+    { to: "/profile", label: "Profile", icon: UserCog },
+  ];
+
+  return (
+    <div className="flex min-h-screen">
+      <aside className="hidden md:flex w-64 flex-col border-r border-border/60 bg-card/60 backdrop-blur-sm sticky top-0 h-screen">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-border/60">
+          <div className="relative">
+            <img src={logo} alt="Bicycle Roma" className="h-12 w-12 rounded-xl object-contain bg-white ring-1 ring-border shadow-sm" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success ring-2 ring-card" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-foreground leading-tight tracking-tight">{t.appName}</div>
+            <div className="text-[11px] text-muted-foreground uppercase tracking-[0.15em]">{t.tagline}</div>
+          </div>
+          <RentalNotificationBell />
+        </div>
+
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/70">
+            {t.shell.myWorkspace}
+          </div>
+          {nav.map((item) => {
+            const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-[var(--shadow-elegant)]"
+                    : "text-foreground/70 hover:bg-accent hover:text-foreground"
+                )}
+              >
+                {active && <span className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary" />}
+                <Icon className={cn("h-4 w-4 transition-transform", active ? "scale-110" : "group-hover:scale-110")} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-3 border-t border-border/60 space-y-3">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-semibold px-1 mb-1.5">
+              <Languages className="h-3 w-3" /> {t.shell.language}
+            </div>
+            <div className="flex gap-1 p-1 bg-muted rounded-lg">
+              {(["en", "it"] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={cn(
+                    "flex-1 h-7 text-xs font-semibold rounded-md transition-all",
+                    lang === l ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/15">
+            <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 group" title="Edit my profile">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={displayName} className="h-8 w-8 rounded-full object-cover ring-1 ring-border group-hover:ring-primary/50 transition" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
+                  {initials}
+                </div>
+              )}
+              <div className="min-w-0 flex-1 text-left">
+                <div className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{displayName}</div>
+                <div className="text-[10px] text-muted-foreground truncate capitalize">{subtitle}</div>
+              </div>
+            </Link>
+            <button
+              onClick={() => void signOut()}
+              title={t.shell.signOut}
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="md:hidden sticky top-0 z-20 glass border-b border-border/60">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <img src={logo} alt="" className="h-9 w-9 rounded-lg object-contain bg-white ring-1 ring-border" />
+              <div>
+                <div className="font-bold text-sm leading-tight">{t.appName}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.tagline}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <RentalNotificationBell />
+              <Link
+                to="/profile"
+                title="Edit my profile"
+                className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border hover:ring-primary/60 transition flex-shrink-0"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-primary to-primary-glow text-primary-foreground flex items-center justify-center text-[11px] font-bold">
+                    {initials}
+                  </div>
+                )}
+              </Link>
+              <button
+                onClick={() => void signOut()}
+                title={t.shell.signOut}
+                className="h-9 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-semibold border border-border bg-card text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 active:scale-95 transition-all"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 p-5 md:p-10 overflow-x-hidden max-w-[1400px] w-full pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-10">
+          <ProfileCompletionPrompt />
+          {children}
+        </main>
         <MobileTabBar nav={nav} pathname={location.pathname} />
       </div>
     </div>
