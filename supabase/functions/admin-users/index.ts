@@ -149,6 +149,11 @@ Deno.serve(async (req) => {
           }
           await admin.from("profiles").update({ staff_id: null }).eq("id", action.userId);
           await admin
+            .from("staff")
+            .update({ profile_id: null })
+            .eq("profile_id", action.userId)
+            .eq("role", "rental");
+          await admin
             .from("user_roles")
             .delete()
             .eq("user_id", action.userId)
