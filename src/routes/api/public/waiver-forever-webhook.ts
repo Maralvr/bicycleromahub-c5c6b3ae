@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { supabaseAdmin as SupabaseAdmin } from "@/integrations/supabase/client.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,6 +105,7 @@ function namesMatch(a: string, b: string): boolean {
 }
 
 async function findMatchingShiftId(
+  supabaseAdmin: typeof SupabaseAdmin,
   bookingId: string | null,
   email: string | null,
   signerName: string | null,
@@ -213,7 +214,9 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
         }
 
         const extracted = extractFromPayload(payload);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const matchedShiftId = await findMatchingShiftId(
+          supabaseAdmin,
           extracted.bookingId,
           extracted.email,
           extracted.signerName,
