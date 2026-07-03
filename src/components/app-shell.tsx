@@ -245,6 +245,9 @@ function RentalAppShell({ children }: { children: ReactNode }) {
   const subtitle = "Rental operations";
   const nav = [
     { to: "/shifts", label: t.nav.myShifts, icon: CalendarRange },
+    { to: "/staff", label: t.nav.myAvailability, icon: Users },
+    { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
+    { to: "/notifications", label: t.nav.notifications, icon: Bell },
     { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
     { to: "/profile", label: "Profile", icon: UserCog },
   ];

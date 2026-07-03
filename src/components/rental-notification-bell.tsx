@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, CheckCheck, CalendarRange, X } from "lucide-react";
@@ -49,11 +49,20 @@ export function RentalNotificationBell() {
     }
   }, [list]);
 
+  // Unique per mounted instance: this component renders twice at once
+  // (desktop sidebar + mobile header), and Supabase's realtime client
+  // reuses/returns the same channel object for a duplicate topic name.
+  // Calling `.on()` on that already-subscribed channel throws
+  // "cannot add postgres_changes callbacks ... after subscribe()".
+  // A random suffix keeps each instance's channel independent (same
+  // pattern already used in rental-points.ts / waivers-store.ts).
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
   useEffect(() => {
     void refresh();
     if (!user) return;
     const ch = supabase
-      .channel(`rental_notif:${user.id}`)
+      .channel(`rental_notif:${user.id}:${instanceIdRef.current}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rental_staff_notifications" },
