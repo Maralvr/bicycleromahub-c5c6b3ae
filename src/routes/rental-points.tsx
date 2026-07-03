@@ -551,6 +551,7 @@ function RentalReadOnlyBookingsView({
   onTabChange: (t: RentalTab) => void;
 }) {
   const { shifts, loading } = useRentalShifts();
+  const { staff } = useStaffStore();
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
     [shifts, pointId],
@@ -581,7 +582,7 @@ function RentalReadOnlyBookingsView({
               No rental bookings.
             </Card>
           ) : (
-            <ShiftsCalendar shifts={scoped} staff={[]} showRates={false} />
+            <ShiftsCalendar shifts={scoped} staff={staff} showRates={false} />
           )}
         </TabsContent>
 
