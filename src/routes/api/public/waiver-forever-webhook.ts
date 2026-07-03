@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
-import type { supabaseAdmin as SupabaseAdmin } from "@/integrations/supabase/client.server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,7 +104,7 @@ function namesMatch(a: string, b: string): boolean {
 }
 
 async function findMatchingShiftId(
-  supabaseAdmin: typeof SupabaseAdmin,
+  supabaseAdmin: any,
   bookingId: string | null,
   email: string | null,
   signerName: string | null,
