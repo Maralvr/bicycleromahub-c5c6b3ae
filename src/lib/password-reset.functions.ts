@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const updatePasswordFromRecoverySession = createServerFn({ method: "POST" })
   .inputValidator((input) =>
@@ -12,6 +11,7 @@ export const updatePasswordFromRecoverySession = createServerFn({ method: "POST"
       .parse(input),
   )
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(data.accessToken);
 
     if (userError || !userData.user) {
