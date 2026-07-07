@@ -4,12 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Staff, Shift } from "@/lib/mock-data";
-import { useStaffStore } from "@/lib/staff-store";
+
+type UnavailabilityEntry = Staff["unavailability"][number];
 
 type Props = {
-  staffMember: Staff;
+  staffId: string;
+  unavailability: UnavailabilityEntry[];
   shifts: Shift[];
   readOnly?: boolean;
+  onToggleAllDay: (staffId: string, date: string, reason?: string) => void;
+  onSetTimeWindow: (staffId: string, date: string, from: string, to: string) => void;
+  onClearDate: (staffId: string, date: string) => void;
+  onClearMonth: (staffId: string, yearMonth: string) => void;
 };
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -44,9 +50,17 @@ function buildMonthGrid(month: Date) {
   });
 }
 
-export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: Props) {
+export function AvailabilityCalendar({
+  staffId,
+  unavailability,
+  shifts,
+  readOnly = false,
+  onToggleAllDay,
+  onSetTimeWindow,
+  onClearDate,
+  onClearMonth,
+}: Props) {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
-  const { toggleAllDay, setTimeWindow, clearDate, clearMonth } = useStaffStore();
 
   const grid = useMemo(() => buildMonthGrid(cursor), [cursor]);
   const monthLabel = cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -57,22 +71,22 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
   const shiftsByDate = useMemo(() => {
     const m = new Map<string, Shift[]>();
     for (const s of shifts) {
-      if (s.assignedStaffId !== staffMember.id) continue;
+      if (s.assignedStaffId !== staffId) continue;
       if (s.status === "rejected") continue;
       const arr = m.get(s.date) ?? [];
       arr.push(s);
       m.set(s.date, arr);
     }
     return m;
-  }, [shifts, staffMember.id]);
+  }, [shifts, staffId]);
 
   const unavailByDate = useMemo(() => {
-    const m = new Map<string, Staff["unavailability"][number]>();
-    for (const u of staffMember.unavailability) m.set(u.date, u);
+    const m = new Map<string, UnavailabilityEntry>();
+    for (const u of unavailability) m.set(u.date, u);
     return m;
-  }, [staffMember.unavailability]);
+  }, [unavailability]);
 
-  const monthUnavailCount = staffMember.unavailability.filter((u) => u.date.startsWith(yearMonth)).length;
+  const monthUnavailCount = unavailability.filter((u) => u.date.startsWith(yearMonth)).length;
 
   const markWeekendsOff = () => {
     grid.forEach((cell) => {
@@ -80,7 +94,7 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
       const dow = (cell.date.getDay() + 6) % 7; // 5=Sat,6=Sun
       if (dow >= 5 && !shiftsByDate.has(cell.iso)) {
         const existing = unavailByDate.get(cell.iso);
-        if (!existing?.allDay) toggleAllDay(staffMember.id, cell.iso, "Weekend");
+        if (!existing?.allDay) onToggleAllDay(staffId, cell.iso, "Weekend");
       }
     });
   };
@@ -110,7 +124,7 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
               size="sm"
               className="h-8 text-xs"
               disabled={monthUnavailCount === 0}
-              onClick={() => clearMonth(staffMember.id, yearMonth)}
+              onClick={() => onClearMonth(staffId, yearMonth)}
             >
               Clear month
             </Button>
@@ -197,12 +211,12 @@ export function AvailabilityCalendar({ staffMember, shifts, readOnly = false }: 
               </PopoverTrigger>
               <PopoverContent className="w-72 p-3" align="start">
                 <DayEditor
-                  staffId={staffMember.id}
+                  staffId={staffId}
                   date={cell.iso}
                   current={unavail}
-                  onToggleAllDay={() => toggleAllDay(staffMember.id, cell.iso)}
-                  onSetWindow={(from, to) => setTimeWindow(staffMember.id, cell.iso, from, to)}
-                  onClear={() => clearDate(staffMember.id, cell.iso)}
+                  onToggleAllDay={() => onToggleAllDay(staffId, cell.iso)}
+                  onSetWindow={(from, to) => onSetTimeWindow(staffId, cell.iso, from, to)}
+                  onClear={() => onClearDate(staffId, cell.iso)}
                 />
               </PopoverContent>
             </Popover>

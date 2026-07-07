@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { useAuth } from "@/lib/auth";
+import { useRentalAvailability } from "@/lib/rental-availability";
 import { Avatar } from "@/components/avatar";
 import { AvailabilityCalendar } from "@/components/availability-calendar";
 import { Card } from "@/components/ui/card";
@@ -48,21 +49,77 @@ function StaffPageRouter() {
 }
 
 function RentalStaffAvailabilityView() {
+  const {
+    rentalStaffId,
+    unavailability,
+    loading,
+    toggleAllDay,
+    setTimeWindow,
+    clearDate,
+    clearMonth,
+  } = useRentalAvailability();
+
+  const yearMonth = new Date().toISOString().slice(0, 7);
+  const monthOffDays = unavailability.filter((u) => u.date.startsWith(yearMonth)).length;
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="text-sm text-muted-foreground py-12 text-center">Loading your profile…</div>
+      </AppShell>
+    );
+  }
+
+  if (!rentalStaffId) {
+    return (
+      <AppShell>
+        <div className="text-sm text-muted-foreground py-12 text-center">No rental staff profile is linked to this account.</div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <PageHeader
         title="My availability"
-        subtitle="How your rental-day schedule works."
+        subtitle="Tap any day to mark yourself off, or set a partial-day busy window."
       />
-      <Card className="p-6 border-dashed text-sm text-muted-foreground max-w-xl">
-        <p>
-          Rental-point days work differently than guide shifts: an admin assigns you to a
-          rental point for a specific day, and you accept or reject it from{" "}
-          <Link to="/shifts" className="text-primary underline underline-offset-2">
-            My shifts
-          </Link>
-          . There isn&apos;t a separate availability calendar to manage here yet.
-        </p>
+
+      <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
+        <div className="rounded-lg border border-border/60 bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+            <CalendarOff className="h-3.5 w-3.5" /> Days off this month
+          </div>
+          <div className="text-2xl font-bold text-foreground tabular-nums">{monthOffDays}</div>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
+          <div className="text-muted-foreground text-xs mb-1">Rental-day assignments</div>
+          <div className="text-xs text-foreground">
+            Assigned days show up in{" "}
+            <Link to="/shifts" className="text-primary underline underline-offset-2">
+              My shifts
+            </Link>{" "}
+            for you to accept or reject.
+          </div>
+        </div>
+      </div>
+
+      <Card className="p-5 border-border/60 max-w-3xl">
+        <div className="mb-4">
+          <h2 className="font-semibold text-foreground">Monthly calendar</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Marking a day off here helps admins avoid assigning you to a rental point that day.
+          </p>
+        </div>
+        <AvailabilityCalendar
+          staffId={rentalStaffId}
+          unavailability={unavailability}
+          shifts={[]}
+          onToggleAllDay={toggleAllDay}
+          onSetTimeWindow={setTimeWindow}
+          onClearDate={clearDate}
+          onClearMonth={clearMonth}
+        />
       </Card>
     </AppShell>
   );
@@ -78,7 +135,7 @@ function StaffPage() {
 function MyAvailabilityView() {
   const { t } = useI18n();
   const { staffId } = useCurrentUser();
-  const { staff, loading } = useStaffStore();
+  const { staff, loading, toggleAllDay, setTimeWindow, clearDate, clearMonth } = useStaffStore();
   const { shifts: allShifts } = useShiftsStore();
   const me = staff.find((s) => s.id === staffId);
   const [editOpen, setEditOpen] = useState(false);
@@ -152,7 +209,15 @@ function MyAvailabilityView() {
               <p className="text-xs text-muted-foreground mt-0.5">Days with assigned shifts are locked. Click a free day to edit.</p>
             </div>
           </div>
-          <AvailabilityCalendar staffMember={me} shifts={allShifts} />
+          <AvailabilityCalendar
+            staffId={me.id}
+            unavailability={me.unavailability}
+            shifts={allShifts}
+            onToggleAllDay={toggleAllDay}
+            onSetTimeWindow={setTimeWindow}
+            onClearDate={clearDate}
+            onClearMonth={clearMonth}
+          />
         </Card>
 
         {/* Profile + skills */}
@@ -279,7 +344,7 @@ function ProfileRow({ icon: Icon, label, children }: { icon: React.ComponentType
 
 function AdminStaffDirectory() {
   const { t } = useI18n();
-  const { staff, addStaff } = useStaffStore();
+  const { staff, addStaff, toggleAllDay, setTimeWindow, clearDate, clearMonth } = useStaffStore();
   const { shifts: allShifts } = useShiftsStore();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "available" | "on_shift" | "off">("all");
@@ -507,7 +572,15 @@ function AdminStaffDirectory() {
                   <h3 className="font-semibold text-sm text-foreground">Availability</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">As an admin you can edit on their behalf — changes sync to the matcher.</p>
                 </div>
-                <AvailabilityCalendar staffMember={liveOpenStaff} shifts={allShifts} />
+                <AvailabilityCalendar
+                  staffId={liveOpenStaff.id}
+                  unavailability={liveOpenStaff.unavailability}
+                  shifts={allShifts}
+                  onToggleAllDay={toggleAllDay}
+                  onSetTimeWindow={setTimeWindow}
+                  onClearDate={clearDate}
+                  onClearMonth={clearMonth}
+                />
               </div>
             </>
           )}

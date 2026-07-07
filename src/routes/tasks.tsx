@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/lib/auth";
+import { useRentalTasks, type RentalTaskUpdate } from "@/lib/rental-tasks";
 import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,12 +61,14 @@ export const Route = createFileRoute("/tasks")({
 });
 
 function TasksPageRouter() {
-  // Tasks are only ever assigned to public.staff rows (guides/admins) today --
-  // there's no rental_staff assignment path, and none of the providers
-  // TasksPage relies on (CurrentUserProvider, StaffStoreProvider,
-  // TasksStoreProvider, etc.) are mounted for rental-staff-only sessions
-  // (see AuthenticatedDataProviders in __root.tsx). Calling TasksPage
-  // directly throws "must be used within Provider" and crashes the page.
+  // public.tasks/task_updates are hard-linked to public.staff (guides/
+  // admins), and none of the providers TasksPage relies on
+  // (CurrentUserProvider, StaffStoreProvider, TasksStoreProvider, etc.) are
+  // mounted for rental-staff-only sessions (see AuthenticatedDataProviders
+  // in __root.tsx) -- calling TasksPage directly throws "must be used
+  // within Provider" and crashes the page. Rental staff have their own
+  // parallel rental_staff_tasks/rental_staff_task_updates tables instead
+  // (20260705000000 migration), surfaced via RentalStaffTasksView below.
   const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
   if (loading || !isAuthenticated || !rolesLoaded) return null;
   if (isRentalStaff) return <RentalStaffTasksView />;
@@ -73,14 +76,211 @@ function TasksPageRouter() {
 }
 
 function RentalStaffTasksView() {
+  const { tasks, loading, updatesByTask, toggleTask, addUpdate } = useRentalTasks();
+  const [updateDialogTask, setUpdateDialogTask] = useState<Task | null>(null);
+
+  const open = tasks.filter((x) => !x.done);
+  const done = tasks.filter((x) => x.done);
+  const completion = tasks.length > 0 ? Math.round((done.length / tasks.length) * 100) : 0;
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="text-sm text-muted-foreground py-12 text-center">Loading your tasks…</div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      <PageHeader title="Tasks" subtitle="Operational tasks assigned to you." />
-      <Card className="p-6 border-dashed text-sm text-muted-foreground max-w-xl">
-        Task assignment for rental staff isn&apos;t set up yet -- today tasks are only
-        assigned to guides. Let us know if you'd like this built out for rental points too.
+      <PageHeader title="Tasks" subtitle="Your assigned tasks" />
+
+      <Card className="p-5 mb-6 bg-gradient-to-br from-primary/8 via-card to-card border-primary/20">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">
+              Today's progress
+            </div>
+            <div className="text-2xl font-bold tracking-tight">
+              {done.length}{" "}
+              <span className="text-muted-foreground font-medium text-base">/ {tasks.length} completed</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary-glow rounded-full transition-all"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <span className="text-sm font-bold tabular-nums">{completion}%</span>
+          </div>
+        </div>
       </Card>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-7 w-7 rounded-lg bg-warning/15 flex items-center justify-center">
+              <AlertCircle className="h-4 w-4 text-warning-foreground" />
+            </div>
+            <h2 className="font-semibold">To do</h2>
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{open.length}</span>
+          </div>
+          <div className="space-y-2">
+            {open.map((task) => (
+              <RentalTaskRow
+                key={task.id}
+                task={task}
+                updates={updatesByTask.get(task.id) ?? []}
+                onToggle={() => toggleTask(task.id, !task.done)}
+                onPostUpdate={() => setUpdateDialogTask(task)}
+              />
+            ))}
+            {open.length === 0 && <div className="text-sm text-muted-foreground text-center py-8">All done! 🎉</div>}
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-7 w-7 rounded-lg bg-success/15 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-success-foreground" />
+            </div>
+            <h2 className="font-semibold">Done</h2>
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{done.length}</span>
+          </div>
+          <div className="space-y-2">
+            {done.map((task) => (
+              <RentalTaskRow
+                key={task.id}
+                task={task}
+                updates={updatesByTask.get(task.id) ?? []}
+                onToggle={() => toggleTask(task.id, !task.done)}
+                onPostUpdate={() => setUpdateDialogTask(task)}
+              />
+            ))}
+            {done.length === 0 && <div className="text-sm text-muted-foreground text-center py-8">No tasks completed yet.</div>}
+          </div>
+        </Card>
+      </div>
+
+      <Dialog open={!!updateDialogTask} onOpenChange={(o) => !o && setUpdateDialogTask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Post an update</DialogTitle>
+            <DialogDescription>{updateDialogTask?.title}</DialogDescription>
+          </DialogHeader>
+          <RentalUpdateForm
+            updates={updateDialogTask ? updatesByTask.get(updateDialogTask.id) ?? [] : []}
+            onSubmit={async (message) => {
+              if (!updateDialogTask) return;
+              await addUpdate(updateDialogTask.id, message);
+              setUpdateDialogTask(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </AppShell>
+  );
+}
+
+function RentalTaskRow({
+  task,
+  updates,
+  onToggle,
+  onPostUpdate,
+}: {
+  task: Task;
+  updates: RentalTaskUpdate[];
+  onToggle: () => void;
+  onPostUpdate: () => void;
+}) {
+  return (
+    <div
+      className={`p-3 rounded-lg border transition-all ${task.done ? "border-border/40 opacity-70 bg-muted/30" : "border-border/60 bg-card hover:border-primary/40 hover:shadow-sm"}`}
+    >
+      <div className="flex items-start gap-3">
+        <Checkbox checked={task.done} onCheckedChange={onToggle} className="mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium leading-snug ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}>
+            {task.title}
+          </div>
+          {task.description && (
+            <p className={`text-xs mt-1 whitespace-pre-wrap ${task.done ? "text-muted-foreground/70" : "text-muted-foreground"}`}>
+              {task.description}
+            </p>
+          )}
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" /> {task.due}
+            </div>
+            <Badge variant="outline" className={`text-[10px] uppercase tracking-wider font-bold ${priorityStyles[task.priority]}`}>
+              {task.priority}
+            </Badge>
+            {updates.length > 0 && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <Activity className="h-2.5 w-2.5" /> {updates.length} update{updates.length > 1 ? "s" : ""}
+              </Badge>
+            )}
+          </div>
+          <div className="mt-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onPostUpdate}>
+              <MessageSquarePlus className="h-3 w-3 mr-1" /> Post update
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RentalUpdateForm({
+  updates,
+  onSubmit,
+}: {
+  updates: RentalTaskUpdate[];
+  onSubmit: (message: string) => Promise<void>;
+}) {
+  const [message, setMessage] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      {updates.length > 0 && (
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {updates.map((u) => (
+            <div key={u.id} className="text-xs p-2 rounded-md bg-muted/50 border border-border/40">
+              <div className="text-foreground">{u.message}</div>
+              <div className="text-muted-foreground mt-1">
+                {u.authorRentalStaffId ? "You" : "Admin"} · {new Date(u.createdAt).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="What's the update?"
+        rows={3}
+      />
+      <DialogFooter>
+        <Button
+          disabled={!message.trim() || posting}
+          onClick={async () => {
+            setPosting(true);
+            try {
+              await onSubmit(message.trim());
+              setMessage("");
+            } finally {
+              setPosting(false);
+            }
+          }}
+        >
+          Post
+        </Button>
+      </DialogFooter>
+    </div>
   );
 }
 

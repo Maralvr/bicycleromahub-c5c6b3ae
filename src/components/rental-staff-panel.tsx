@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, UserPlus, Users2, Check } from "lucide-react";
+import { Plus, UserPlus, Users2, Check, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import {
   assignRentalStaff,
@@ -22,6 +22,15 @@ import {
   unassignRentalStaff,
   upsertRentalStaff,
 } from "@/lib/rental-staff.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type RentalStaff = {
   id: string;
@@ -59,12 +68,14 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
 
   const [staff, setStaff] = useState<RentalStaff[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [unavailable, setUnavailable] = useState<{ rental_staff_id: string; date: string }[]>([]);
   const [showRoster, setShowRoster] = useState(false);
 
   const reload = useCallback(async () => {
     if (!pointId || !enabled) {
       setStaff([]);
       setAssignments([]);
+      setUnavailable([]);
       return;
     }
     const today = new Date();
@@ -75,12 +86,21 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a] = await Promise.all([
+      const [s, a, u] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
+        supabase
+          .from("rental_staff_unavailability" as never)
+          .select("rental_staff_id, date, all_day")
+          .gte("date", from)
+          .lte("date", to)
+          .eq("all_day", true),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
+      setUnavailable(
+        ((u.data ?? []) as unknown as { rental_staff_id: string; date: string }[]),
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load rental staff");
     }
@@ -98,11 +118,25 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
     return map;
   }, [assignments]);
 
+  // "<rental_staff_id>|<date>" -> marked unavailable that day, so the admin
+  // gets a heads-up before assigning them to a rental point anyway --
+  // mirrors how guide shift assignment is expected to respect
+  // staff_unavailability.
+  const unavailableKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of unavailable) set.add(`${u.rental_staff_id}|${u.date}`);
+    return set;
+  }, [unavailable]);
+
   const handleToggle = async (date: string, staffId: string) => {
     if (!pointId) return;
     const existing = (byDate.get(date) ?? []).find(
       (a) => a.rental_staff_id === staffId,
     );
+    if (!existing && unavailableKeys.has(`${staffId}|${date}`)) {
+      const name = staff.find((s) => s.id === staffId)?.name ?? "This person";
+      if (!confirm(`${name} marked themselves unavailable on ${date}. Assign anyway?`)) return;
+    }
     try {
       if (existing) {
         await unassign({ data: { id: existing.id } });
@@ -209,18 +243,27 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                 const on = !!a;
                 const status = a?.status ?? null;
                 const reason = a?.rejection_reason ?? null;
+                const isUnavailable = unavailableKeys.has(`${s.id}|${iso}`);
                 const tone =
                   status === "accepted"
                     ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
                     : on
                       ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
-                      : "bg-card border-border hover:bg-accent";
+                      : isUnavailable
+                        ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
+                        : "bg-card border-border hover:bg-accent";
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => void handleToggle(iso, s.id)}
-                    title={reason ? `Last rejection: ${reason}` : undefined}
+                    title={
+                      reason
+                        ? `Last rejection: ${reason}`
+                        : isUnavailable
+                          ? `${s.name} marked themselves unavailable this day`
+                          : undefined
+                    }
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
                       tone,
@@ -239,6 +282,9 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                     {on && status !== "accepted" && (
                       <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
                     )}
+                    {!on && isUnavailable && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-destructive">off</span>
+                    )}
                     {!on && <Plus className="h-3 w-3 opacity-60" />}
                   </button>
                 );
@@ -249,7 +295,7 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled],
+    [byDate, staff, pointId, enabled, unavailableKeys],
   );
 
   const ManageRosterButton = (
@@ -300,6 +346,7 @@ function RosterDialog({
   }) => Promise<void>;
 }) {
   const [editing, setEditing] = useState<RentalStaff | null>(null);
+  const [assigningTaskTo, setAssigningTaskTo] = useState<RentalStaff | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -347,9 +394,14 @@ function RosterDialog({
                     </div>
                   </div>
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => setEditing(s)}>
-                  Edit
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => setAssigningTaskTo(s)} title="Assign a task">
+                    <ListChecks className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(s)}>
+                    Edit
+                  </Button>
+                </div>
               </div>
             ))
           )}
@@ -417,6 +469,95 @@ function RosterDialog({
             }}
           >
             {editing ? "Save changes" : "Add to roster"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+      <AssignTaskDialog rentalStaff={assigningTaskTo} onClose={() => setAssigningTaskTo(null)} />
+    </Dialog>
+  );
+}
+
+/**
+ * Minimal "assign a task" flow for a single rental staff member -- writes
+ * directly to rental_staff_tasks (see 20260705000000 migration). Kept as an
+ * isolated, additive dialog here rather than folding into the guide-facing
+ * NewTaskDialog on /tasks, so the existing guide task-creation flow (which
+ * writes to the unrelated public.tasks table) isn't touched.
+ */
+function AssignTaskDialog({ rentalStaff, onClose }: { rentalStaff: RentalStaff | null; onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [due, setDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (rentalStaff) {
+      setTitle("");
+      setDescription("");
+      setDue(new Date().toISOString().slice(0, 10));
+      setPriority("medium");
+    }
+  }, [rentalStaff]);
+
+  const submit = async () => {
+    if (!rentalStaff || !title.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await (supabase.from("rental_staff_tasks" as never) as any).insert({
+        title: title.trim(),
+        description: description.trim() || null,
+        assigned_to: rentalStaff.id,
+        due,
+        priority,
+      });
+      if (error) throw error;
+      toast.success(`Task assigned to ${rentalStaff.name}`);
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign task");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!rentalStaff} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Assign a task</DialogTitle>
+          <DialogDescription>{rentalStaff?.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="rt-title" className="text-xs">Title *</Label>
+            <Input id="rt-title" value={title} onChange={(e) => setTitle(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label htmlFor="rt-desc" className="text-xs">Description</Label>
+            <Textarea id="rt-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="rt-due" className="text-xs">Due</Label>
+              <Input id="rt-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} className="h-9" />
+            </div>
+            <div>
+              <Label className="text-xs">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button disabled={!title.trim() || saving} onClick={submit}>
+            {saving ? "Assigning…" : "Assign task"}
           </Button>
         </DialogFooter>
       </DialogContent>
