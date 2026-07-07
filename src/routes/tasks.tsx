@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { useAuth } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,8 +56,33 @@ export const Route = createFileRoute("/tasks")({
       { name: "description", content: "Daily checks and operational tasks for the team." },
     ],
   }),
-  component: TasksPage,
+  component: TasksPageRouter,
 });
+
+function TasksPageRouter() {
+  // Tasks are only ever assigned to public.staff rows (guides/admins) today --
+  // there's no rental_staff assignment path, and none of the providers
+  // TasksPage relies on (CurrentUserProvider, StaffStoreProvider,
+  // TasksStoreProvider, etc.) are mounted for rental-staff-only sessions
+  // (see AuthenticatedDataProviders in __root.tsx). Calling TasksPage
+  // directly throws "must be used within Provider" and crashes the page.
+  const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
+  if (loading || !isAuthenticated || !rolesLoaded) return null;
+  if (isRentalStaff) return <RentalStaffTasksView />;
+  return <TasksPage />;
+}
+
+function RentalStaffTasksView() {
+  return (
+    <AppShell>
+      <PageHeader title="Tasks" subtitle="Operational tasks assigned to you." />
+      <Card className="p-6 border-dashed text-sm text-muted-foreground max-w-xl">
+        Task assignment for rental staff isn&apos;t set up yet -- today tasks are only
+        assigned to guides. Let us know if you'd like this built out for rental points too.
+      </Card>
+    </AppShell>
+  );
+}
 
 const priorityStyles = {
   high: "bg-destructive/10 text-destructive border-destructive/30",

@@ -14,6 +14,9 @@ import { useNotesStore } from "@/lib/notes-store";
 import { BroadcastInteractions } from "@/components/broadcast-interactions";
 import { BroadcastInteractionsProvider } from "@/lib/broadcast-interactions-store";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { listMyRentalNotifications, markRentalNotificationRead } from "@/lib/rental-staff.functions";
 import {
   processFiles,
   DEFAULT_MAX_FILES,
@@ -39,7 +42,7 @@ import {
   Loader2,
   ChevronDown,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/notifications")({
@@ -49,14 +52,139 @@ export const Route = createFileRoute("/notifications")({
       { name: "description", content: "Broadcast messages and live field updates from guides." },
     ],
   }),
-  component: NotificationsPageWrapper,
+  component: NotificationsPageRouter,
 });
 
-function NotificationsPageWrapper() {
+function NotificationsPageRouter() {
+  // Rental staff notifications live in a separate table
+  // (rental_staff_notifications, keyed by rental_staff_id) from the guide
+  // notifications this page otherwise reads via useNotesStore() -- and none
+  // of the providers that depends on (CurrentUserProvider, StaffStoreProvider,
+  // etc.) are mounted for rental-staff-only sessions (see
+  // AuthenticatedDataProviders in __root.tsx). Branch before any of that runs.
+  const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
+  if (loading || !isAuthenticated || !rolesLoaded) return null;
+  if (isRentalStaff) return <RentalStaffNotificationsView />;
   return (
     <BroadcastInteractionsProvider>
       <NotificationsPage />
     </BroadcastInteractionsProvider>
+  );
+}
+
+type RentalNotif = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+  rental_point_id: string | null;
+  date: string | null;
+};
+
+function rentalNotifTimeAgo(iso: string) {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
+function RentalStaffNotificationsView() {
+  const list = useServerFn(listMyRentalNotifications);
+  const mark = useServerFn(markRentalNotificationRead);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [items, setItems] = useState<RentalNotif[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    try {
+      const r = await list();
+      setItems(r.notifications as RentalNotif[]);
+    } finally {
+      setLoading(false);
+    }
+  }, [list]);
+
+  useEffect(() => {
+    void refresh();
+    if (!user) return;
+    const ch = supabase
+      .channel(`rental_notif_page:${user.id}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rental_staff_notifications" },
+        () => {
+          void refresh();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [user, refresh]);
+
+  const unread = items.filter((n) => !n.read).length;
+
+  return (
+    <AppShell>
+      <PageHeader
+        title="Notifications"
+        subtitle="Updates about your rental-point day assignments."
+        actions={
+          unread > 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                await mark({ data: { all: true } });
+                await refresh();
+              }}
+            >
+              Mark all read
+            </Button>
+          ) : undefined
+        }
+      />
+      {loading ? (
+        <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
+      ) : items.length === 0 ? (
+        <Card className="p-10 text-center border-dashed text-sm text-muted-foreground">
+          No notifications yet.
+        </Card>
+      ) : (
+        <div className="divide-y divide-border/40 rounded-lg border border-border/60 bg-card overflow-hidden">
+          {items.map((n) => (
+            <button
+              key={n.id}
+              onClick={async () => {
+                if (!n.read) {
+                  await mark({ data: { id: n.id } });
+                  await refresh();
+                }
+                if (n.link) {
+                  navigate({ to: n.link.split("?")[0] as any, search: {} as any });
+                }
+              }}
+              className={`w-full text-left p-4 hover:bg-accent/50 transition-colors flex items-start gap-3 ${
+                !n.read ? "bg-primary/5" : ""
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-foreground">{n.title}</div>
+                <div className="text-sm text-muted-foreground mt-0.5">{n.body}</div>
+                <div className="text-xs text-muted-foreground mt-1">{rentalNotifTimeAgo(n.created_at)}</div>
+              </div>
+              {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </AppShell>
   );
 }
 

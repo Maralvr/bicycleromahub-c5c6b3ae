@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
+import { useAuth } from "@/lib/auth";
 import { Avatar } from "@/components/avatar";
 import { AvailabilityCalendar } from "@/components/availability-calendar";
 import { Card } from "@/components/ui/card";
@@ -31,8 +32,41 @@ export const Route = createFileRoute("/staff")({
       { name: "description", content: "Manage staff profiles, tags, languages and availability." },
     ],
   }),
-  component: StaffPage,
+  component: StaffPageRouter,
 });
+
+function StaffPageRouter() {
+  // Rental staff accounts have no row in public.staff and none of
+  // CurrentUserProvider/StaffStoreProvider/ShiftsStoreProvider are mounted
+  // for them (see AuthenticatedDataProviders in __root.tsx) -- so this must
+  // be checked, and this branch taken, BEFORE StaffPage calls useCurrentUser()
+  // etc., or it throws "must be used within Provider" and crashes the page.
+  const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
+  if (loading || !isAuthenticated || !rolesLoaded) return null;
+  if (isRentalStaff) return <RentalStaffAvailabilityView />;
+  return <StaffPage />;
+}
+
+function RentalStaffAvailabilityView() {
+  return (
+    <AppShell>
+      <PageHeader
+        title="My availability"
+        subtitle="How your rental-day schedule works."
+      />
+      <Card className="p-6 border-dashed text-sm text-muted-foreground max-w-xl">
+        <p>
+          Rental-point days work differently than guide shifts: an admin assigns you to a
+          rental point for a specific day, and you accept or reject it from{" "}
+          <Link to="/shifts" className="text-primary underline underline-offset-2">
+            My shifts
+          </Link>
+          . There isn&apos;t a separate availability calendar to manage here yet.
+        </p>
+      </Card>
+    </AppShell>
+  );
+}
 
 function StaffPage() {
   const { role } = useCurrentUser();
