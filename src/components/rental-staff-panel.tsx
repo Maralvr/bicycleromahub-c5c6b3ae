@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, UserPlus, Users2, Check, ListChecks } from "lucide-react";
+import { Plus, UserPlus, Users2, Check, ListChecks, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   assignRentalStaff,
@@ -68,7 +68,9 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
 
   const [staff, setStaff] = useState<RentalStaff[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [unavailable, setUnavailable] = useState<{ rental_staff_id: string; date: string }[]>([]);
+  const [unavailable, setUnavailable] = useState<
+    { rental_staff_id: string; date: string; all_day: boolean; from_time: string | null; to_time: string | null }[]
+  >([]);
   const [showRoster, setShowRoster] = useState(false);
 
   const reload = useCallback(async () => {
@@ -89,17 +91,26 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
       const [s, a, u] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
+        // Any unavailability entry (all-day or partial) is worth surfacing
+        // to the admin -- rental-point day assignments aren't time-sliced,
+        // so a partial-day busy window still overlaps whatever hours the
+        // rental point needs covering that day.
         supabase
           .from("rental_staff_unavailability" as never)
-          .select("rental_staff_id, date, all_day")
+          .select("rental_staff_id, date, all_day, from_time, to_time")
           .gte("date", from)
-          .lte("date", to)
-          .eq("all_day", true),
+          .lte("date", to),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
       setUnavailable(
-        ((u.data ?? []) as unknown as { rental_staff_id: string; date: string }[]),
+        ((u.data ?? []) as unknown as {
+          rental_staff_id: string;
+          date: string;
+          all_day: boolean;
+          from_time: string | null;
+          to_time: string | null;
+        }[]),
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load rental staff");
@@ -109,6 +120,26 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Keep the unavailability picture live while the admin has this calendar
+  // open -- a rental staff member marking a day off mid-session shouldn't
+  // require the admin to reopen the dialog to see it.
+  useEffect(() => {
+    if (!pointId || !enabled) return;
+    const channel = supabase
+      .channel(`rental_unavail_admin:${pointId}:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rental_staff_unavailability" },
+        () => {
+          void reload();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [pointId, enabled, reload]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Assignment[]>();
@@ -122,10 +153,16 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
   // gets a heads-up before assigning them to a rental point anyway --
   // mirrors how guide shift assignment is expected to respect
   // staff_unavailability.
-  const unavailableKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const u of unavailable) set.add(`${u.rental_staff_id}|${u.date}`);
-    return set;
+  const unavailableByKey = useMemo(() => {
+    const map = new Map<string, { allDay: boolean; from: string | null; to: string | null }>();
+    for (const u of unavailable) {
+      map.set(`${u.rental_staff_id}|${u.date}`, {
+        allDay: u.all_day,
+        from: u.from_time?.slice(0, 5) ?? null,
+        to: u.to_time?.slice(0, 5) ?? null,
+      });
+    }
+    return map;
   }, [unavailable]);
 
   const handleToggle = async (date: string, staffId: string) => {
@@ -133,9 +170,13 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
     const existing = (byDate.get(date) ?? []).find(
       (a) => a.rental_staff_id === staffId,
     );
-    if (!existing && unavailableKeys.has(`${staffId}|${date}`)) {
+    const conflict = unavailableByKey.get(`${staffId}|${date}`);
+    if (!existing && conflict) {
       const name = staff.find((s) => s.id === staffId)?.name ?? "This person";
-      if (!confirm(`${name} marked themselves unavailable on ${date}. Assign anyway?`)) return;
+      const detail = conflict.allDay
+        ? "marked the whole day off"
+        : `marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`;
+      if (!confirm(`${name} ${detail} on ${date}. Assign anyway?`)) return;
     }
     try {
       if (existing) {
@@ -243,7 +284,8 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                 const on = !!a;
                 const status = a?.status ?? null;
                 const reason = a?.rejection_reason ?? null;
-                const isUnavailable = unavailableKeys.has(`${s.id}|${iso}`);
+                const conflict = unavailableByKey.get(`${s.id}|${iso}`);
+                const isUnavailable = !!conflict;
                 const tone =
                   status === "accepted"
                     ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
@@ -252,18 +294,17 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                       : isUnavailable
                         ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
                         : "bg-card border-border hover:bg-accent";
+                const conflictDetail = conflict
+                  ? conflict.allDay
+                    ? `${s.name} marked the whole day off`
+                    : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
+                  : undefined;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => void handleToggle(iso, s.id)}
-                    title={
-                      reason
-                        ? `Last rejection: ${reason}`
-                        : isUnavailable
-                          ? `${s.name} marked themselves unavailable this day`
-                          : undefined
-                    }
+                    title={reason ? `Last rejection: ${reason}` : conflictDetail}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
                       tone,
@@ -282,8 +323,15 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                     {on && status !== "accepted" && (
                       <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
                     )}
-                    {!on && isUnavailable && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-destructive">off</span>
+                    {/* Shown whenever the staff marked themselves unavailable
+                        that day, even if they're already assigned -- e.g.
+                        they went unavailable after being assigned, and the
+                        admin should notice and reconsider. */}
+                    {isUnavailable && (
+                      <AlertTriangle
+                        className="h-3 w-3 text-destructive shrink-0"
+                        aria-label="Marked unavailable this day"
+                      />
                     )}
                     {!on && <Plus className="h-3 w-3 opacity-60" />}
                   </button>
@@ -295,7 +343,7 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableKeys],
+    [byDate, staff, pointId, enabled, unavailableByKey],
   );
 
   const ManageRosterButton = (
