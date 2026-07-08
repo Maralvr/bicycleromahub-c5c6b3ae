@@ -717,6 +717,142 @@ export type Database = {
           },
         ]
       }
+      rental_staff_task_updates: {
+        Row: {
+          attachments: Json
+          author_rental_staff_id: string | null
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          task_id: string
+          type: Database["public"]["Enums"]["task_update_type"]
+        }
+        Insert: {
+          attachments?: Json
+          author_rental_staff_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          task_id: string
+          type?: Database["public"]["Enums"]["task_update_type"]
+        }
+        Update: {
+          attachments?: Json
+          author_rental_staff_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          task_id?: string
+          type?: Database["public"]["Enums"]["task_update_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_task_updates_author_rental_staff_id_fkey"
+            columns: ["author_rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_staff_task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_staff_tasks: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          done: boolean
+          due: string
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done?: boolean
+          due: string
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done?: boolean
+          due?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_staff_unavailability: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          date: string
+          from_time: string | null
+          id: string
+          reason: string | null
+          rental_staff_id: string
+          to_time: string | null
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          date: string
+          from_time?: string | null
+          id?: string
+          reason?: string | null
+          rental_staff_id: string
+          to_time?: string | null
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          date?: string
+          from_time?: string | null
+          id?: string
+          reason?: string | null
+          rental_staff_id?: string
+          to_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_unavailability_rental_staff_id_fkey"
+            columns: ["rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_dispatch_events: {
         Row: {
           actor_profile_id: string | null
