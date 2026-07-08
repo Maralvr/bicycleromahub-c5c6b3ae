@@ -24,6 +24,7 @@ import { useLiveStaff } from "@/lib/live-staff";
 import { ShiftDialog } from "@/components/shift-dialog";
 import { useRequireAdmin } from "@/lib/require-admin";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
+import { cleanNoteText } from "@/lib/notes-format";
 
 
 
@@ -282,7 +283,7 @@ function Section({
                     </div>
                   )}
 
-                  {s.notes && <div className="mt-3 text-xs text-foreground/70 italic">📝 {s.notes}</div>}
+                  {cleanNoteText(s.notes) && <div className="mt-3 text-xs text-foreground/70 italic">📝 {cleanNoteText(s.notes)}</div>}
 
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border/60">
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(s)}>

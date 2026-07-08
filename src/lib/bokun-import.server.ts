@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isExcludedBokunProductId, isExcludedTourName } from "./excluded-bokun-products";
 import { rentalLocationForProductId } from "./rental-products";
+import { cleanNoteText } from "./notes-format";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
   adult: "adults", adults: "adults", person: "adults", people: "adults", participant: "adults", participants: "adults", pax: "adults",
@@ -69,7 +70,12 @@ function dateOnly(value: BokunDateValue) {
 }
 
 function textValue(value: unknown) {
-  if (typeof value === "string") return value || null;
+  // Bokun sometimes hands us the notes field as an already-serialized JSON
+  // string (an array of {author, body, type, ...} note objects) instead of
+  // a real array in the parsed payload. Without this, that raw JSON text
+  // gets stored verbatim in shifts.notes and shown as-is everywhere a
+  // shift's notes render (see notes-format.ts for the full story).
+  if (typeof value === "string") return cleanNoteText(value);
   if (Array.isArray(value)) {
     const notes = value
       .map((item) => {

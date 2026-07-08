@@ -24,6 +24,7 @@ import { Avatar } from "@/components/avatar";
 import { RateTitleField } from "@/components/rate-title-field";
 import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
 import { Shift, Staff } from "@/lib/mock-data";
+import { cleanNoteText } from "@/lib/notes-format";
 import {
   ChevronLeft,
   ChevronRight,
@@ -1246,8 +1247,8 @@ function DayDetailsDialog({
                         {s.customer.phone}
                       </div>
                     )}
-                    {s.notes && (
-                      <div className="mt-2 text-xs italic text-muted-foreground">📝 {s.notes}</div>
+                    {cleanNoteText(s.notes) && (
+                      <div className="mt-2 text-xs italic text-muted-foreground">📝 {cleanNoteText(s.notes)}</div>
                     )}
                   </div>
                 </button>
@@ -1448,7 +1449,7 @@ function ShiftDetailsDialog({
                 {s.customer.phone}
               </div>
             )}
-            {s.notes && <div className="text-xs italic text-muted-foreground">📝 {s.notes}</div>}
+            {cleanNoteText(s.notes) && <div className="text-xs italic text-muted-foreground">📝 {cleanNoteText(s.notes)}</div>}
           </div>
         </div>
         {bookingRows.length > 0 && (

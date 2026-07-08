@@ -43,6 +43,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
+import { cleanNoteText } from "@/lib/notes-format";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -890,7 +891,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                 )}
 
-                {s.notes && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{s.notes}</div>}
+                {cleanNoteText(s.notes) && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{cleanNoteText(s.notes)}</div>}
 
                 {/* Booking notes thread — admin & assigned guide */}
                 {(currentRole === "admin" || s.assignedStaffId === currentStaffId) && (

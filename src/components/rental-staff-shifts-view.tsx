@@ -40,6 +40,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { cleanNoteText } from "@/lib/notes-format";
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -580,9 +581,9 @@ function RentalDayCard({
                 )}
               </div>
 
-              {b.notes && (
+              {cleanNoteText(b.notes) && (
                 <div className="text-xs italic text-muted-foreground bg-muted/40 rounded p-2 border border-border/30">
-                  📝 {b.notes}
+                  📝 {cleanNoteText(b.notes)}
                 </div>
               )}
             </div>

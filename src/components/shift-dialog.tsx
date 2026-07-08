@@ -18,6 +18,7 @@ import { categorizeForAssignment } from "@/lib/staff-matcher";
 import type { Shift } from "@/lib/mock-data";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
 import { Package, MapPin, Users, User, FileText, Sparkles, Ban, CheckCircle2, AlertTriangle } from "lucide-react";
+import { cleanNoteText } from "@/lib/notes-format";
 
 const NONE_VALUE = "__none";
 
@@ -121,7 +122,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         rate_title: initial.rate_title ?? "",
         seller: initial.seller,
         booking_channel: initial.booking_channel,
-        notes: initial.notes ?? "",
+        // Clean up already-corrupted notes (a raw serialized Bokun note
+        // array stored as text, see notes-format.ts) so editing a shift
+        // doesn't show/re-save the JSON blob verbatim.
+        notes: cleanNoteText(initial.notes) ?? "",
         operations_notes: initial.operations_notes ?? "",
         required_tags: initial.required_tags,
         assigned_staff_id: initial.assigned_staff_id,
