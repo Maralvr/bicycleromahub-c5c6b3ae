@@ -82,6 +82,19 @@ export function useRentalShifts() {
     const pageSize = 1000;
     const all: Row[] = [];
     let from = 0;
+    // Cost fix: this used to have no date bound at all -- every open of the
+    // Rental points page (by every admin AND every rental staff member,
+    // independently, no shared cache) paginated through the ENTIRE history
+    // of rental-point shifts, forever, growing more expensive as the
+    // booking history grows. live-shifts.ts and shifts-store.tsx both
+    // already bound their equivalent queries to a date range; this was the
+    // one outlier. A generous +/-12 month window keeps existing calendar
+    // navigation working (the calendar itself pages through this in-memory
+    // array client-side) while capping the query instead of scanning
+    // everything ever imported.
+    const today = new Date();
+    const dateFrom = new Date(today.getFullYear() - 1, today.getMonth(), 1).toISOString().slice(0, 10);
+    const dateTo = new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10);
     while (true) {
       const { data, error: err } = await supabase
         .from("shifts")
@@ -89,6 +102,8 @@ export function useRentalShifts() {
           "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id",
         )
         .not("rental_point_id", "is", null)
+        .gte("date", dateFrom)
+        .lte("date", dateTo)
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
         .range(from, from + pageSize - 1);

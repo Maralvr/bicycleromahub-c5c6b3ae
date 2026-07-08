@@ -417,15 +417,23 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         liveSummaries.push(summary);
       }
 
-      // Bokun 10-hour cutoff optimization:
-      // Bookings cannot be modified by customers within 10 hours of departure.
-      // For any summary whose start time is < 10h away AND already exists in our
-      // DB, we are guaranteed it cannot have changed — so we skip the expensive
-      // detail fetch entirely. (Existing bookings are never re-imported anyway,
-      // see comment near the upsert below; this just avoids the wasted Bokun
-      // API call + JSON download.)
-      // Bokun cutoff is 10h. We use 9h 30min as an extra safety margin
-      // so we only skip bookings that are well inside the locked window.
+      // Cost fix (see get_bokun_cron_status / audit discussion): this used
+      // to fetch full Bokun detail (a separate API call + JSON download) for
+      // EVERY booking on EVERY 5-minute cron tick, all day, forever -- even
+      // though existing bookings were never actually written back with that
+      // detail (the resulting data was simply discarded once a booking_id
+      // was already in `shifts`). That made the 10h-cutoff skip below the
+      // *only* real savings, and it only covered bookings departing within
+      // ~10 hours -- a tiny fraction of a 13-month sync window.
+      //
+      // We do still need to catch real changes to *upcoming* bookings
+      // (pax count, time changes) -- that's the whole point of re-scanning
+      // the window on a schedule rather than importing once. The fix is to
+      // use the cheap summary-level fields (already present on every page
+      // of search results, no extra API call) to check whether an already-
+      // imported booking looks unchanged, and only pay for the detail fetch
+      // when it's a brand-new booking_id or the summary suggests something
+      // about it differs from what we have stored.
       const CUTOFF_MS = (9 * 60 + 30) * 60 * 1000;
       const cutoffThreshold = Date.now() + CUTOFF_MS;
 
@@ -440,36 +448,74 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         return Number.isFinite(ms) ? ms : null;
       };
 
-      // Candidates inside the 10h cutoff window — check which are already in DB.
-      const insideCutoffIds: string[] = [];
-      for (const s of liveSummaries) {
-        const startMs = summaryStartMs(s);
-        const bId = summaryBookingId(s);
-        if (bId && startMs !== null && startMs <= cutoffThreshold) {
-          insideCutoffIds.push(bId);
+      type ExistingShiftRow = {
+        booking_id: string;
+        date: string;
+        start_time: string;
+        adults: number;
+        teens: number;
+        infants: number;
+      };
+
+      // Look up EVERY booking_id on this page up front (one query), not just
+      // the ones inside the 10h cutoff window -- we need to know what we
+      // already have stored to compare against, for every summary.
+      const pageBookingIds = Array.from(
+        new Set(liveSummaries.map(summaryBookingId).filter((id): id is string => !!id)),
+      );
+      const existingByBookingId = new Map<string, ExistingShiftRow>();
+      if (pageBookingIds.length > 0) {
+        const { data: existingRowsPage } = await supabaseAdmin
+          .from("shifts")
+          .select("booking_id, date, start_time, adults, teens, infants")
+          .eq("source", "bokun")
+          .in("booking_id", pageBookingIds);
+        for (const r of existingRowsPage ?? []) {
+          if (r.booking_id) existingByBookingId.set(r.booking_id as string, r as ExistingShiftRow);
         }
       }
 
-      const lockedExistingIds = new Set<string>();
-      if (insideCutoffIds.length > 0) {
-        const { data: lockedRows } = await supabaseAdmin
-          .from("shifts")
-          .select("booking_id")
-          .eq("source", "bokun")
-          .in("booking_id", insideCutoffIds);
-        for (const r of lockedRows ?? []) {
-          if (r.booking_id) lockedExistingIds.add(r.booking_id as string);
+      // Does this summary look different from what we already have stored?
+      // Only checks fields Bokun search results actually expose (start
+      // time/date, total pax) -- if we can't tell, we fetch detail to be
+      // safe rather than silently missing a real change.
+      const summaryLooksChanged = (s: BokunBookingFull, existing: ExistingShiftRow): boolean => {
+        const startMs = summaryStartMs(s);
+        if (startMs !== null) {
+          if (dateOnly(startMs) !== existing.date) return true;
+          if (fmtTime(startMs) !== existing.start_time) return true;
         }
-      }
+        const summaryTotal = s.totalParticipants ?? s.fields?.totalParticipants;
+        if (typeof summaryTotal === "number") {
+          const storedTotal = existing.adults + existing.teens + existing.infants;
+          if (summaryTotal !== storedTotal) return true;
+        }
+        return false;
+      };
 
       const summariesToFetch: BokunBookingFull[] = [];
       for (const s of liveSummaries) {
         const bId = summaryBookingId(s);
-        if (bId && lockedExistingIds.has(bId)) {
-          // Inside 10h cutoff + already imported → cannot have changed. Skip.
+        const existing = bId ? existingByBookingId.get(bId) : undefined;
+        if (!existing) {
+          // Never seen before -- always needs a full detail fetch to create it.
+          summariesToFetch.push(s);
+          continue;
+        }
+        const startMs = summaryStartMs(s);
+        if (startMs !== null && startMs <= cutoffThreshold) {
+          // Inside the 10h cutoff + already imported → Bokun guarantees the
+          // customer cannot have changed it. Skip.
           skipped++;
           continue;
         }
+        if (!summaryLooksChanged(s, existing)) {
+          // Already imported and nothing in the summary suggests a change.
+          skipped++;
+          continue;
+        }
+        // Already imported but looks changed (time or pax differ) -- worth
+        // the detail fetch so we can update the stored row.
         summariesToFetch.push(s);
       }
 
@@ -514,24 +560,44 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       }
 
       if (rows.length > 0) {
-        // Look up existing rows by booking_id. Existing bookings are NEVER
-        // reimported — admins may have edited fields, reassigned guides, or
-        // posted notes since the original import, and Bokun is no longer the
-        // source of truth for them.
-        const bookingIds = rows.map((r) => r!.booking_id!);
-        const { data: existingRows, error: existingErr } = await supabaseAdmin
-          .from("shifts")
-          .select("booking_id")
-          .eq("source", "bokun")
-          .in("booking_id", bookingIds);
-        if (existingErr) errors.push(`Lookup existing: ${existingErr.message}`);
-        const existingBookingIds = new Set<string>(
-          (existingRows ?? []).map((r) => r.booking_id as string),
-        );
+        // newRows: booking_id we've never stored before → insert fresh.
+        // updateRows: already existed (we only got here because the summary
+        // looked changed) → update ONLY the customer-controlled fields
+        // (time, pax breakdown, contact info) that Bokun actually owns.
+        // Deliberately never touches assigned_staff_id, status,
+        // pending_expires_at, meeting_point, rate, notes, operations_notes,
+        // or required_tags -- those may have been hand-edited by an admin
+        // after the original import, and a Bokun resync should never
+        // silently clobber that work.
+        const newRows = rows.filter((r) => !existingByBookingId.has(r!.booking_id!));
+        const updateRows = rows.filter((r) => existingByBookingId.has(r!.booking_id!));
+        skipped += rows.length - newRows.length - updateRows.length;
 
-        // Only insert rows we have never seen before.
-        const newRows = rows.filter((r) => !existingBookingIds.has(r!.booking_id!));
-        skipped += rows.length - newRows.length;
+        for (const r of updateRows) {
+          const patch = {
+            date: r!.date,
+            start_time: r!.start_time,
+            end_time: r!.end_time,
+            adults: r!.adults,
+            teens: r!.teens,
+            infants: r!.infants,
+            trailers: r!.trailers,
+            participants: r!.participants,
+            customer_name: r!.customer_name,
+            customer_phone: r!.customer_phone,
+            customer_email: r!.customer_email,
+          };
+          const { error: updateErr } = await supabaseAdmin
+            .from("shifts")
+            .update(patch)
+            .eq("source", "bokun")
+            .eq("booking_id", r!.booking_id!);
+          if (updateErr) {
+            errors.push(`Update ${r!.booking_id}: ${updateErr.message}`);
+          } else {
+            updated++;
+          }
+        }
 
         if (newRows.length > 0) {
           const payload = newRows.map((r) => ({
