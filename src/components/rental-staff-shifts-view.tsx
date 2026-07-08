@@ -15,6 +15,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -70,6 +71,23 @@ export function RentalStaffShiftsView() {
   const [rejectTarget, setRejectTarget] = useState<MyRentalDay | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Day cards are collapsed by default (bookings hidden) so the list doesn't
+  // turn into a long scroll once a staff member has many days assigned --
+  // only the day header (date, point, booking count, pax) shows until
+  // expanded. Pending days are always shown expanded since they need a
+  // decision. Upcoming/Past are also paginated in fixed pages for the same
+  // reason.
+  const PAGE_SIZE = 10;
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [upcomingLimit, setUpcomingLimit] = useState(PAGE_SIZE);
+  const [pastLimit, setPastLimit] = useState(PAGE_SIZE);
+  const toggleExpand = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const reload = useCallback(async () => {
     try {
@@ -150,6 +168,7 @@ export function RentalStaffShiftsView() {
                       setRejectTarget(d);
                       setRejectReason("");
                     }}
+                    expanded
                   />
                 ))}
               </div>
@@ -171,11 +190,29 @@ export function RentalStaffShiftsView() {
                     Nothing scheduled. An admin will assign you to rental-point days here.
                   </Card>
                 ) : (
-                  <div className="grid gap-4">
-                    {accepted.map((d) => (
-                      <RentalDayCard key={d.assignmentId} day={d} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid gap-4">
+                      {accepted.slice(0, upcomingLimit).map((d) => (
+                        <RentalDayCard
+                          key={d.assignmentId}
+                          day={d}
+                          expanded={expanded.has(d.assignmentId)}
+                          onToggleExpand={() => toggleExpand(d.assignmentId)}
+                        />
+                      ))}
+                    </div>
+                    {accepted.length > upcomingLimit && (
+                      <div className="flex justify-center mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUpcomingLimit((n) => n + PAGE_SIZE)}
+                        >
+                          Load more ({accepted.length - upcomingLimit} more)
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
 
@@ -185,10 +222,26 @@ export function RentalStaffShiftsView() {
                     Past
                   </h2>
                   <div className="grid gap-4 opacity-75">
-                    {past.slice(0, 10).map((d) => (
-                      <RentalDayCard key={d.assignmentId} day={d} />
+                    {past.slice(0, pastLimit).map((d) => (
+                      <RentalDayCard
+                        key={d.assignmentId}
+                        day={d}
+                        expanded={expanded.has(d.assignmentId)}
+                        onToggleExpand={() => toggleExpand(d.assignmentId)}
+                      />
                     ))}
                   </div>
+                  {past.length > pastLimit && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPastLimit((n) => n + PAGE_SIZE)}
+                      >
+                        Load more ({past.length - pastLimit} more)
+                      </Button>
+                    </div>
+                  )}
                 </section>
               )}
             </TabsContent>
@@ -246,11 +299,15 @@ function RentalDayCard({
   busy,
   onAccept,
   onReject,
+  expanded = true,
+  onToggleExpand,
 }: {
   day: MyRentalDay;
   busy?: boolean;
   onAccept?: () => void;
   onReject?: () => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }) {
   const totalPax = day.bookings.reduce((sum, b) => sum + b.pax, 0);
   const isPending = day.status === "pending";
@@ -289,9 +346,28 @@ function RentalDayCard({
             )}
           </div>
           <div className="text-right">
-            <Badge variant="secondary" className="text-xs">
-              {day.bookings.length} booking{day.bookings.length === 1 ? "" : "s"}
-            </Badge>
+            {onToggleExpand ? (
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                className="inline-flex items-center gap-1 rounded-md hover:bg-muted/60 px-1.5 py-0.5 -mr-1.5"
+                aria-expanded={expanded}
+              >
+                <Badge variant="secondary" className="text-xs">
+                  {day.bookings.length} booking{day.bookings.length === 1 ? "" : "s"}
+                </Badge>
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                    expanded && "rotate-180",
+                  )}
+                />
+              </button>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                {day.bookings.length} booking{day.bookings.length === 1 ? "" : "s"}
+              </Badge>
+            )}
             <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
               <Users className="h-3 w-3" /> {totalPax} pax total
             </div>
@@ -329,7 +405,7 @@ function RentalDayCard({
       </div>
 
       <div className="divide-y divide-border/40">
-        {day.bookings.length === 0 ? (
+        {!expanded ? null : day.bookings.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground text-center">
             No bookings scheduled at this point on this date yet.
           </div>
