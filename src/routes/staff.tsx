@@ -53,6 +53,7 @@ function RentalStaffAvailabilityView() {
     rentalStaffId,
     unavailability,
     loading,
+    error,
     toggleAllDay,
     setTimeWindow,
     clearDate,
@@ -84,6 +85,12 @@ function RentalStaffAvailabilityView() {
         title="My availability"
         subtitle="Tap any day to mark yourself off, or set a partial-day busy window."
       />
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive max-w-3xl">
+          Couldn't load your availability: {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
         <div className="rounded-lg border border-border/60 bg-card p-4">

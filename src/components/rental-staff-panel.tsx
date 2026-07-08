@@ -103,15 +103,24 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
-      setUnavailable(
-        ((u.data ?? []) as unknown as {
-          rental_staff_id: string;
-          date: string;
-          all_day: boolean;
-          from_time: string | null;
-          to_time: string | null;
-        }[]),
-      );
+      if (u.error) {
+        // Don't fail the whole roster load over this -- staff/assignments
+        // still loaded fine -- but do surface it, since a silent failure
+        // here means the availability-conflict warning below just never
+        // fires with no indication anything's wrong.
+        toast.error(`Couldn't load staff availability: ${u.error.message}`);
+        setUnavailable([]);
+      } else {
+        setUnavailable(
+          ((u.data ?? []) as unknown as {
+            rental_staff_id: string;
+            date: string;
+            all_day: boolean;
+            from_time: string | null;
+            to_time: string | null;
+          }[]),
+        );
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load rental staff");
     }
