@@ -125,7 +125,18 @@ export function RentalNotificationBell() {
                         await refresh();
                       }
                       if (n.link) {
-                        navigate({ to: n.link.split("?")[0] as any, search: {} as any });
+                        // Preserve the query string (e.g. ?rental_day=<id>)
+                        // instead of discarding it -- see notifications.tsx
+                        // for the same fix and rationale.
+                        try {
+                          const url = new URL(n.link, window.location.origin);
+                          const search = Object.fromEntries(url.searchParams);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          navigate({ to: url.pathname as any, search: search as any });
+                        } catch {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          navigate({ to: n.link.split("?")[0] as any, search: {} as any });
+                        }
                       }
                       setOpen(false);
                     }}

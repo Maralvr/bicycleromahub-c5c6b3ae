@@ -50,16 +50,22 @@ type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
 type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
 
 export const Route = createFileRoute("/shifts")({
-  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string; rental_day?: string } => {
     const tab = search.tab as string | undefined;
     const status = search.status as string | undefined;
     const shift = search.shift as string | undefined;
+    const rentalDay = search.rental_day as string | undefined;
     const validTabs: ShiftsTab[] = ["calendar", "all", "bokun", "manual", "mine", "past"];
     const validStatuses: ShiftStatusFilter[] = ["pending", "unassigned", "accepted", "rejected"];
     return {
       tab: tab && validTabs.includes(tab as ShiftsTab) ? (tab as ShiftsTab) : undefined,
       status: status && validStatuses.includes(status as ShiftStatusFilter) ? (status as ShiftStatusFilter) : undefined,
       shift: shift && shift.length > 0 ? shift : undefined,
+      // Deep-link target used by rental_staff_notifications / guide_notifications
+      // links pointing at /shifts?tab=mine&rental_day=<assignment id> (see
+      // notify_rental_assignment / accept_rental_day / reject_rental_day
+      // migrations) -- previously ignored entirely by RentalStaffShiftsView.
+      rental_day: rentalDay && rentalDay.length > 0 ? rentalDay : undefined,
     };
   },
   head: () => ({
@@ -73,13 +79,24 @@ export const Route = createFileRoute("/shifts")({
 
 function ShiftsPageRouter() {
   const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   // Guard against rendering ShiftsPage/RentalStaffShiftsView before the auth
   // providers (CurrentUserProvider, StaffStoreProvider, etc.) are mounted.
   // AuthGate in __root normally handles this, but during the auth transition
   // there can be a render frame where isAuthenticated flips and the child
   // hooks would throw "must be used within Provider".
   if (loading || !isAuthenticated || !rolesLoaded) return null;
-  if (isRentalStaff) return <RentalStaffShiftsView />;
+  if (isRentalStaff) {
+    return (
+      <RentalStaffShiftsView
+        deepLinkAssignmentId={search.rental_day}
+        onConsumeDeepLink={() =>
+          navigate({ search: (prev: typeof search) => ({ ...prev, rental_day: undefined }), replace: true })
+        }
+      />
+    );
+  }
   return <ShiftsPage />;
 }
 

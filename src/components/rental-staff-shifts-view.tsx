@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +61,15 @@ function timeLeft(iso: string | null): string {
   return `${h}h ${m % 60}m left`;
 }
 
-export function RentalStaffShiftsView() {
+export function RentalStaffShiftsView({
+  deepLinkAssignmentId,
+  onConsumeDeepLink,
+}: {
+  /** Assignment id to jump to on load, e.g. from a notification link
+   *  (/shifts?rental_day=<id>) or the admin's "reassign" link. */
+  deepLinkAssignmentId?: string;
+  onConsumeDeepLink?: () => void;
+} = {}) {
   const fetch = useServerFn(getMyRentalDays);
   const acceptFn = useServerFn(acceptRentalDay);
   const rejectFn = useServerFn(rejectRentalDay);
@@ -88,6 +96,62 @@ export function RentalStaffShiftsView() {
       else next.add(id);
       return next;
     });
+  // Which sub-tab (List/Calendar) is active -- needs to be controlled so a
+  // deep link or a calendar-day click can force it to "list" to reveal the
+  // day card being jumped to.
+  const [innerTab, setInnerTab] = useState<"list" | "calendar">("list");
+  // Briefly ring-highlight whichever day card was just jumped to, so it's
+  // obvious which one the click/link was about.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const consumedDeepLinkRef = useRef<string | null>(null);
+
+  // Shared by both calendar-day clicks and the ?rental_day= deep link:
+  // switches to the list tab, expands the target day, makes sure it's
+  // within the current pagination window, scrolls it into view and
+  // highlights it briefly.
+  const openDay = useCallback(
+    (assignmentId: string) => {
+      const target = days.find((d) => d.assignmentId === assignmentId);
+      if (!target) return;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      setInnerTab("list");
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        next.add(assignmentId);
+        return next;
+      });
+      if (target.status === "accepted" && target.date >= todayStr) {
+        const list = days.filter((d) => d.status === "accepted" && d.date >= todayStr);
+        const idx = list.findIndex((d) => d.assignmentId === assignmentId);
+        if (idx >= 0) setUpcomingLimit((n) => Math.max(n, idx + 1));
+      } else if (target.date < todayStr) {
+        const list = days.filter((d) => d.date < todayStr);
+        const idx = list.findIndex((d) => d.assignmentId === assignmentId);
+        if (idx >= 0) setPastLimit((n) => Math.max(n, idx + 1));
+      }
+      setHighlightId(assignmentId);
+      setTimeout(() => {
+        document
+          .getElementById(`rental-day-${assignmentId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+      setTimeout(() => setHighlightId((cur) => (cur === assignmentId ? null : cur)), 2500);
+    },
+    [days],
+  );
+
+  // Deep link on load: /shifts?rental_day=<assignment id>, sent by
+  // rental_staff_notifications / guide_notifications links (assignment
+  // created, rental day rejected, etc). Previously this query param was
+  // parsed nowhere -- the page just landed on the generic list, ignoring it.
+  useEffect(() => {
+    if (!deepLinkAssignmentId || loading) return;
+    if (consumedDeepLinkRef.current === deepLinkAssignmentId) return;
+    if (!days.some((d) => d.assignmentId === deepLinkAssignmentId)) return;
+    consumedDeepLinkRef.current = deepLinkAssignmentId;
+    openDay(deepLinkAssignmentId);
+    onConsumeDeepLink?.();
+  }, [deepLinkAssignmentId, days, loading, openDay, onConsumeDeepLink]);
 
   const reload = useCallback(async () => {
     try {
@@ -161,6 +225,8 @@ export function RentalStaffShiftsView() {
                 {pending.map((d) => (
                   <RentalDayCard
                     key={d.assignmentId}
+                    id={`rental-day-${d.assignmentId}`}
+                    highlighted={highlightId === d.assignmentId}
                     day={d}
                     busy={busyId === d.assignmentId}
                     onAccept={() => handleAccept(d)}
@@ -175,7 +241,7 @@ export function RentalStaffShiftsView() {
             </section>
           )}
 
-          <Tabs defaultValue="list">
+          <Tabs value={innerTab} onValueChange={(v) => setInnerTab(v as "list" | "calendar")}>
             <TabsList>
               <TabsTrigger value="list">List</TabsTrigger>
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
@@ -195,6 +261,8 @@ export function RentalStaffShiftsView() {
                       {accepted.slice(0, upcomingLimit).map((d) => (
                         <RentalDayCard
                           key={d.assignmentId}
+                          id={`rental-day-${d.assignmentId}`}
+                          highlighted={highlightId === d.assignmentId}
                           day={d}
                           expanded={expanded.has(d.assignmentId)}
                           onToggleExpand={() => toggleExpand(d.assignmentId)}
@@ -225,6 +293,8 @@ export function RentalStaffShiftsView() {
                     {past.slice(0, pastLimit).map((d) => (
                       <RentalDayCard
                         key={d.assignmentId}
+                        id={`rental-day-${d.assignmentId}`}
+                        highlighted={highlightId === d.assignmentId}
                         day={d}
                         expanded={expanded.has(d.assignmentId)}
                         onToggleExpand={() => toggleExpand(d.assignmentId)}
@@ -246,7 +316,7 @@ export function RentalStaffShiftsView() {
               )}
             </TabsContent>
             <TabsContent value="calendar" className="mt-4">
-              <RentalCalendar days={days} />
+              <RentalCalendar days={days} onSelectDay={openDay} />
             </TabsContent>
           </Tabs>
         </>
@@ -301,6 +371,8 @@ function RentalDayCard({
   onReject,
   expanded = true,
   onToggleExpand,
+  id,
+  highlighted,
 }: {
   day: MyRentalDay;
   busy?: boolean;
@@ -308,14 +380,18 @@ function RentalDayCard({
   onReject?: () => void;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  id?: string;
+  highlighted?: boolean;
 }) {
   const totalPax = day.bookings.reduce((sum, b) => sum + b.pax, 0);
   const isPending = day.status === "pending";
   return (
     <Card
+      id={id}
       className={cn(
-        "overflow-hidden border-border/60",
+        "overflow-hidden border-border/60 scroll-mt-20 transition-shadow",
         isPending && "border-amber-500/60 ring-1 ring-amber-500/20",
+        highlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg",
       )}
     >
       <div className="p-4 bg-muted/30 border-b border-border/40">
@@ -517,7 +593,15 @@ function RentalDayCard({
   );
 }
 
-function RentalCalendar({ days }: { days: MyRentalDay[] }) {
+function RentalCalendar({
+  days,
+  onSelectDay,
+}: {
+  days: MyRentalDay[];
+  /** Called with an assignmentId when a day cell with at least one
+   *  assignment is clicked, so the caller can jump to it in the List tab. */
+  onSelectDay?: (assignmentId: string) => void;
+}) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -583,47 +667,107 @@ function RentalCalendar({ days }: { days: MyRentalDay[] }) {
         {cells.map((c, i) => {
           if (!c) return <div key={i} className="aspect-square" />;
           const items = byDate.get(c.date) ?? [];
-          const hasPending = items.some((x) => x.status === "pending");
-          const hasAccepted = items.some((x) => x.status === "accepted");
+          const pendingItems = items.filter((x) => x.status === "pending");
+          const acceptedItems = items.filter((x) => x.status === "accepted");
+          const rejectedItems = items.filter((x) => x.status === "rejected");
+          const hasPending = pendingItems.length > 0;
+          const hasAccepted = acceptedItems.length > 0;
+          const hasRejected = rejectedItems.length > 0;
           const isToday = c.date === today;
-          return (
-            <div
-              key={i}
-              className={cn(
-                "aspect-square rounded-md border text-[11px] p-1 flex flex-col gap-0.5 overflow-hidden",
-                isToday ? "border-primary/60 bg-primary/5" : "border-border/40",
-                items.length === 0 && "opacity-60",
-              )}
-            >
-              <div
-                className={cn(
-                  "font-semibold tabular-nums",
-                  isToday && "text-primary",
-                )}
-              >
-                {c.day}
+          const isClickable = items.length > 0 && !!onSelectDay;
+          const totalBookings = acceptedItems.reduce((sum, x) => sum + x.bookings.length, 0);
+          const totalPax = acceptedItems.reduce(
+            (sum, x) => sum + x.bookings.reduce((s, b) => s + b.pax, 0),
+            0,
+          );
+
+          const cellContent = (
+            <>
+              <div className="flex items-center justify-between gap-0.5">
+                <span className={cn("font-semibold tabular-nums", isToday && "text-primary")}>
+                  {c.day}
+                </span>
+                {isToday && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
               </div>
               {hasPending && (
                 <div className="text-[9px] truncate rounded-sm bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1 py-px font-medium">
                   Pending
                 </div>
               )}
-              {hasAccepted &&
-                items
-                  .filter((x) => x.status === "accepted")
-                  .slice(0, 2)
-                  .map((x) => (
-                    <div
-                      key={x.assignmentId}
-                      className="text-[9px] truncate rounded-sm bg-primary/15 text-primary px-1 py-px font-medium"
-                      title={x.rentalPoint.name}
-                    >
-                      {x.rentalPoint.name}
-                    </div>
-                  ))}
-            </div>
+              {hasRejected && (
+                <div
+                  className="text-[9px] truncate rounded-sm bg-destructive/15 text-destructive px-1 py-px font-medium"
+                  title={rejectedItems.map((x) => x.rentalPoint.name).join(", ")}
+                >
+                  Rejected
+                </div>
+              )}
+              {acceptedItems.slice(0, 2).map((x) => (
+                <div
+                  key={x.assignmentId}
+                  className="text-[9px] truncate rounded-sm bg-primary/15 text-primary px-1 py-px font-medium"
+                  title={x.rentalPoint.name}
+                >
+                  {x.rentalPoint.name}
+                </div>
+              ))}
+              {acceptedItems.length > 2 && (
+                <div className="text-[9px] text-muted-foreground px-1">
+                  +{acceptedItems.length - 2} more
+                </div>
+              )}
+              {hasAccepted && (totalBookings > 0 || totalPax > 0) && (
+                <div className="mt-auto text-[9px] text-muted-foreground/80 px-1 flex items-center gap-0.5 truncate">
+                  <Users className="h-2.5 w-2.5 shrink-0" />
+                  {totalBookings} bkg · {totalPax} pax
+                </div>
+              )}
+            </>
+          );
+
+          const cellClassName = cn(
+            "aspect-square rounded-md border text-[11px] p-1 flex flex-col gap-0.5 overflow-hidden text-left transition-colors",
+            isToday ? "border-primary/60 bg-primary/5" : "border-border/40",
+            items.length === 0 && "opacity-50",
+            hasRejected && "bg-destructive/5 border-destructive/30",
+            !hasRejected && hasPending && "bg-amber-500/5 border-amber-500/30",
+            !hasRejected && !hasPending && hasAccepted && "bg-primary/[0.03]",
+            isClickable && "cursor-pointer hover:border-primary/50 hover:shadow-sm hover:bg-primary/5",
+          );
+
+          if (!isClickable) {
+            return (
+              <div key={i} className={cellClassName}>
+                {cellContent}
+              </div>
+            );
+          }
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onSelectDay!(items[0].assignmentId)}
+              className={cellClassName}
+              aria-label={`View ${items.length} assignment${items.length === 1 ? "" : "s"} on ${c.date}`}
+            >
+              {cellContent}
+            </button>
           );
         })}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/40 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/30 border border-amber-500/50" /> Pending
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-primary/20 border border-primary/40" /> Accepted
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-destructive/20 border border-destructive/40" /> Rejected
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Today
+        </div>
       </div>
     </Card>
   );
