@@ -123,8 +123,37 @@ export const assignRentalStaff = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) {
-      // Unique violation = already assigned; treat as success
-      if ((error as any).code === "23505") return { ok: true, alreadyAssigned: true };
+      // Unique violation: a row for this point+staff+date already exists.
+      // If it's a previously-rejected assignment (kept on file so admins can
+      // see it, see 20260708000000 migration), re-offering the same day to
+      // the same person should reset it to a fresh pending request instead
+      // of silently doing nothing -- otherwise a rejected slot could never
+      // be re-assigned to that same staff member.
+      if ((error as any).code === "23505") {
+        const { data: existing, error: findErr } = await supabase
+          .from("rental_point_day_assignments")
+          .select("id, status")
+          .eq("rental_point_id", data.pointId)
+          .eq("rental_staff_id", data.staffId)
+          .eq("date", data.date)
+          .maybeSingle();
+        if (findErr) throw new Error(findErr.message);
+        if (existing?.status === "rejected") {
+          const { error: updErr } = await supabase
+            .from("rental_point_day_assignments")
+            .update({
+              status: "pending",
+              pending_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+              accepted_at: null,
+              rejection_reason: null,
+              notes: data.notes?.trim() || null,
+            })
+            .eq("id", existing.id);
+          if (updErr) throw new Error(updErr.message);
+          return { ok: true, id: existing.id, reassigned: true };
+        }
+        return { ok: true, alreadyAssigned: true };
+      }
       throw new Error(error.message);
     }
     return { ok: true, id: ins!.id };
@@ -153,7 +182,7 @@ export type MyRentalDay = {
   assignmentId: string;
   date: string;
   notes: string | null;
-  status: "pending" | "accepted";
+  status: "pending" | "accepted" | "rejected";
   pendingExpiresAt: string | null;
   rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
   bookings: Array<{
@@ -255,7 +284,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         assignmentId: a.id,
         date: a.date,
         notes: a.notes ?? null,
-        status: (a.status ?? "accepted") as "pending" | "accepted",
+        status: (a.status ?? "accepted") as "pending" | "accepted" | "rejected",
         pendingExpiresAt: a.pending_expires_at ?? null,
         rentalPoint: {
           id: a.rental_points?.id ?? a.rental_point_id,

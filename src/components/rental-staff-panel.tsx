@@ -47,7 +47,7 @@ type Assignment = {
   rental_staff_id: string;
   date: string;
   notes: string | null;
-  status: "pending" | "accepted" | null;
+  status: "pending" | "accepted" | "rejected" | null;
   pending_expires_at: string | null;
   rejection_reason: string | null;
 };
@@ -210,12 +210,20 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
               const ring =
                 a.status === "accepted"
                   ? "ring-success"
-                  : "ring-warning"; // pending (default)
+                  : a.status === "rejected"
+                    ? "ring-destructive"
+                    : "ring-warning"; // pending (default)
+              const statusLabel =
+                a.status === "accepted"
+                  ? "accepted"
+                  : a.status === "rejected"
+                    ? `rejected${a.rejection_reason ? ` — ${a.rejection_reason}` : ""}`
+                    : "awaiting response";
               return (
                 <span
                   key={a.id}
                   className={cn("inline-block rounded-full ring-2", ring)}
-                  title={`${s.name} — ${a.status === "accepted" ? "accepted" : "awaiting response"}`}
+                  title={`${s.name} — ${statusLabel}`}
                 >
                   <Avatar
                     name={s.name}
@@ -289,22 +297,28 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                 const tone =
                   status === "accepted"
                     ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
-                    : on
-                      ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
-                      : isUnavailable
-                        ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
-                        : "bg-card border-border hover:bg-accent";
+                    : status === "rejected"
+                      ? "bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/20"
+                      : on
+                        ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
+                        : isUnavailable
+                          ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
+                          : "bg-card border-border hover:bg-accent";
                 const conflictDetail = conflict
                   ? conflict.allDay
                     ? `${s.name} marked the whole day off`
                     : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
                   : undefined;
+                const title =
+                  status === "rejected"
+                    ? `Rejected${reason ? `: ${reason}` : ""} — click to clear`
+                    : conflictDetail;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => void handleToggle(iso, s.id)}
-                    title={reason ? `Last rejection: ${reason}` : conflictDetail}
+                    title={title}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
                       tone,
@@ -320,8 +334,11 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
                     {on && status === "accepted" && (
                       <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
                     )}
-                    {on && status !== "accepted" && (
+                    {on && status === "pending" && (
                       <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
+                    )}
+                    {on && status === "rejected" && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider">rejected</span>
                     )}
                     {/* Shown whenever the staff marked themselves unavailable
                         that day, even if they're already assigned -- e.g.
