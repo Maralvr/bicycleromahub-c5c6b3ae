@@ -682,43 +682,58 @@ function RentalCalendar({
             0,
           );
 
+          // Mobile gets taller cells with bigger text instead of a forced
+          // square grid -- same pattern as availability-calendar.tsx. A
+          // 7-column square grid on a ~375px phone leaves ~45px per cell,
+          // which was too small to read the day/status/point labels this
+          // cell packs in, let alone tap precisely.
           const cellContent = (
             <>
               <div className="flex items-center justify-between gap-0.5">
-                <span className={cn("font-semibold tabular-nums", isToday && "text-primary")}>
+                <span className={cn("font-semibold tabular-nums text-sm sm:text-xs", isToday && "text-primary")}>
                   {c.day}
                 </span>
                 {isToday && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
               </div>
               {hasPending && (
-                <div className="text-[9px] truncate rounded-sm bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1 py-px font-medium">
+                <div className="text-[10px] sm:text-[9px] truncate rounded-sm bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1 py-px font-medium">
                   Pending
                 </div>
               )}
               {hasRejected && (
                 <div
-                  className="text-[9px] truncate rounded-sm bg-destructive/15 text-destructive px-1 py-px font-medium"
+                  className="text-[10px] sm:text-[9px] truncate rounded-sm bg-destructive/15 text-destructive px-1 py-px font-medium"
                   title={rejectedItems.map((x) => x.rentalPoint.name).join(", ")}
                 >
                   Rejected
                 </div>
               )}
-              {acceptedItems.slice(0, 2).map((x) => (
+              {/* Only the first point name on mobile -- "+N more" still
+                  covers the rest, and there's no room for a second line at
+                  a legible size on a phone. */}
+              {acceptedItems.slice(0, 2).map((x, idx) => (
                 <div
                   key={x.assignmentId}
-                  className="text-[9px] truncate rounded-sm bg-primary/15 text-primary px-1 py-px font-medium"
+                  className={cn(
+                    "text-[10px] sm:text-[9px] truncate rounded-sm bg-primary/15 text-primary px-1 py-px font-medium",
+                    idx === 1 && "hidden sm:block",
+                  )}
                   title={x.rentalPoint.name}
                 >
                   {x.rentalPoint.name}
                 </div>
               ))}
-              {acceptedItems.length > 2 && (
-                <div className="text-[9px] text-muted-foreground px-1">
-                  +{acceptedItems.length - 2} more
+              {acceptedItems.length > 1 && (
+                <div className="text-[10px] sm:text-[9px] text-muted-foreground px-1">
+                  <span className="sm:hidden">+{acceptedItems.length - 1} more</span>
+                  {acceptedItems.length > 2 && (
+                    <span className="hidden sm:inline">+{acceptedItems.length - 2} more</span>
+                  )}
                 </div>
               )}
+              {/* Booking/pax summary only has room on larger screens. */}
               {hasAccepted && (totalBookings > 0 || totalPax > 0) && (
-                <div className="mt-auto text-[9px] text-muted-foreground/80 px-1 flex items-center gap-0.5 truncate">
+                <div className="hidden sm:flex mt-auto text-[9px] text-muted-foreground/80 px-1 items-center gap-0.5 truncate">
                   <Users className="h-2.5 w-2.5 shrink-0" />
                   {totalBookings} bkg · {totalPax} pax
                 </div>
@@ -727,13 +742,13 @@ function RentalCalendar({
           );
 
           const cellClassName = cn(
-            "aspect-square rounded-md border text-[11px] p-1 flex flex-col gap-0.5 overflow-hidden text-left transition-colors",
+            "min-h-[64px] sm:min-h-0 sm:aspect-square rounded-md border text-xs sm:text-[11px] p-1.5 sm:p-1 flex flex-col gap-0.5 overflow-hidden text-left transition-colors",
             isToday ? "border-primary/60 bg-primary/5" : "border-border/40",
             items.length === 0 && "opacity-50",
             hasRejected && "bg-destructive/5 border-destructive/30",
             !hasRejected && hasPending && "bg-amber-500/5 border-amber-500/30",
             !hasRejected && !hasPending && hasAccepted && "bg-primary/[0.03]",
-            isClickable && "cursor-pointer hover:border-primary/50 hover:shadow-sm hover:bg-primary/5",
+            isClickable && "cursor-pointer hover:border-primary/50 hover:shadow-sm hover:bg-primary/5 active:scale-[0.98]",
           );
 
           if (!isClickable) {
