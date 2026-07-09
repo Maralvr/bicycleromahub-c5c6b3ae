@@ -502,7 +502,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                 </p>
               )}
               {initial?.id && (
-                <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 pt-1">
                   <p className="text-[11px] text-muted-foreground">
                     Customer didn't show up? This is a status label only — it doesn't affect payouts.
                   </p>
@@ -512,7 +512,7 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                     variant="outline"
                     disabled={noShowBusy}
                     onClick={handleToggleNoShow}
-                    className={noShow ? "shrink-0" : "shrink-0 border-destructive/40 text-destructive hover:bg-destructive/5"}
+                    className={noShow ? "shrink-0 w-full sm:w-auto" : "shrink-0 w-full sm:w-auto border-destructive/40 text-destructive hover:bg-destructive/5"}
                   >
                     <Ban className="h-3.5 w-3.5 mr-1" /> {noShow ? "Undo no-show" : "Mark no-show"}
                   </Button>

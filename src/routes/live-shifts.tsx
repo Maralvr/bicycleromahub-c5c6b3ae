@@ -311,7 +311,7 @@ function Section({
 
                   {cleanNoteText(s.notes) && <div className="mt-3 text-xs text-foreground/70 italic">📝 {cleanNoteText(s.notes)}</div>}
 
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-border/60">
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/60">
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(s)}>
                       <Pencil className="h-3 w-3 mr-1" /> Edit
                     </Button>

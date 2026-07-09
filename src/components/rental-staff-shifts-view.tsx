@@ -551,12 +551,15 @@ function RentalDayCard({
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="flex justify-end">
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={noShowBusyId === b.id}
                   onClick={() => handleToggleNoShow(b.id, !b.noShow)}
-                  className={cn("shrink-0 h-7 px-2 text-[11px]", !b.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
+                  className={cn("h-7 px-2 text-[11px]", !b.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
                 >
                   <Ban className="h-3 w-3 mr-1" /> {b.noShow ? "Undo" : "No-show"}
                 </Button>
