@@ -927,6 +927,10 @@ export type Database = {
           id: string
           infants: number
           meeting_point: string
+          no_show: boolean
+          no_show_notes: string | null
+          no_show_reported_at: string | null
+          no_show_reported_by: string | null
           notes: string | null
           operations_notes: string | null
           participants: Json
@@ -972,6 +976,10 @@ export type Database = {
           id?: string
           infants?: number
           meeting_point?: string
+          no_show?: boolean
+          no_show_notes?: string | null
+          no_show_reported_at?: string | null
+          no_show_reported_by?: string | null
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
@@ -1017,6 +1025,10 @@ export type Database = {
           id?: string
           infants?: number
           meeting_point?: string
+          no_show?: boolean
+          no_show_notes?: string | null
+          no_show_reported_at?: string | null
+          no_show_reported_by?: string | null
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
@@ -1370,6 +1382,10 @@ export type Database = {
       }
       send_rental_point_reminders: { Args: never; Returns: number }
       send_shift_reminders: { Args: never; Returns: number }
+      set_shift_no_show: {
+        Args: { _no_show: boolean; _notes?: string; _shift_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "rental_staff"
