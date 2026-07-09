@@ -1391,6 +1391,7 @@ export type Database = {
         | "task"
         | "shift_accepted"
         | "shift_rejected"
+        | "no_show"
       shift_source: "manual" | "bokun"
       shift_status: "unassigned" | "pending" | "accepted" | "rejected"
       staff_role: "guide" | "rental" | "mechanic" | "admin"
@@ -1544,6 +1545,7 @@ export const Constants = {
         "task",
         "shift_accepted",
         "shift_rejected",
+        "no_show",
       ],
       shift_source: ["manual", "bokun"],
       shift_status: ["unassigned", "pending", "accepted", "rejected"],
