@@ -203,6 +203,8 @@ export type MyRentalDay = {
     notes: string | null;
     bookingRef: string | null;
     guide: { id: string; name: string; avatar: string; phone: string | null } | null;
+    noShow: boolean;
+    noShowNotes: string | null;
   }>;
 };
 
@@ -238,14 +240,43 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const pointIds = Array.from(new Set(assigns.map((a) => a.rental_point_id)));
     const dates = Array.from(new Set(assigns.map((a) => a.date)));
 
-    const { data: shifts, error: shErr } = await supabase
+    type RentalDayShiftRow = {
+      id: string;
+      tour_name: string | null;
+      date: string;
+      start_time: string | null;
+      end_time: string | null;
+      meeting_point: string | null;
+      rate_title: string | null;
+      adults: number | null;
+      teens: number | null;
+      infants: number | null;
+      trailers: number | null;
+      participants: unknown;
+      customer_name: string | null;
+      customer_phone: string | null;
+      customer_email: string | null;
+      notes: string | null;
+      booking_id: string | null;
+      channel_booking_ref: string | null;
+      assigned_staff_id: string | null;
+      rental_point_id: string | null;
+      no_show: boolean | null;
+      no_show_notes: string | null;
+    };
+
+    // no_show/no_show_notes aren't in the generated Supabase types yet
+    // (added in 20260709020000) -- cast through unknown, same pattern used
+    // elsewhere in this file and codebase for columns ahead of a codegen run.
+    const { data: shiftsData, error: shErr } = await supabase
       .from("shifts")
       .select(
-        "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id",
+        "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id, no_show, no_show_notes",
       )
       .in("rental_point_id", pointIds)
       .in("date", dates);
     if (shErr) throw new Error(shErr.message);
+    const shifts = shiftsData as unknown as RentalDayShiftRow[] | null;
 
     const guideIds = Array.from(
       new Set((shifts ?? []).map((s) => s.assigned_staff_id).filter(Boolean) as string[]),
@@ -314,6 +345,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
               notes: s.notes ?? null,
               bookingRef: s.channel_booking_ref ?? s.booking_id ?? null,
               guide: s.assigned_staff_id ? guidesById.get(s.assigned_staff_id) ?? null : null,
+              noShow: !!s.no_show,
+              noShowNotes: s.no_show_notes ?? null,
             };
           }),
       };

@@ -55,6 +55,10 @@ export type Shift = {
   pendingExpiresAt?: string | null;
   rejectionReason?: string | null;
   rejectedByStaffIds?: string[];
+  noShow?: boolean;
+  noShowReportedAt?: string | null;
+  noShowReportedBy?: string | null;
+  noShowNotes?: string | null;
 };
 
 export type Task = {

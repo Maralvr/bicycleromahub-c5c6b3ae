@@ -43,6 +43,10 @@ type ShiftRow = {
   pending_expires_at: string | null;
   rejection_reason: string | null;
   rejected_by_staff_ids: string[] | null;
+  no_show: boolean | null;
+  no_show_reported_at: string | null;
+  no_show_reported_by: string | null;
+  no_show_notes: string | null;
 };
 
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
@@ -113,6 +117,10 @@ function rowToShift(r: ShiftRow): Shift {
     pendingExpiresAt: r.pending_expires_at,
     rejectionReason: r.rejection_reason,
     rejectedByStaffIds: r.rejected_by_staff_ids ?? [],
+    noShow: r.no_show ?? false,
+    noShowReportedAt: r.no_show_reported_at,
+    noShowReportedBy: r.no_show_reported_by,
+    noShowNotes: r.no_show_notes,
   };
 }
 
@@ -159,7 +167,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, no_show_notes",
         )
         .gte("date", range.from)
         .lte("date", range.to)
@@ -172,7 +180,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      const batch = (data ?? []) as ShiftRow[];
+      const batch = (data ?? []) as unknown as ShiftRow[];
       all.push(...batch);
       if (batch.length < pageSize) break;
       from += pageSize;
@@ -240,7 +248,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       setError(err.message);
       return null;
     }
-    const inserted = data as ShiftRow;
+    const inserted = data as unknown as ShiftRow;
     setRows((prev) => (prev.some((r) => r.id === inserted.id) ? prev : [...prev, inserted]));
     return rowToShift(inserted);
   };
@@ -263,7 +271,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data: fresh } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, no_show_notes",
         )
         .eq("id", id)
         .maybeSingle();

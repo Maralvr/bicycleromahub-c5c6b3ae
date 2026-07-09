@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MapPin, Phone, Clock, Plus, Pencil, Trash2, CalendarDays, List as ListIcon, ArrowLeft, Users } from "lucide-react";
+import { MapPin, Phone, Clock, Plus, Pencil, Trash2, CalendarDays, List as ListIcon, ArrowLeft, Users, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-points";
 import { useRequireAdminOrRental } from "@/lib/require-admin";
@@ -38,6 +38,8 @@ import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { setShiftNoShow } from "@/lib/no-show";
+import { cn } from "@/lib/utils";
 import type { Staff } from "@/lib/mock-data";
 
 type RentalTab = "calendar" | "list";
@@ -436,7 +438,7 @@ function AdminRentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, updateShift, assignShift, deleteShift } = useRentalShifts();
+  const { shifts, loading, updateShift, assignShift, deleteShift, refresh } = useRentalShifts();
   const { staff } = useStaffStore();
 
   const scoped = useMemo(
@@ -534,7 +536,7 @@ function AdminRentalBookingsView({
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
         </TabsContent>
       </Tabs>
     </div>
@@ -599,7 +601,7 @@ function RentalReadOnlyBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading } = useRentalShifts();
+  const { shifts, loading, refresh } = useRentalShifts();
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
     [shifts, pointId],
@@ -640,7 +642,7 @@ function RentalReadOnlyBookingsView({
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
         </TabsContent>
       </Tabs>
     </div>
@@ -652,14 +654,33 @@ function RentalBookingsList({
   points,
   loading,
   pointId,
+  onNoShowChanged,
 }: {
   rows: RentalShift[];
   points: RentalPoint[];
   loading: boolean;
   pointId: string | null;
+  onNoShowChanged?: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = useMemo(() => rows.filter((r) => r.date >= today), [rows, today]);
+  const [noShowBusyId, setNoShowBusyId] = useState<string | null>(null);
+  const handleToggleNoShow = async (shiftId: string, next: boolean) => {
+    setNoShowBusyId(shiftId);
+    try {
+      const { error } = await setShiftNoShow(shiftId, next);
+      if (error) {
+        toast.error(next ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
+        return;
+      }
+      toast.success(next ? "Marked as no-show" : "No-show cleared", {
+        description: next ? "Admins have been notified. This doesn't affect payouts." : undefined,
+      });
+      onNoShowChanged?.();
+    } finally {
+      setNoShowBusyId(null);
+    }
+  };
 
   const byPoint = useMemo(() => {
     const map = new Map<string, RentalShift[]>();
@@ -687,27 +708,51 @@ function RentalBookingsList({
   const renderRow = (s: RentalShift) => {
     const pax = (s.participants?.adults ?? 0) + (s.participants?.teens ?? 0) + (s.participants?.infants ?? 0);
     return (
-      <div key={s.id} className="p-3 grid grid-cols-12 gap-3 items-center text-sm">
-        <div className="col-span-4 sm:col-span-2 font-medium text-foreground">
-          {s.date} · {s.startTime}
+      <div key={s.id} className="p-3">
+        <div className="grid grid-cols-12 gap-3 items-center text-sm">
+          <div className="col-span-4 sm:col-span-2 font-medium text-foreground">
+            {s.date} · {s.startTime}
+          </div>
+          <div className="col-span-8 sm:col-span-5 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="truncate text-foreground">{s.tourName}</div>
+              {s.noShow && (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] uppercase tracking-wider font-bold border-destructive/40 text-destructive bg-destructive/5 flex items-center gap-1 shrink-0"
+                  title={s.noShowNotes ?? undefined}
+                >
+                  <Ban className="h-2.5 w-2.5" /> No-show
+                </Badge>
+              )}
+            </div>
+            {s.rateTitle && (
+              <div className="text-xs text-muted-foreground truncate">{s.rateTitle}</div>
+            )}
+          </div>
+          <div className="col-span-7 sm:col-span-3 min-w-0">
+            <div className="truncate">{s.customer?.name ?? "—"}</div>
+            {s.customer?.phone && (
+              <div className="text-xs text-muted-foreground truncate">{s.customer.phone}</div>
+            )}
+          </div>
+          <div className="col-span-2 sm:col-span-1 text-right text-muted-foreground flex items-center justify-end gap-1">
+            <Users className="h-3 w-3" /> {pax}
+          </div>
+          <div className="col-span-3 sm:col-span-1 text-right text-xs text-muted-foreground truncate">
+            {s.bookingId ?? ""}
+          </div>
         </div>
-        <div className="col-span-8 sm:col-span-5 min-w-0">
-          <div className="truncate text-foreground">{s.tourName}</div>
-          {s.rateTitle && (
-            <div className="text-xs text-muted-foreground truncate">{s.rateTitle}</div>
-          )}
-        </div>
-        <div className="col-span-7 sm:col-span-3 min-w-0">
-          <div className="truncate">{s.customer?.name ?? "—"}</div>
-          {s.customer?.phone && (
-            <div className="text-xs text-muted-foreground truncate">{s.customer.phone}</div>
-          )}
-        </div>
-        <div className="col-span-2 sm:col-span-1 text-right text-muted-foreground flex items-center justify-end gap-1">
-          <Users className="h-3 w-3" /> {pax}
-        </div>
-        <div className="col-span-3 sm:col-span-1 text-right text-xs text-muted-foreground truncate">
-          {s.bookingId ?? ""}
+        <div className="flex justify-end mt-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={noShowBusyId === s.id}
+            onClick={() => handleToggleNoShow(s.id, !s.noShow)}
+            className={cn("h-6 px-2 text-[10px]", !s.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
+          >
+            <Ban className="h-3 w-3 mr-1" /> {s.noShow ? "Undo" : "Mark no-show"}
+          </Button>
         </div>
       </div>
     );

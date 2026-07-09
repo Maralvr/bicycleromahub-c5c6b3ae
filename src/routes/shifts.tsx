@@ -38,7 +38,8 @@ import { BulkDispatchDialog } from "@/components/bulk-dispatch-dialog";
 import { AttachmentList } from "@/components/attachment-picker";
 import { BookingNotesThread } from "@/components/booking-notes-thread";
 import { DispatchHistory } from "@/components/dispatch-history";
-import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, UserPlus, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass, ChevronDown } from "lucide-react";
+import { setShiftNoShow } from "@/lib/no-show";
+import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, UserPlus, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass, ChevronDown, Ban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
@@ -403,6 +404,18 @@ function ShiftsPage() {
     }
   };
 
+  const handleMarkNoShow = async (s: Shift, noShow: boolean) => {
+    const { error } = await setShiftNoShow(s.id, noShow);
+    if (error) {
+      toast.error(noShow ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
+      return;
+    }
+    toast.success(noShow ? "Marked as no-show" : "No-show cleared", {
+      description: noShow ? "Admins have been notified. This doesn't affect payouts." : undefined,
+    });
+    await refreshShifts();
+  };
+
   const autoAssignAll = async () => {
     const unassigned = shifts.filter((s) => !s.assignedStaffId);
     if (unassigned.length === 0) {
@@ -595,21 +608,21 @@ function ShiftsPage() {
         </TabsContent>
         {isAdmin && (
           <TabsContent value="all" className="mt-5">
-            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
+            <ShiftList shifts={upcomingShifts} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} onMarkNoShow={handleMarkNoShow} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="bokun" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "bokun")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} onMarkNoShow={handleMarkNoShow} />
           </TabsContent>
         )}
         {isAdmin && (
           <TabsContent value="manual" className="mt-5">
-            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} />
+            <ShiftList shifts={upcomingShifts.filter((s) => s.source === "manual")} allShifts={shifts} onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onUnassign={handleUnassign} onDuplicate={duplicate} onDelete={handleDelete} onGenerateInvoice={setInvoiceDialogShift} onUpdateDeparture={handleUpdateDeparture} onMarkNoShow={handleMarkNoShow} />
           </TabsContent>
         )}
         <TabsContent value="mine" className="mt-5">
-          <ShiftList shifts={myShifts} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} />
+          <ShiftList shifts={myShifts} allShifts={shifts} guideView onAssign={assignStaff} onOpenAssignDialog={setAssignDialogShift} onAccept={handleAccept} onReject={openReject} onDuplicate={duplicate} onMarkNoShow={handleMarkNoShow} />
         </TabsContent>
         <TabsContent value="past" className="mt-5">
           <ShiftList
@@ -627,6 +640,7 @@ function ShiftsPage() {
             onDelete={isAdmin ? handleDelete : undefined}
             onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
             onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
+            onMarkNoShow={handleMarkNoShow}
           />
         </TabsContent>
       </Tabs>
@@ -708,6 +722,7 @@ function ShiftsPage() {
               onDelete={isAdmin ? handleDelete : undefined}
               onGenerateInvoice={isAdmin ? setInvoiceDialogShift : undefined}
               onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
+              onMarkNoShow={handleMarkNoShow}
             />
           )}
         </DialogContent>
@@ -798,13 +813,14 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
 
 
 
-function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void }) {
+function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, onReject, onUnassign, onDuplicate, onDelete, guideView, pastView, notesByShift, onLeaveNote, onGenerateInvoice, onUpdateDeparture, onMarkNoShow }: { shifts: Shift[]; allShifts: Shift[]; onAssign: (shiftId: string, staffId: string, staffName: string) => void; onOpenAssignDialog?: (s: Shift) => void; onAccept: (id: string) => void; onReject: (id: string) => void; onUnassign?: (id: string) => void; onDuplicate: (s: Shift) => void; onDelete?: (s: Shift) => void; guideView?: boolean; pastView?: boolean; notesByShift?: Record<string, GuideNote[]>; onLeaveNote?: (s: Shift) => void; onGenerateInvoice?: (s: Shift) => void; onUpdateDeparture?: (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => Promise<void> | void; onMarkNoShow?: (s: Shift, noShow: boolean) => void }) {
   const { t } = useI18n();
   const { staff: allStaff } = useStaffStore();
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
   const { signatures: waiverSignatures } = useWaiverSignatures();
   const { signedShiftIds } = useMySignedShiftIds();
   const isAdminView = currentRole === "admin";
+  const todayIsoDate = new Date().toISOString().slice(0, 10);
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
   return (
     <div className="grid gap-4">
@@ -812,6 +828,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         const guide = allStaff.find((p) => p.id === s.assignedStaffId);
         // No precomputed suggestions: AssignGuideCombobox handles its own ranking.
         const isUrgent = !pastView && (s.status === "unassigned" || s.status === "pending");
+        const canMarkNoShow = !!onMarkNoShow && s.date <= todayIsoDate && (isAdminView || s.assignedStaffId === currentStaffId);
         const shiftNotes = notesByShift?.[s.id] || [];
         const shiftSignatures = isAdminView ? signaturesForShift(waiverSignatures, s) : [];
         const isSigned = isAdminView ? shiftSignatures.length > 0 : signedShiftIds.has(s.id);
@@ -846,6 +863,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusPill status={s.status} />
+                    {s.noShow && (
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-bold border-destructive/40 text-destructive bg-destructive/5 flex items-center gap-1">
+                        <Ban className="h-2.5 w-2.5" /> No-show
+                      </Badge>
+                    )}
                     {!pastView && s.status === "pending" && s.pendingExpiresAt && (
                       <PendingCountdown expiresAt={s.pendingExpiresAt} />
                     )}
@@ -937,6 +959,16 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     {pastView && guideView && onLeaveNote && (
                       <Button size="sm" onClick={() => onLeaveNote(s)} className="shadow-[var(--shadow-elegant)]">
                         <MessageSquarePlus className="h-3.5 w-3.5 mr-1" /> {shiftNotes.length > 0 ? "Add another note" : "Leave a note"}
+                      </Button>
+                    )}
+                    {canMarkNoShow && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onMarkNoShow!(s, !s.noShow)}
+                        className={s.noShow ? "" : "border-destructive/40 text-destructive hover:bg-destructive/5"}
+                      >
+                        <Ban className="h-3.5 w-3.5 mr-1" /> {s.noShow ? "Undo no-show" : "Mark no-show"}
                       </Button>
                     )}
                     {!pastView && guideView && s.status === "pending" && (

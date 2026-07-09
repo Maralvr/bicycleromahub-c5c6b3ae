@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronDown,
   AlertCircle,
+  Ban,
 } from "lucide-react";
 import {
   getMyRentalDays,
@@ -41,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cleanNoteText } from "@/lib/notes-format";
+import { setShiftNoShow } from "@/lib/no-show";
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -236,6 +238,7 @@ export function RentalStaffShiftsView({
                       setRejectReason("");
                     }}
                     expanded
+                    onNoShowChanged={reload}
                   />
                 ))}
               </div>
@@ -267,6 +270,7 @@ export function RentalStaffShiftsView({
                           day={d}
                           expanded={expanded.has(d.assignmentId)}
                           onToggleExpand={() => toggleExpand(d.assignmentId)}
+                          onNoShowChanged={reload}
                         />
                       ))}
                     </div>
@@ -299,6 +303,7 @@ export function RentalStaffShiftsView({
                         day={d}
                         expanded={expanded.has(d.assignmentId)}
                         onToggleExpand={() => toggleExpand(d.assignmentId)}
+                        onNoShowChanged={reload}
                       />
                     ))}
                   </div>
@@ -374,6 +379,7 @@ function RentalDayCard({
   onToggleExpand,
   id,
   highlighted,
+  onNoShowChanged,
 }: {
   day: MyRentalDay;
   busy?: boolean;
@@ -383,9 +389,27 @@ function RentalDayCard({
   onToggleExpand?: () => void;
   id?: string;
   highlighted?: boolean;
+  onNoShowChanged?: () => void;
 }) {
   const totalPax = day.bookings.reduce((sum, b) => sum + b.pax, 0);
   const isPending = day.status === "pending";
+  const [noShowBusyId, setNoShowBusyId] = useState<string | null>(null);
+  const handleToggleNoShow = async (bookingId: string, next: boolean) => {
+    setNoShowBusyId(bookingId);
+    try {
+      const { error } = await setShiftNoShow(bookingId, next);
+      if (error) {
+        toast.error(next ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
+        return;
+      }
+      toast.success(next ? "Marked as no-show" : "No-show cleared", {
+        description: next ? "Admins have been notified. This doesn't affect payouts." : undefined,
+      });
+      onNoShowChanged?.();
+    } finally {
+      setNoShowBusyId(null);
+    }
+  };
   return (
     <Card
       id={id}
@@ -502,7 +526,18 @@ function RentalDayCard({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-foreground">{b.tourName}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="text-sm font-semibold text-foreground">{b.tourName}</div>
+                    {b.noShow && (
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] uppercase tracking-wider font-bold border-destructive/40 text-destructive bg-destructive/5 flex items-center gap-1"
+                        title={b.noShowNotes ?? undefined}
+                      >
+                        <Ban className="h-2.5 w-2.5" /> No-show
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1">
                     {b.rateTitle && (
                       <span className="rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
@@ -516,6 +551,15 @@ function RentalDayCard({
                     )}
                   </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={noShowBusyId === b.id}
+                  onClick={() => handleToggleNoShow(b.id, !b.noShow)}
+                  className={cn("shrink-0 h-7 px-2 text-[11px]", !b.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
+                >
+                  <Ban className="h-3 w-3 mr-1" /> {b.noShow ? "Undo" : "No-show"}
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-foreground/85 pl-1">

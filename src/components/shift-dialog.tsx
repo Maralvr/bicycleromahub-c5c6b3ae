@@ -19,6 +19,7 @@ import type { Shift } from "@/lib/mock-data";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
 import { Package, MapPin, Users, User, FileText, Sparkles, Ban, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cleanNoteText } from "@/lib/notes-format";
+import { setShiftNoShow } from "@/lib/no-show";
 
 const NONE_VALUE = "__none";
 
@@ -67,6 +68,8 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
   const [form, setForm] = useState<LiveShiftInput>(empty);
   const [tagsText, setTagsText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [noShow, setNoShow] = useState(false);
+  const [noShowBusy, setNoShowBusy] = useState(false);
 
   // Build a Shift-shaped object from the current form for the matcher.
   const candidateShift = useMemo<Shift>(() => ({
@@ -136,12 +139,33 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
         external_booking_ref: initial.external_booking_ref,
       });
       setTagsText((initial.required_tags ?? []).join(", "));
+      setNoShow(initial.no_show ?? false);
     } else {
       setForm(empty);
       setTagsText("");
+      setNoShow(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
+
+  const handleToggleNoShow = async () => {
+    if (!initial) return;
+    const next = !noShow;
+    setNoShowBusy(true);
+    try {
+      const { error } = await setShiftNoShow(initial.id, next);
+      if (error) {
+        toast.error(next ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
+        return;
+      }
+      setNoShow(next);
+      toast.success(next ? "Marked as no-show" : "No-show cleared", {
+        description: next ? "Admins have been notified. This doesn't affect payouts." : undefined,
+      });
+    } finally {
+      setNoShowBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -459,6 +483,11 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                   <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
                     {form.status}
                   </Badge>
+                  {noShow && (
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-bold border-destructive/40 text-destructive bg-destructive/5 flex items-center gap-1">
+                      <Ban className="h-2.5 w-2.5" /> No-show
+                    </Badge>
+                  )}
                   {assignedGuide && (
                     <div className="flex items-center gap-1.5 text-xs">
                       <Avatar name={assignedGuide.name} initials={assignedGuide.avatar} imageUrl={richStaff.find((s) => s.id === assignedGuide.id)?.avatarUrl} size="sm" />
@@ -471,6 +500,23 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
                 <p className="text-[11px] text-muted-foreground">
                   Saving will send a pending request to this guide. They have 2 hours to accept or reject.
                 </p>
+              )}
+              {initial?.id && (
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <p className="text-[11px] text-muted-foreground">
+                    Customer didn't show up? This is a status label only — it doesn't affect payouts.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={noShowBusy}
+                    onClick={handleToggleNoShow}
+                    className={noShow ? "shrink-0" : "shrink-0 border-destructive/40 text-destructive hover:bg-destructive/5"}
+                  >
+                    <Ban className="h-3.5 w-3.5 mr-1" /> {noShow ? "Undo no-show" : "Mark no-show"}
+                  </Button>
+                </div>
               )}
             </div>
           </section>

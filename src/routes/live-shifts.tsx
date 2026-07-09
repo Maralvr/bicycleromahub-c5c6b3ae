@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck } from "lucide-react";
+import { Plus, Clock, MapPin, Users, Euro, Pencil, Trash2, ExternalLink, UserCheck, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useLiveShifts, type LiveShift } from "@/lib/live-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
@@ -25,6 +25,7 @@ import { ShiftDialog } from "@/components/shift-dialog";
 import { useRequireAdmin } from "@/lib/require-admin";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
+import { setShiftNoShow } from "@/lib/no-show";
 
 
 
@@ -55,6 +56,18 @@ function LiveShiftsPage() {
   const [confirmDelete, setConfirmDelete] = useState<LiveShift | null>(null);
 
   const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
+
+  const handleMarkNoShow = async (s: LiveShift, noShow: boolean) => {
+    const { error } = await setShiftNoShow(s.id, noShow);
+    if (error) {
+      toast.error(noShow ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
+      return;
+    }
+    toast.success(noShow ? "Marked as no-show" : "No-show cleared", {
+      description: noShow ? "Admins have been notified. This doesn't affect payouts." : undefined,
+    });
+    await refresh();
+  };
 
   const pointById = useMemo(() => new Map(points.map((p) => [p.id, p])), [points]);
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
@@ -128,7 +141,7 @@ function LiveShiftsPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <Section title={filters.from || filters.to ? "Results" : "Today"} shifts={todays} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} />
+          <Section title={filters.from || filters.to ? "Results" : "Today"} shifts={todays} pointById={pointById} staffById={staffById} onEdit={setEditing} onDelete={setConfirmDelete} onMarkNoShow={handleMarkNoShow} />
         </div>
       )}
 
@@ -187,6 +200,7 @@ function Section({
   staffById,
   onEdit,
   onDelete,
+  onMarkNoShow,
   muted,
 }: {
   title: string;
@@ -195,6 +209,7 @@ function Section({
   staffById: Map<string, { name: string; avatar: string }>;
   onEdit: (s: LiveShift) => void;
   onDelete: (s: LiveShift) => void;
+  onMarkNoShow?: (s: LiveShift, noShow: boolean) => void;
   muted?: boolean;
 }) {
   if (shifts.length === 0) return null;
@@ -241,7 +256,18 @@ function Section({
                         )}
                       </div>
                     </div>
-                    <StatusPill status={s.status} />
+                    <div className="flex flex-col items-end gap-1.5">
+                      <StatusPill status={s.status} />
+                      {s.no_show && (
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] uppercase tracking-wider font-bold border-destructive/40 text-destructive bg-destructive/5 flex items-center gap-1"
+                          title={s.no_show_notes ?? undefined}
+                        >
+                          <Ban className="h-2.5 w-2.5" /> No-show
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
@@ -289,6 +315,16 @@ function Section({
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(s)}>
                       <Pencil className="h-3 w-3 mr-1" /> Edit
                     </Button>
+                    {onMarkNoShow && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`h-7 text-xs ${s.no_show ? "" : "text-destructive hover:bg-destructive/10 hover:text-destructive"}`}
+                        onClick={() => onMarkNoShow(s, !s.no_show)}
+                      >
+                        <Ban className="h-3 w-3 mr-1" /> {s.no_show ? "Undo no-show" : "Mark no-show"}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"

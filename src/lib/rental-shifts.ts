@@ -32,6 +32,9 @@ type Row = {
   status: Shift["status"];
   required_tags: string[] | null;
   rental_point_id: string | null;
+  no_show: boolean | null;
+  no_show_reported_at: string | null;
+  no_show_notes: string | null;
 };
 
 function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
@@ -67,6 +70,9 @@ function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
     status: r.status,
     requiredTags: r.required_tags ?? [],
     rentalPointId: r.rental_point_id,
+    noShow: r.no_show ?? false,
+    noShowReportedAt: r.no_show_reported_at,
+    noShowNotes: r.no_show_notes,
   };
 }
 
@@ -99,7 +105,7 @@ export function useRentalShifts() {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes",
         )
         .not("rental_point_id", "is", null)
         .gte("date", dateFrom)
@@ -112,7 +118,7 @@ export function useRentalShifts() {
         setLoading(false);
         return;
       }
-      const batch = (data ?? []) as Row[];
+      const batch = (data ?? []) as unknown as Row[];
       all.push(...batch);
       if (batch.length < pageSize) break;
       from += pageSize;
