@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle, Paperclip } from "lucide-react";
+import { Bell, CheckCheck, CalendarRange, Megaphone, AlertTriangle, ListChecks, X, CheckCircle2, XCircle, Paperclip, Ban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ const TYPE_META: Record<GuideNotification["type"], { icon: typeof Bell; cls: str
   broadcast: { icon: Megaphone, cls: "bg-secondary/10 text-secondary-foreground border-secondary/30", label: "Broadcast" },
   reminder: { icon: Bell, cls: "bg-primary/10 text-primary border-primary/30", label: "Reminder" },
   task: { icon: ListChecks, cls: "bg-accent text-foreground border-border", label: "Task" },
+  no_show: { icon: Ban, cls: "bg-destructive/10 text-destructive border-destructive/30", label: "No-show" },
 };
 
 function timeAgo(iso: string): string {

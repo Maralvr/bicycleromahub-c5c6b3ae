@@ -27,7 +27,8 @@ export type GuideNotification = {
     | "shift_rejected"
     | "broadcast"
     | "reminder"
-    | "task";
+    | "task"
+    | "no_show";
   title: string;
   body: string;
   shiftId?: string;

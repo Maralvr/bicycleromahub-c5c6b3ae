@@ -41,6 +41,7 @@ import {
   Download,
   Loader2,
   ChevronDown,
+  Ban,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -492,7 +493,9 @@ function NotificationsPage() {
                           ? X
                           : n.type === "task"
                             ? ListChecks
-                            : CalendarRange;
+                            : n.type === "no_show"
+                              ? Ban
+                              : CalendarRange;
                   const isOpen = expandedNotif === n.id;
                   const visibleAttachments = attachmentsForNotification(n.id, n.body);
                   return (
