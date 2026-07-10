@@ -202,7 +202,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void fetchAll();
     const channel = supabase
-      .channel("shifts-realtime")
+      .channel(`shifts-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
         const newRow = payload.new as ShiftRow | null;
         const oldRow = payload.old as { id?: string } | null;

@@ -131,7 +131,7 @@ export function useRentalShifts() {
   useEffect(() => {
     void fetchAll();
     const channel = supabase
-      .channel("rental-shifts-realtime")
+      .channel(`rental-shifts-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
         const newRow = payload.new as Row | null;
         const oldRow = payload.old as { id?: string } | null;

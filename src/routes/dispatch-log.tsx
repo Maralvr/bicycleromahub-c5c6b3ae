@@ -51,7 +51,7 @@ function DispatchLogPage() {
     if (!ready) return;
     void load();
     const channel = supabase
-      .channel("dispatch-events-global")
+      .channel(`dispatch-events-global-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "shift_dispatch_events" }, (payload) => {
         const e = payload.new as DispatchEvent;
         setEvents((prev) => (prev.some((p) => p.id === e.id) ? prev : [e, ...prev].slice(0, 500)));

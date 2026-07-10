@@ -119,7 +119,7 @@ export function BroadcastInteractionsProvider({ children }: { children: ReactNod
   // Single realtime channel for both tables, scoped to known broadcast ids.
   useEffect(() => {
     const channel = supabase
-      .channel("broadcast-interactions")
+      .channel(`broadcast-interactions-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "broadcast_reactions" },
