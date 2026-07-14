@@ -118,7 +118,7 @@ function RentalStaffTasksView() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-7 w-7 rounded-lg bg-warning/15 flex items-center justify-center">
@@ -485,7 +485,7 @@ function TasksPage() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-7 w-7 rounded-lg bg-warning/15 flex items-center justify-center">

@@ -442,7 +442,7 @@ export function ShiftsCalendar({
         </div>
       </div>
 
-      <div className="grid gap-3 border-b border-border/70 bg-background p-4 sm:grid-cols-2 lg:grid-cols-4 lg:p-5">
+      <div className="grid grid-cols-1 gap-3 border-b border-border/70 bg-background p-4 sm:grid-cols-2 lg:grid-cols-4 lg:p-5">
         <Stat label="Tours" value={stats.total} accent="text-foreground" helper="Total scheduled" />
         <Stat
           label="Accepted"

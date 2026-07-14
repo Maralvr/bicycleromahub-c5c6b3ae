@@ -344,7 +344,7 @@ function NotificationsPage() {
     <AppShell>
       <PageHeader title={t.notifications.title} subtitle={t.notifications.subtitle} actions={<PushToggle />} />
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {isAdmin ? (
           <Card className="p-5 lg:col-span-1 h-fit border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card relative overflow-hidden lg:sticky lg:top-6">
             <div className="absolute -top-4 -right-4 h-24 w-24 bg-primary/10 rounded-full blur-2xl pointer-events-none" />

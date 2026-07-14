@@ -124,7 +124,7 @@ export function InvoiceDialog({
         {/* Customer block */}
         <div className="space-y-3">
           <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Cliente / Bill to</div>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <Label htmlFor="cname">Name *</Label>
               <Input id="cname" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} maxLength={200} />
@@ -202,7 +202,7 @@ export function InvoiceDialog({
         <Separator />
 
         {/* VAT + totals + notes */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-3">
             <div>
               <Label htmlFor="vat">VAT rate (%)</Label>
