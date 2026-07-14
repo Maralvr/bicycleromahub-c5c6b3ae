@@ -853,6 +853,54 @@ export type Database = {
           },
         ]
       }
+      shift_additional_guides: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          rejection_reason: string | null
+          responded_at: string | null
+          shift_id: string
+          staff_id: string
+          status: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          rejection_reason?: string | null
+          responded_at?: string | null
+          shift_id: string
+          staff_id: string
+          status?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          rejection_reason?: string | null
+          responded_at?: string | null
+          shift_id?: string
+          staff_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_additional_guides_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_additional_guides_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_dispatch_events: {
         Row: {
           actor_profile_id: string | null
@@ -1351,6 +1399,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_additional_guide_assignment: {
+        Args: { _shift_id: string }
+        Returns: undefined
+      }
       accept_rental_day: {
         Args: { _assignment_id: string }
         Returns: undefined
@@ -1370,12 +1422,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_additional_guide_for_shift: {
+        Args: { _profile_id: string; _shift_id: string }
+        Returns: boolean
+      }
+      is_primary_guide_for_shift: {
+        Args: { _profile_id: string; _shift_id: string }
+        Returns: boolean
+      }
       is_staff_assigned_to_rental_shift: {
         Args: { _staff_id: string }
         Returns: boolean
       }
       my_signed_waiver_shift_ids: { Args: never; Returns: string[] }
       next_invoice_number: { Args: { _year: number }; Returns: number }
+      reject_additional_guide_assignment: {
+        Args: { _reason?: string; _shift_id: string }
+        Returns: undefined
+      }
       reject_rental_day: {
         Args: { _assignment_id: string; _reason?: string }
         Returns: undefined
