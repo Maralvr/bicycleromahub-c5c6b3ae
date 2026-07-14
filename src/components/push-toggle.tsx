@@ -5,17 +5,11 @@ import { toast } from "sonner";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
 
 export function PushToggle() {
-  const { status, supported, unsupportedReason, subscribe, disable, test, error } =
-    usePushSubscription();
+  const { status, supported, subscribe, disable, test, error } = usePushSubscription();
 
-  if (!supported) {
-    return (
-      <div className="text-xs text-muted-foreground flex items-start gap-1.5 max-w-xs">
-        <BellOff className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-        <span>{unsupportedReason ?? "Push notifications not supported in this browser"}</span>
-      </div>
-    );
-  }
+  // If push isn't available in this environment (iframe preview, iOS non-PWA,
+  // unsupported browser, missing VAPID), hide the control entirely.
+  if (!supported) return null;
 
   const handleEnable = async () => {
     await subscribe();
