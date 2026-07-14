@@ -858,6 +858,9 @@ export type Database = {
           assigned_by: string | null
           created_at: string
           id: string
+          payout_paid: boolean
+          payout_paid_at: string | null
+          payout_tier: number | null
           rejection_reason: string | null
           responded_at: string | null
           shift_id: string
@@ -868,6 +871,9 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string
           id?: string
+          payout_paid?: boolean
+          payout_paid_at?: string | null
+          payout_tier?: number | null
           rejection_reason?: string | null
           responded_at?: string | null
           shift_id: string
@@ -878,6 +884,9 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string
           id?: string
+          payout_paid?: boolean
+          payout_paid_at?: string | null
+          payout_tier?: number | null
           rejection_reason?: string | null
           responded_at?: string | null
           shift_id?: string
