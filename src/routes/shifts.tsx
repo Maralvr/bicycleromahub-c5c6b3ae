@@ -107,7 +107,7 @@ function ShiftsPage() {
   const { role, staffId } = useCurrentUser();
   const { user } = useAuth();
   const { staff } = useStaffStore();
-  const { shifts, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
+  const { shifts, dateRange, setDateRange, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const isAdminRole = role === "admin";
@@ -246,6 +246,28 @@ function ShiftsPage() {
   };
 
   const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
+
+  // The From/To filter fields above let admins/guides type in any date, but
+  // the store only fetches a rolling window (this month -> +30 days) by
+  // default to keep the initial load fast. Without this, filtering to a
+  // future date past that window silently returned zero results -- looking
+  // exactly like "future bookings aren't being imported" when the data was
+  // actually there all along, just never fetched. Widen the store's fetch
+  // range (never shrink it) whenever the filter asks for something outside
+  // it, so the underlying query only grows when someone actually asks to
+  // look further out -- not on every load.
+  useEffect(() => {
+    const wantFrom = filters.from || dateRange.from;
+    const wantTo = filters.to || dateRange.to;
+    if (wantFrom < dateRange.from || wantTo > dateRange.to) {
+      setDateRange({
+        from: wantFrom < dateRange.from ? wantFrom : dateRange.from,
+        to: wantTo > dateRange.to ? wantTo : dateRange.to,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.from, filters.to]);
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
   const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
