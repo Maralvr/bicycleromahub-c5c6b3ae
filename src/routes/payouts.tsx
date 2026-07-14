@@ -44,10 +44,49 @@ type PayoutShift = {
   infants: number | null;
 };
 
+type AdditionalPayoutRow = {
+  id: string;
+  staff_id: string;
+  payout_tier: number | null;
+  payout_paid: boolean;
+  payout_paid_at: string | null;
+  shifts: {
+    tour_name: string;
+    date: string;
+    start_time: string;
+    bokun_product_id: string | null;
+    adults: number | null;
+    teens: number | null;
+    infants: number | null;
+  } | null;
+};
+
+// Unified shape for a single payable line, whether it's the primary guide
+// on a booking (from `shifts`) or an additional guide (from
+// `shift_additional_guides`). Each additional guide is paid independently
+// at the full rate, same as the primary -- so a booking with 2 guides
+// produces 2 separate PayoutLines, one per guide, each individually
+// tier-able / mark-paid-able.
+type PayoutLine = {
+  id: string;
+  kind: "primary" | "additional";
+  guideId: string;
+  tour_name: string;
+  date: string;
+  start_time: string;
+  bokun_product_id: string | null;
+  payout_tier: number | null;
+  payout_paid: boolean;
+  payout_paid_at: string | null;
+  adults: number | null;
+  teens: number | null;
+  infants: number | null;
+};
+
 const LARGE_GROUP_BONUS = 20;
 const LARGE_GROUP_THRESHOLD = 8;
-const paxOf = (s: PayoutShift) => (s.adults ?? 0) + (s.teens ?? 0) + (s.infants ?? 0);
-
+const paxOf = (s: { adults: number | null; teens: number | null; infants: number | null }) =>
+  (s.adults ?? 0) + (s.teens ?? 0) + (s.infants ?? 0);
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
@@ -58,6 +97,7 @@ function PayoutsPage() {
   const [to, setTo] = useState<Date>(endOfMonth(new Date()));
   const [rates, setRates] = useState<Rate[]>([]);
   const [shifts, setShifts] = useState<PayoutShift[]>([]);
+  const [additionalRows, setAdditionalRows] = useState<AdditionalPayoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [paidFilter, setPaidFilter] = useState<"unpaid" | "paid" | "all">("unpaid");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -70,23 +110,45 @@ function PayoutsPage() {
       .then(({ data }) => setRates((data ?? []) as Rate[]));
   }, []);
 
-  // Load shifts in range
+  // Load shifts in range (primary-guide payouts)
   const reload = async () => {
     setLoading(true);
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
     const { data, error } = await supabase
       .from("shifts")
-      .select("id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, adults, teens, infants")
-      .gte("date", format(from, "yyyy-MM-dd"))
-      .lte("date", format(to, "yyyy-MM-dd"))
+      .select(
+        "id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, adults, teens, infants",
+      )
+      .gte("date", fromStr)
+      .lte("date", toStr)
       .not("assigned_staff_id", "is", null)
       .is("rental_point_id", null)
       .order("date", { ascending: true })
       .order("start_time", { ascending: true });
     if (error) toast.error(error.message);
-    setShifts(((data ?? []) as PayoutShift[]));
+    setShifts((data ?? []) as PayoutShift[]);
+
+    // Load additional-guide payouts in the same range. Each additional
+    // guide is paid independently at the full rate (product decision), so
+    // these become their own payout lines below, not folded into the
+    // primary guide's total.
+    const { data: addlData, error: addlErr } = await supabase
+      .from("shift_additional_guides" as never)
+      .select(
+        "id, staff_id, payout_tier, payout_paid, payout_paid_at, shifts!inner(tour_name, date, start_time, bokun_product_id, adults, teens, infants, rental_point_id)" as never,
+      )
+      .gte("shifts.date" as never, fromStr)
+      .lte("shifts.date" as never, toStr)
+      .is("shifts.rental_point_id" as never, null);
+    if (addlErr) toast.error(addlErr.message);
+    setAdditionalRows((addlData ?? []) as unknown as AdditionalPayoutRow[]);
+
     setLoading(false);
   };
-  useEffect(() => { void reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [from, to]);
+  useEffect(() => {
+    void reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [from, to]);
 
   const ratesByProduct = useMemo(() => {
     const m = new Map<string, Rate>();
@@ -99,29 +161,75 @@ function PayoutsPage() {
     return m;
   }, [rates]);
 
-  const findRate = (s: PayoutShift): Rate | undefined => {
+  const findRate = (s: {
+    bokun_product_id: string | null;
+    tour_name: string;
+  }): Rate | undefined => {
     if (s.bokun_product_id) return ratesByProduct.get(s.bokun_product_id);
     return ratesByTitle.get(s.tour_name.trim().toLowerCase());
   };
-  const amountFor = (s: PayoutShift): number => {
+  const amountFor = (s: PayoutLine): number => {
     const r = findRate(s);
     if (!r) return 0;
     const base = s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
     return base + (paxOf(s) >= LARGE_GROUP_THRESHOLD ? LARGE_GROUP_BONUS : 0);
   };
 
+  // Merge primary-guide shifts and additional-guide assignments into one
+  // list of payable lines. A booking with 2 assigned guides shows up
+  // twice here -- once per guide -- each independently tier-able and
+  // payable, per the "each guide gets the full rate" decision.
+  const allLines: PayoutLine[] = useMemo(() => {
+    const primary: PayoutLine[] = shifts.map((s) => ({
+      id: s.id,
+      kind: "primary",
+      guideId: s.assigned_staff_id,
+      tour_name: s.tour_name,
+      date: s.date,
+      start_time: s.start_time,
+      bokun_product_id: s.bokun_product_id,
+      payout_tier: s.payout_tier,
+      payout_paid: s.payout_paid,
+      payout_paid_at: s.payout_paid_at,
+      adults: s.adults,
+      teens: s.teens,
+      infants: s.infants,
+    }));
+    const additional: PayoutLine[] = additionalRows
+      .filter(
+        (r): r is AdditionalPayoutRow & { shifts: NonNullable<AdditionalPayoutRow["shifts"]> } =>
+          !!r.shifts,
+      )
+      .map((r) => ({
+        id: r.id,
+        kind: "additional",
+        guideId: r.staff_id,
+        tour_name: r.shifts.tour_name,
+        date: r.shifts.date,
+        start_time: r.shifts.start_time,
+        bokun_product_id: r.shifts.bokun_product_id,
+        payout_tier: r.payout_tier,
+        payout_paid: r.payout_paid,
+        payout_paid_at: r.payout_paid_at,
+        adults: r.shifts.adults,
+        teens: r.shifts.teens,
+        infants: r.shifts.infants,
+      }));
+    return [...primary, ...additional];
+  }, [shifts, additionalRows]);
+
   // Guide-grouped + filtered
   const grouped = useMemo(() => {
-    const filtered = shifts.filter((s) => {
+    const filtered = allLines.filter((s) => {
       if (paidFilter === "paid") return s.payout_paid;
       if (paidFilter === "unpaid") return !s.payout_paid;
       return true;
     });
-    const byGuide = new Map<string, PayoutShift[]>();
+    const byGuide = new Map<string, PayoutLine[]>();
     for (const s of filtered) {
-      const arr = byGuide.get(s.assigned_staff_id) ?? [];
+      const arr = byGuide.get(s.guideId) ?? [];
       arr.push(s);
-      byGuide.set(s.assigned_staff_id, arr);
+      byGuide.set(s.guideId, arr);
     }
     return Array.from(byGuide.entries())
       .map(([guideId, list]) => {
@@ -130,37 +238,88 @@ function PayoutsPage() {
         return { guideId, guide, list, total };
       })
       .sort((a, b) => (a.guide?.name ?? "").localeCompare(b.guide?.name ?? ""));
-  }, [shifts, staff, paidFilter, ratesByProduct, ratesByTitle]);
+  }, [allLines, staff, paidFilter, ratesByProduct, ratesByTitle]);
 
-  const setTier = async (id: string, tier: 1 | 2) => {
-    const prev = shifts;
-    setShifts((s) => s.map((x) => (x.id === id ? { ...x, payout_tier: tier } : x)));
-    const { error } = await supabase.from("shifts").update({ payout_tier: tier }).eq("id", id);
-    if (error) {
-      setShifts(prev);
-      toast.error(error.message);
+  const setTier = async (line: { id: string; kind: "primary" | "additional" }, tier: 1 | 2) => {
+    if (line.kind === "primary") {
+      const prev = shifts;
+      setShifts((s) => s.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)));
+      const { error } = await supabase
+        .from("shifts")
+        .update({ payout_tier: tier })
+        .eq("id", line.id);
+      if (error) {
+        setShifts(prev);
+        toast.error(error.message);
+      }
+    } else {
+      const prev = additionalRows;
+      setAdditionalRows((rows) =>
+        rows.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)),
+      );
+      const { error } = await supabase
+        .from("shift_additional_guides" as never)
+        .update({ payout_tier: tier } as never)
+        .eq("id", line.id);
+      if (error) {
+        setAdditionalRows(prev);
+        toast.error(error.message);
+      }
     }
   };
 
-  const markPaid = async (ids: string[], paid: boolean) => {
-    const patch = paid
-      ? { payout_paid: true, payout_paid_at: new Date().toISOString(), payout_paid_by: user?.id ?? null }
-      : { payout_paid: false, payout_paid_at: null, payout_paid_by: null };
-    const prev = shifts;
-    setShifts((s) =>
-      s.map((x) =>
-        ids.includes(x.id)
-          ? { ...x, payout_paid: paid, payout_paid_at: paid ? new Date().toISOString() : null }
-          : x,
-      ),
-    );
-    const { error } = await supabase.from("shifts").update(patch).in("id", ids);
-    if (error) {
-      setShifts(prev);
-      toast.error(error.message);
-    } else {
-      toast.success(paid ? `Marked ${ids.length} as paid` : `Reopened ${ids.length}`);
+  const markPaid = async (
+    lines: { id: string; kind: "primary" | "additional" }[],
+    paid: boolean,
+  ) => {
+    const primaryIds = lines.filter((l) => l.kind === "primary").map((l) => l.id);
+    const additionalIds = lines.filter((l) => l.kind === "additional").map((l) => l.id);
+    const nowIso = new Date().toISOString();
+
+    if (primaryIds.length > 0) {
+      const patch = paid
+        ? { payout_paid: true, payout_paid_at: nowIso, payout_paid_by: user?.id ?? null }
+        : { payout_paid: false, payout_paid_at: null, payout_paid_by: null };
+      const prev = shifts;
+      setShifts((s) =>
+        s.map((x) =>
+          primaryIds.includes(x.id)
+            ? { ...x, payout_paid: paid, payout_paid_at: paid ? nowIso : null }
+            : x,
+        ),
+      );
+      const { error } = await supabase.from("shifts").update(patch).in("id", primaryIds);
+      if (error) {
+        setShifts(prev);
+        toast.error(error.message);
+        return;
+      }
     }
+
+    if (additionalIds.length > 0) {
+      const patch = paid
+        ? { payout_paid: true, payout_paid_at: nowIso }
+        : { payout_paid: false, payout_paid_at: null };
+      const prev = additionalRows;
+      setAdditionalRows((rows) =>
+        rows.map((x) =>
+          additionalIds.includes(x.id)
+            ? { ...x, payout_paid: paid, payout_paid_at: paid ? nowIso : null }
+            : x,
+        ),
+      );
+      const { error } = await supabase
+        .from("shift_additional_guides" as never)
+        .update(patch as never)
+        .in("id", additionalIds);
+      if (error) {
+        setAdditionalRows(prev);
+        toast.error(error.message);
+        return;
+      }
+    }
+
+    toast.success(paid ? `Marked ${lines.length} as paid` : `Reopened ${lines.length}`);
   };
 
   if (role !== "admin") return <Navigate to="/" />;
@@ -180,8 +339,29 @@ function PayoutsPage() {
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Quick range</span>
           <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => { const d = new Date(); setFrom(startOfMonth(d)); setTo(endOfMonth(d)); }}>This month</Button>
-            <Button size="sm" variant="outline" onClick={() => { const d = new Date(); d.setMonth(d.getMonth() - 1); setFrom(startOfMonth(d)); setTo(endOfMonth(d)); }}>Last month</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const d = new Date();
+                setFrom(startOfMonth(d));
+                setTo(endOfMonth(d));
+              }}
+            >
+              This month
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const d = new Date();
+                d.setMonth(d.getMonth() - 1);
+                setFrom(startOfMonth(d));
+                setTo(endOfMonth(d));
+              }}
+            >
+              Last month
+            </Button>
           </div>
         </div>
         <div className="flex-1" />
@@ -206,7 +386,9 @@ function PayoutsPage() {
         <div className="space-y-3">
           {grouped.map((g) => {
             const isOpen = expanded[g.guideId] ?? true;
-            const unpaidIds = g.list.filter((s) => !s.payout_paid).map((s) => s.id);
+            const unpaidLines = g.list
+              .filter((s) => !s.payout_paid)
+              .map((s) => ({ id: s.id, kind: s.kind }));
             return (
               <Card key={g.guideId} className="overflow-hidden">
                 <button
@@ -214,25 +396,33 @@ function PayoutsPage() {
                   onClick={() => setExpanded((e) => ({ ...e, [g.guideId]: !isOpen }))}
                   className="w-full flex items-center gap-3 p-4 hover:bg-accent/40 text-left"
                 >
-                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
                   <div className="h-9 w-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm">
                     {g.guide?.avatar ?? "?"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold truncate">{g.guide?.name ?? "Unknown guide"}</div>
                     <div className="text-xs text-muted-foreground">
-                      {g.list.length} shift{g.list.length === 1 ? "" : "s"} · {g.list.filter((s) => !s.payout_paid).length} unpaid
+                      {g.list.length} shift{g.list.length === 1 ? "" : "s"} ·{" "}
+                      {g.list.filter((s) => !s.payout_paid).length} unpaid
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-xs text-muted-foreground">Total</div>
                     <div className="text-lg font-bold tabular-nums">€{g.total.toFixed(0)}</div>
                   </div>
-                  {unpaidIds.length > 0 && (
+                  {unpaidLines.length > 0 && (
                     <Button
                       size="sm"
                       className="ml-2"
-                      onClick={(e) => { e.stopPropagation(); void markPaid(unpaidIds, true); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void markPaid(unpaidLines, true);
+                      }}
                     >
                       <CheckCheck className="h-4 w-4 mr-1" /> Mark all paid
                     </Button>
@@ -248,23 +438,37 @@ function PayoutsPage() {
                       return (
                         <div key={s.id} className="flex flex-wrap items-center gap-3 p-3 px-4">
                           <div className="min-w-0 flex-1">
-                            <div className="font-medium text-sm truncate">{s.tour_name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {format(parseISO(s.date), "EEE d MMM yyyy")} · {s.start_time.slice(0, 5)} · {paxOf(s)} pax
-                              {paxOf(s) >= LARGE_GROUP_THRESHOLD && (
-                                <span className="ml-2 text-primary font-medium">+€{LARGE_GROUP_BONUS} large group</span>
+                            <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                              {s.tour_name}
+                              {s.kind === "additional" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] uppercase tracking-wider h-4 px-1.5 border-secondary/40 text-secondary-foreground bg-secondary/20"
+                                >
+                                  Co-guide
+                                </Badge>
                               )}
-                              {!rate && <span className="ml-2 text-warning">· no rate matched</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(parseISO(s.date), "EEE d MMM yyyy")} ·{" "}
+                              {s.start_time.slice(0, 5)} · {paxOf(s)} pax
+                              {paxOf(s) >= LARGE_GROUP_THRESHOLD && (
+                                <span className="ml-2 text-primary font-medium">
+                                  +€{LARGE_GROUP_BONUS} large group
+                                </span>
+                              )}
+                              {!rate && (
+                                <span className="ml-2 text-warning">· no rate matched</span>
+                              )}
                             </div>
                           </div>
-
 
                           <div className="flex items-center gap-1 rounded-md border bg-muted/30 p-0.5">
                             <Button
                               size="sm"
                               variant={tier === 1 ? "default" : "ghost"}
                               className="h-7 px-2 text-xs"
-                              onClick={() => setTier(s.id, 1)}
+                              onClick={() => setTier(s, 1)}
                               disabled={s.payout_paid}
                             >
                               T1 {rate ? `€${Number(rate.tier1)}` : ""}
@@ -273,7 +477,7 @@ function PayoutsPage() {
                               size="sm"
                               variant={tier === 2 ? "default" : "ghost"}
                               className="h-7 px-2 text-xs"
-                              onClick={() => setTier(s.id, 2)}
+                              onClick={() => setTier(s, 2)}
                               disabled={s.payout_paid}
                             >
                               T2 {rate ? `€${Number(rate.tier2)}` : ""}
@@ -290,14 +494,18 @@ function PayoutsPage() {
                               <Check className="h-3 w-3" /> Paid
                               <button
                                 type="button"
-                                onClick={() => void markPaid([s.id], false)}
+                                onClick={() => void markPaid([s], false)}
                                 className="ml-1 text-xs underline opacity-70 hover:opacity-100"
                               >
                                 undo
                               </button>
                             </Badge>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => void markPaid([s.id], true)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void markPaid([s], true)}
+                            >
                               Mark paid
                             </Button>
                           )}
@@ -315,7 +523,15 @@ function PayoutsPage() {
   );
 }
 
-function DateField({ label, value, onChange }: { label: string; value: Date; onChange: (d: Date) => void }) {
+function DateField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: Date;
+  onChange: (d: Date) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
