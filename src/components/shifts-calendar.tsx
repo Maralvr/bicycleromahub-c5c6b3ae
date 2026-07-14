@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/avatar";
 import { RateTitleField } from "@/components/rate-title-field";
 import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
@@ -43,6 +51,7 @@ import {
   UserMinus,
   Search,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 
 type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | Promise<void>;
@@ -403,22 +412,28 @@ export function ShiftsCalendar({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Tabs
+            <FilterMenu
+              label="Source"
               value={platform}
-              onValueChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}
-            >
-              <TabsList className="h-9 bg-background shadow-sm">
-                <TabsTrigger value="all" className="text-xs">
-                  All
-                </TabsTrigger>
-                <TabsTrigger value="bokun" className="text-xs">
-                  Bokun
-                </TabsTrigger>
-                <TabsTrigger value="manual" className="text-xs">
-                  Manual
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+              onChange={(v) => setPlatform(v as "all" | "bokun" | "manual")}
+              options={[
+                { value: "all", label: "All sources" },
+                { value: "bokun", label: "Bokun" },
+                { value: "manual", label: "Manual" },
+              ]}
+            />
+            <FilterMenu
+              label="Status"
+              value={statusFilter}
+              onChange={(v) => setStatusFilter(v as typeof statusFilter)}
+              options={[
+                { value: "all", label: "All statuses" },
+                { value: "unassigned", label: "Unassigned", dot: STATUS.unassigned.dot },
+                { value: "pending", label: "Pending", dot: STATUS.pending.dot },
+                { value: "accepted", label: "Accepted", dot: STATUS.accepted.dot },
+                { value: "rejected", label: "Rejected", dot: STATUS.rejected.dot },
+              ]}
+            />
             <Tabs value={view} onValueChange={(v) => setView(v as View)}>
               <TabsList className="h-9 bg-background shadow-sm">
                 <TabsTrigger value="day" className="text-xs">
@@ -436,28 +451,6 @@ export function ShiftsCalendar({
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <Tabs
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-          >
-            <TabsList className="h-auto flex-wrap justify-start bg-background p-1 shadow-sm">
-              <TabsTrigger value="all" className="text-xs">
-                All statuses
-              </TabsTrigger>
-              <TabsTrigger value="unassigned" className="text-xs">
-                Unassigned
-              </TabsTrigger>
-              <TabsTrigger value="pending" className="text-xs">
-                Pending
-              </TabsTrigger>
-              <TabsTrigger value="accepted" className="text-xs">
-                Accepted
-              </TabsTrigger>
-              <TabsTrigger value="rejected" className="text-xs">
-                Rejected
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
           <div className="hidden items-center gap-3 rounded-lg border border-border/70 bg-background px-3 py-2 text-[11px] text-muted-foreground shadow-sm md:flex">
             {(Object.keys(STATUS) as (keyof typeof STATUS)[]).map((k) => (
               <span key={k} className="flex items-center gap-1.5">
@@ -577,6 +570,51 @@ export function ShiftsCalendar({
         onUpdateDeparture={onUpdateDeparture}
       />
     </Card>
+  );
+}
+
+function FilterMenu<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string; dot?: string }[];
+}) {
+  const isDefault = value === options[0]?.value;
+  const current = options.find((o) => o.value === value);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-9 gap-1.5 bg-background px-3 text-xs shadow-sm",
+            !isDefault && "border-primary/50 bg-primary/5 text-primary",
+          )}
+        >
+          {current?.dot && <span className={cn("h-2 w-2 rounded-full", current.dot)} />}
+          <span className="max-w-[92px] truncate sm:max-w-none">
+            {isDefault ? label : (current?.label ?? label)}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[160px]">
+        <DropdownMenuRadioGroup value={value} onValueChange={(v) => onChange(v as T)}>
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o.value} value={o.value} className="gap-2 text-xs">
+              {o.dot && <span className={cn("h-2 w-2 rounded-full", o.dot)} />}
+              {o.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
