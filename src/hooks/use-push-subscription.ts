@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   registerPushSubscription,
@@ -36,6 +36,26 @@ export type PushStatus =
   | "subscribed" // active subscription
   | "loading"; // in-flight
 
+// Race a promise against a timeout so the UI never gets stuck when the
+// underlying browser API (permission prompt, SW registration, push subscribe)
+// never resolves — this happens e.g. inside the Lovable preview iframe on
+// mobile, or on iOS Safari when the app hasn't been added to Home Screen.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 export function usePushSubscription() {
   const [status, setStatus] = useState<PushStatus>("loading");
   const [endpoint, setEndpoint] = useState<string | null>(null);
@@ -45,11 +65,41 @@ export function usePushSubscription() {
   const unregister = useServerFn(unregisterPushSubscription);
   const sendTest = useServerFn(sendTestPush);
 
+  // Environmental gotchas that make push impossible or unreliable on mobile.
+  const env = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { inIframe: false, isIOS: false, isStandalone: false };
+    }
+    const inIframe = window.self !== window.top;
+    const ua = navigator.userAgent || "";
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !("MSStream" in window);
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      // iOS-specific
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+    return { inIframe, isIOS, isStandalone };
+  }, []);
+
   const supported =
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
-    !!VAPID_PUBLIC;
+    "Notification" in window &&
+    !!VAPID_PUBLIC &&
+    // iOS only supports web push from an installed PWA (Home Screen).
+    !(env.isIOS && !env.isStandalone) &&
+    // Lovable preview / any cross-origin iframe blocks the permission prompt.
+    !env.inIframe;
+
+  const unsupportedReason = !supported
+    ? env.inIframe
+      ? "Open the app in a full browser tab (not the in-app preview) to enable push."
+      : env.isIOS && !env.isStandalone
+        ? "On iPhone/iPad, add this app to your Home Screen first, then open it from there to enable push."
+        : !VAPID_PUBLIC
+          ? "Push isn't configured for this environment."
+          : "This browser doesn't support push notifications."
+    : null;
 
   const refresh = useCallback(async () => {
     if (!supported) {
@@ -85,31 +135,57 @@ export function usePushSubscription() {
     if (!supported) return;
     setStatus("loading");
     setError(null);
+    let succeeded = false;
     try {
-      const perm = await Notification.requestPermission();
+      // Permission prompt — some browsers (or iframes) never resolve this.
+      const perm = await withTimeout(
+        Promise.resolve(Notification.requestPermission()),
+        20_000,
+        "Permission prompt",
+      );
       if (perm !== "granted") {
         setStatus(perm === "denied" ? "blocked" : "idle");
         return;
       }
       let reg = await navigator.serviceWorker.getRegistration(SW_URL);
       if (!reg) {
-        reg = await navigator.serviceWorker.register(SW_URL, { scope: "/" });
+        reg = await withTimeout(
+          navigator.serviceWorker.register(SW_URL, { scope: "/" }),
+          15_000,
+          "Service worker registration",
+        );
       }
-      await navigator.serviceWorker.ready;
+      await withTimeout(navigator.serviceWorker.ready, 15_000, "Service worker activation");
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         const appKey = urlBase64ToUint8Array(VAPID_PUBLIC);
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: appKey.buffer.slice(appKey.byteOffset, appKey.byteOffset + appKey.byteLength) as ArrayBuffer,
-        });
+        sub = await withTimeout(
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: appKey.buffer.slice(
+              appKey.byteOffset,
+              appKey.byteOffset + appKey.byteLength,
+            ) as ArrayBuffer,
+          }),
+          20_000,
+          "Push subscribe",
+        );
       }
       await register({ data: subscriptionToPayload(sub) });
       setEndpoint(sub.endpoint);
       setStatus("subscribed");
+      succeeded = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setStatus("idle");
+    } finally {
+      // Guarantee we never leave the UI stuck on "loading".
+      if (!succeeded) {
+        setStatus(
+          typeof Notification !== "undefined" && Notification.permission === "denied"
+            ? "blocked"
+            : "idle",
+        );
+      }
     }
   }, [register, supported]);
 
@@ -129,6 +205,7 @@ export function usePushSubscription() {
       setStatus("idle");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setStatus("idle");
     }
   }, [unregister, supported]);
 
@@ -136,5 +213,15 @@ export function usePushSubscription() {
     return await sendTest({});
   }, [sendTest]);
 
-  return { status, supported, endpoint, error, subscribe, disable, test, refresh };
+  return {
+    status,
+    supported,
+    unsupportedReason,
+    endpoint,
+    error,
+    subscribe,
+    disable,
+    test,
+    refresh,
+  };
 }
