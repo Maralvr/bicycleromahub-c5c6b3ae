@@ -1,18 +1,9 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { useStaffStore } from "@/lib/staff-store";
+import { useDispatchEvents, type DispatchEvent } from "@/lib/dispatch-events-store";
 import { History, CheckCircle2, XCircle, Clock, Bell, UserMinus, ArrowRightLeft, Ban } from "lucide-react";
 
-export type DispatchEvent = {
-  id: string;
-  shift_id: string;
-  event_type: "dispatched" | "accepted" | "rejected" | "expired" | "cancelled" | "unassigned" | "reassigned";
-  staff_id: string | null;
-  previous_staff_id: string | null;
-  actor_profile_id: string | null;
-  reason: string | null;
-  created_at: string;
-};
+export type { DispatchEvent };
 
 const EVENT_META: Record<DispatchEvent["event_type"], { label: string; icon: typeof Bell; cls: string }> = {
   dispatched: { label: "Dispatched to", icon: Bell, cls: "text-primary" },
@@ -29,37 +20,10 @@ function fmt(iso: string) {
 }
 
 export function DispatchHistory({ shiftId }: { shiftId: string }) {
-  const [events, setEvents] = useState<DispatchEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { eventsByShiftId, loading } = useDispatchEvents();
+  const events = eventsByShiftId[shiftId] ?? [];
   const { staff } = useStaffStore();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("shift_dispatch_events" as never)
-        .select("*")
-        .eq("shift_id", shiftId)
-        .order("created_at", { ascending: false });
-      if (!cancelled) {
-        setEvents((data as unknown as DispatchEvent[]) ?? []);
-        setLoading(false);
-      }
-    })();
-    const channel = supabase
-      .channel(`dispatch-events-${shiftId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shift_dispatch_events", filter: `shift_id=eq.${shiftId}` }, (payload) => {
-        const e = payload.new as DispatchEvent;
-        setEvents((prev) => (prev.some((p) => p.id === e.id) ? prev : [e, ...prev]));
-      })
-      .subscribe();
-    return () => {
-      cancelled = true;
-      void supabase.removeChannel(channel);
-    };
-  }, [shiftId]);
 
   const nameFor = (id: string | null) => (id ? staff.find((s) => s.id === id)?.name ?? "Unknown" : "—");
 

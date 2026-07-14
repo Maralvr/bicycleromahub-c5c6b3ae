@@ -17,6 +17,8 @@ import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
 import { TasksStoreProvider } from "@/lib/tasks-store";
 import { ShiftsStoreProvider } from "@/lib/shifts-store";
 import { AdditionalGuidesStoreProvider } from "@/lib/additional-guides-store";
+import { DispatchEventsStoreProvider } from "@/lib/dispatch-events-store";
+import { BookingNotesStoreProvider } from "@/lib/booking-notes-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -193,11 +195,15 @@ function AuthenticatedDataProviders({ children }: { children: React.ReactNode })
       <CurrentUserProvider>
         <ShiftsStoreProvider>
           <AdditionalGuidesStoreProvider>
-            <NotesStoreProvider>
-              <TasksStoreProvider>
-                <TaskUpdatesStoreProvider>{children}</TaskUpdatesStoreProvider>
-              </TasksStoreProvider>
-            </NotesStoreProvider>
+            <DispatchEventsStoreProvider>
+              <BookingNotesStoreProvider>
+                <NotesStoreProvider>
+                  <TasksStoreProvider>
+                    <TaskUpdatesStoreProvider>{children}</TaskUpdatesStoreProvider>
+                  </TasksStoreProvider>
+                </NotesStoreProvider>
+              </BookingNotesStoreProvider>
+            </DispatchEventsStoreProvider>
           </AdditionalGuidesStoreProvider>
         </ShiftsStoreProvider>
       </CurrentUserProvider>

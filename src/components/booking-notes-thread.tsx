@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -10,17 +10,9 @@ import { toast } from "sonner";
 import { useNoteTemplates } from "@/lib/note-templates";
 import { NoteTemplatesDialog } from "@/components/note-templates-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useBookingNotes, type BookingNote } from "@/lib/booking-notes-store";
 
-export type BookingNote = {
-  id: string;
-  shift_id: string;
-  author_profile_id: string;
-  author_name: string;
-  author_role: string;
-  message: string;
-  attachments: Attachment[];
-  created_at: string;
-};
+export type { BookingNote };
 
 type Props = {
   shiftId: string;
@@ -32,39 +24,14 @@ type Props = {
 
 export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
   const { user, profile, isAdmin } = useAuth();
-  const [notes, setNotes] = useState<BookingNote[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { notesByShiftId, loading } = useBookingNotes();
+  const notes = notesByShiftId[shiftId] ?? [];
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [posting, setPosting] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { templates, loading: templatesLoading } = useNoteTemplates(isAdmin && canPost);
-
-  const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("booking_notes" as never)
-      .select("*")
-      .eq("shift_id", shiftId)
-      .order("created_at", { ascending: true });
-    if (!error) setNotes((data ?? []) as unknown as BookingNote[]);
-    setLoading(false);
-  }, [shiftId]);
-
-  useEffect(() => {
-    void load();
-    const channel = supabase
-      .channel(`booking-notes-${shiftId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "booking_notes", filter: `shift_id=eq.${shiftId}` },
-        () => void load(),
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [shiftId, load]);
 
   const post = async () => {
     if (!user || !message.trim()) return;
