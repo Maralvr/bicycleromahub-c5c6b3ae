@@ -207,7 +207,7 @@ function MyAvailabilityView() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Calendar — main */}
         <Card className="p-5 lg:col-span-2 border-border/60">
           <div className="flex items-start justify-between mb-4">
@@ -450,7 +450,7 @@ function AdminStaffDirectory() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((s) => {
           const yearMonth = new Date().toISOString().slice(0, 7);
           const monthOff = s.unavailability.filter((u) => u.date.startsWith(yearMonth)).length;
