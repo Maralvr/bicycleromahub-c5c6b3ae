@@ -225,6 +225,7 @@ export function ShiftsCalendar({
   onShiftClick,
   renderDayOverlay,
   renderDayDialogSection,
+  onVisibleRangeChange,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -236,6 +237,13 @@ export function ShiftsCalendar({
   onShiftClick?: (s: CalendarShift) => void;
   renderDayOverlay?: (iso: string) => React.ReactNode;
   renderDayDialogSection?: (iso: string) => React.ReactNode;
+  // Fires whenever day/week/month navigation moves the visible window,
+  // with the ISO bounds of whatever's currently on screen. Lets a parent
+  // that fetches shifts for a limited date range (for load-time
+  // performance) know it needs to widen that range -- otherwise paging
+  // this calendar forward just shows an empty month once you page past
+  // whatever the parent already fetched.
+  onVisibleRangeChange?: (range: { from: string; to: string }) => void;
 }) {
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
@@ -299,6 +307,27 @@ export function ShiftsCalendar({
     }
     return out;
   }, [view, cursor, shiftsByDate]);
+
+  // Tell the parent what date window is actually on screen right now, so it
+  // can widen its fetch range if navigation just paged past what it loaded.
+  // Padded a day on each side to be safe with local/UTC boundary rounding.
+  useEffect(() => {
+    if (!onVisibleRangeChange) return;
+    let start: Date;
+    let end: Date;
+    if (view === "day") {
+      start = cursor;
+      end = cursor;
+    } else if (view === "week") {
+      start = startOfWeek(cursor);
+      end = addDays(start, 6);
+    } else {
+      start = startOfMonth(cursor);
+      end = endOfMonth(cursor);
+    }
+    onVisibleRangeChange({ from: toISO(addDays(start, -1)), to: toISO(addDays(end, 1)) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, cursor]);
 
   const stats = useMemo(() => {
     const s = { total: visibleShifts.length, accepted: 0, pending: 0, unassigned: 0, rejected: 0 };

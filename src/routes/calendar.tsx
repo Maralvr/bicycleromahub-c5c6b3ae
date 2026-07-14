@@ -23,7 +23,7 @@ function CalendarPage() {
   const { t } = useI18n();
   const { role } = useCurrentUser();
   const { staff } = useStaffStore();
-  const { shifts, assignShift, updateShift } = useShiftsStore();
+  const { shifts, dateRange, setDateRange, assignShift, updateShift } = useShiftsStore();
   const { notifyGuide } = useNotesStore();
 
   // Guides have their own /shifts view; the all-tours calendar is admin-only.
@@ -56,13 +56,26 @@ function CalendarPage() {
     await updateShift(shiftId, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
   };
 
+  // The store only fetches this month -> +30 days by default (fast initial
+  // load). Paging the calendar forward/back past that window would
+  // otherwise just show an empty month -- widen (never shrink) the fetch
+  // range to cover whatever's actually on screen.
+  const widenDateRange = (want: { from: string; to: string }) => {
+    if (want.from < dateRange.from || want.to > dateRange.to) {
+      setDateRange({
+        from: want.from < dateRange.from ? want.from : dateRange.from,
+        to: want.to > dateRange.to ? want.to : dateRange.to,
+      });
+    }
+  };
+
   return (
     <AppShell>
       <PageHeader
         title={t.nav.calendar}
         subtitle="All scheduled tours across day, week and month."
       />
-      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateDeparture={handleUpdateDeparture} />
+      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateDeparture={handleUpdateDeparture} onVisibleRangeChange={widenDateRange} />
     </AppShell>
   );
 }

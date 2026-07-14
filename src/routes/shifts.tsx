@@ -247,24 +247,29 @@ function ShiftsPage() {
 
   const [filters, setFilters] = useState<ShiftFiltersValue>(EMPTY_FILTERS);
 
-  // The From/To filter fields above let admins/guides type in any date, but
-  // the store only fetches a rolling window (this month -> +30 days) by
-  // default to keep the initial load fast. Without this, filtering to a
-  // future date past that window silently returned zero results -- looking
-  // exactly like "future bookings aren't being imported" when the data was
-  // actually there all along, just never fetched. Widen the store's fetch
-  // range (never shrink it) whenever the filter asks for something outside
-  // it, so the underlying query only grows when someone actually asks to
-  // look further out -- not on every load.
-  useEffect(() => {
-    const wantFrom = filters.from || dateRange.from;
-    const wantTo = filters.to || dateRange.to;
-    if (wantFrom < dateRange.from || wantTo > dateRange.to) {
+  // The store only fetches a rolling window (this month -> +30 days) by
+  // default to keep the initial load fast. Two different UI controls can
+  // ask to look outside that window -- the From/To filter fields below,
+  // and the calendar tab's own prev/next-month navigation -- and both need
+  // to widen (never shrink) the store's fetch range when that happens.
+  // Otherwise either one silently shows zero results / an empty month past
+  // the window, which looked exactly like "future bookings aren't being
+  // imported" when the data was there in the DB all along, just never
+  // fetched by this page yet.
+  const widenDateRange = (want: { from: string; to: string }) => {
+    if (want.from < dateRange.from || want.to > dateRange.to) {
       setDateRange({
-        from: wantFrom < dateRange.from ? wantFrom : dateRange.from,
-        to: wantTo > dateRange.to ? wantTo : dateRange.to,
+        from: want.from < dateRange.from ? want.from : dateRange.from,
+        to: want.to > dateRange.to ? want.to : dateRange.to,
       });
     }
+  };
+
+  useEffect(() => {
+    widenDateRange({
+      from: filters.from || dateRange.from,
+      to: filters.to || dateRange.to,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.from, filters.to]);
 
@@ -626,6 +631,7 @@ function ShiftsPage() {
             onAssign={isAdmin ? assignStaff : undefined}
             onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             onShiftClick={handleCalendarShiftClick}
+            onVisibleRangeChange={widenDateRange}
           />
         </TabsContent>
         {isAdmin && (
