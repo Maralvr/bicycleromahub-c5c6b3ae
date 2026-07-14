@@ -16,6 +16,7 @@ import { NotesStoreProvider } from "@/lib/notes-store";
 import { TaskUpdatesStoreProvider } from "@/lib/task-updates-store";
 import { TasksStoreProvider } from "@/lib/tasks-store";
 import { ShiftsStoreProvider } from "@/lib/shifts-store";
+import { AdditionalGuidesStoreProvider } from "@/lib/additional-guides-store";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -191,11 +192,13 @@ function AuthenticatedDataProviders({ children }: { children: React.ReactNode })
     <StaffStoreProvider>
       <CurrentUserProvider>
         <ShiftsStoreProvider>
-          <NotesStoreProvider>
-            <TasksStoreProvider>
-              <TaskUpdatesStoreProvider>{children}</TaskUpdatesStoreProvider>
-            </TasksStoreProvider>
-          </NotesStoreProvider>
+          <AdditionalGuidesStoreProvider>
+            <NotesStoreProvider>
+              <TasksStoreProvider>
+                <TaskUpdatesStoreProvider>{children}</TaskUpdatesStoreProvider>
+              </TasksStoreProvider>
+            </NotesStoreProvider>
+          </AdditionalGuidesStoreProvider>
         </ShiftsStoreProvider>
       </CurrentUserProvider>
     </StaffStoreProvider>

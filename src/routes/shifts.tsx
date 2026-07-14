@@ -18,6 +18,7 @@ import { AttachmentPicker } from "@/components/attachment-picker";
 import type { Attachment } from "@/lib/mock-data";
 import type { Shift, GuideNote } from "@/lib/mock-data";
 import { useShiftsStore } from "@/lib/shifts-store";
+import { useAdditionalGuides } from "@/lib/additional-guides-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { startBokunImportFn, processBokunImportChunkFn } from "@/lib/bokun-import.functions";
@@ -108,6 +109,7 @@ function ShiftsPage() {
   const { user } = useAuth();
   const { staff } = useStaffStore();
   const { shifts, dateRange, setDateRange, addShift, updateShift, setStatus, assignShift, deleteShift, refresh: refreshShifts } = useShiftsStore();
+  const { byShiftId: additionalGuidesByShiftForMe } = useAdditionalGuides();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const isAdminRole = role === "admin";
@@ -282,11 +284,27 @@ function ShiftsPage() {
   // For guides: include every assigned shift that still needs their response (pending),
   // even if the date already passed, so notifications never point to an empty list.
   // Pinned at the top, then upcoming chronologically.
+  // A shift can now also involve me as an additional (non-primary) guide.
+  // My own accept/reject state for that lives in shift_additional_guides,
+  // independent of the shift's primary status -- e.g. the primary guide
+  // may have already accepted while my own additional assignment is still
+  // pending, so "am I pending on this?" has to check my own row, not
+  // s.status.
+  const myEffectiveStatus = (s: Shift): Shift["status"] => {
+    if (s.assignedStaffId === staffId) return s.status;
+    const mineAdditional = (additionalGuidesByShiftForMe[s.id] || []).find((a) => a.staffId === staffId);
+    return mineAdditional ? mineAdditional.status : s.status;
+  };
   const myShifts = !isAdmin && staffId
     ? (() => {
-        const mine = filteredShifts.filter((s) => s.assignedStaffId === staffId && byStatus(s));
-        const pendingAny = mine.filter((s) => s.status === "pending");
-        const upcomingNonPending = mine.filter((s) => s.status !== "pending" && !isPast(s));
+        const mine = filteredShifts.filter(
+          (s) =>
+            (s.assignedStaffId === staffId ||
+              (additionalGuidesByShiftForMe[s.id] || []).some((a) => a.staffId === staffId)) &&
+            byStatus(s),
+        );
+        const pendingAny = mine.filter((s) => myEffectiveStatus(s) === "pending");
+        const upcomingNonPending = mine.filter((s) => myEffectiveStatus(s) !== "pending" && !isPast(s));
         const seen = new Set<string>();
         return [...pendingAny, ...upcomingNonPending].filter((s) => {
           if (seen.has(s.id)) return false;
@@ -295,7 +313,7 @@ function ShiftsPage() {
         });
       })()
     : [];
-  const myPendingCount = myShifts.filter((s) => s.status === "pending").length;
+  const myPendingCount = myShifts.filter((s) => myEffectiveStatus(s) === "pending").length;
 
   const shiftSummary = (s: Shift) => `${s.tourName} · ${s.date} ${s.startTime}–${s.endTime} · ${s.meetingPoint}`;
 
@@ -847,6 +865,13 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
   const { role: currentRole, staffId: currentStaffId } = useCurrentUser();
   const { signatures: waiverSignatures } = useWaiverSignatures();
   const { signedShiftIds } = useMySignedShiftIds();
+  const {
+    byShiftId: additionalGuidesByShift,
+    addGuide: addAdditionalGuide,
+    removeGuide: removeAdditionalGuide,
+    acceptGuide: acceptAdditionalGuide,
+    rejectGuide: rejectAdditionalGuide,
+  } = useAdditionalGuides();
   const isAdminView = currentRole === "admin";
   const todayIsoDate = new Date().toISOString().slice(0, 10);
   if (shifts.length === 0) return <div className="text-muted-foreground text-sm py-12 text-center border border-dashed border-border rounded-xl">{pastView ? "No past tours yet." : "No shifts yet."}</div>;
@@ -860,6 +885,12 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
         const shiftNotes = notesByShift?.[s.id] || [];
         const shiftSignatures = isAdminView ? signaturesForShift(waiverSignatures, s) : [];
         const isSigned = isAdminView ? shiftSignatures.length > 0 : signedShiftIds.has(s.id);
+        const additionalGuides = additionalGuidesByShift[s.id] || [];
+        const myAdditionalAssignment = additionalGuides.find((a) => a.staffId === currentStaffId);
+        const isAdditionalGuideMine = !!myAdditionalAssignment && s.assignedStaffId !== currentStaffId;
+        const excludedFromAdd = new Set(
+          [s.assignedStaffId, ...additionalGuides.map((a) => a.staffId)].filter(Boolean) as string[],
+        );
 
         return (
           <Card key={s.id} className={`p-0 overflow-hidden border-border/60 hover:shadow-[var(--shadow-card)] transition-all ${isUrgent ? "ring-1 ring-warning/20" : ""}`}>
@@ -944,11 +975,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                 {cleanNoteText(s.notes) && <div className="mt-3 text-xs text-foreground/70 italic flex gap-1.5"><span>📝</span>{cleanNoteText(s.notes)}</div>}
 
                 {/* Booking notes thread — admin & assigned guide */}
-                {(currentRole === "admin" || s.assignedStaffId === currentStaffId) && (
+                {(currentRole === "admin" || s.assignedStaffId === currentStaffId || isAdditionalGuideMine) && (
                   <div className="mt-4">
                     <BookingNotesThread
                       shiftId={s.id}
-                      canPost={currentRole === "admin" || s.assignedStaffId === currentStaffId}
+                      canPost={currentRole === "admin" || s.assignedStaffId === currentStaffId || isAdditionalGuideMine}
                     />
                   </div>
                 )}
@@ -999,7 +1030,7 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                         <Ban className="h-3.5 w-3.5 mr-1" /> {s.noShow ? "Undo no-show" : "Mark no-show"}
                       </Button>
                     )}
-                    {!pastView && guideView && s.status === "pending" && (
+                    {!pastView && guideView && !isAdditionalGuideMine && s.status === "pending" && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => onReject(s.id)}>
                           <XCircle className="h-3.5 w-3.5 mr-1" /> {t.common.reject}
@@ -1036,6 +1067,110 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                     )}
                   </div>
                 </div>
+
+                {!pastView && (additionalGuides.length > 0 || (isAdminView && !guideView)) && (
+                  <div className="mt-4 pt-4 border-t border-border/60">
+                    <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <UserPlus className="h-3 w-3 text-primary" /> Additional guides
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {additionalGuides.map((a) => {
+                        const member = allStaff.find((m) => m.id === a.staffId);
+                        if (!member) return null;
+                        const isMe = a.staffId === currentStaffId;
+                        return (
+                          <div key={a.id} className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/30 pl-1.5 pr-2 py-1">
+                            <Avatar name={member.name} initials={member.avatar} imageUrl={member.avatarUrl} size="sm" />
+                            <span className="text-xs font-medium">{member.name}</span>
+                            <Badge
+                              variant="outline"
+                              className={`text-[9px] uppercase tracking-wider h-4 px-1.5 ${
+                                a.status === "accepted"
+                                  ? "border-success/40 text-success bg-success/5"
+                                  : a.status === "rejected"
+                                    ? "border-destructive/40 text-destructive bg-destructive/5"
+                                    : "border-warning/40 text-warning bg-warning/5"
+                              }`}
+                            >
+                              {a.status === "accepted" ? "Accepted" : a.status === "rejected" ? "Declined" : "Pending"}
+                            </Badge>
+                            {isMe && a.status === "pending" && (
+                              <div className="flex gap-1 ml-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={async () => {
+                                    const reason = window.prompt("Reason for declining (optional):");
+                                    if (reason === null) return;
+                                    try {
+                                      await rejectAdditionalGuide(s.id, reason || undefined);
+                                      toast.success("Declined");
+                                    } catch (e) {
+                                      toast.error("Couldn't decline", { description: String(e) });
+                                    }
+                                  }}
+                                >
+                                  <XCircle className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] shadow-[var(--shadow-elegant)]"
+                                  onClick={async () => {
+                                    try {
+                                      await acceptAdditionalGuide(s.id);
+                                      toast.success("Shift accepted");
+                                    } catch (e) {
+                                      toast.error("Couldn't accept", { description: String(e) });
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                            {isAdminView && !guideView && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                aria-label={`Remove ${member.name}`}
+                                onClick={async () => {
+                                  if (!confirm(`Remove ${member.name} from this booking?`)) return;
+                                  try {
+                                    await removeAdditionalGuide(a.id);
+                                    toast.success(`${member.name} removed`);
+                                  } catch (e) {
+                                    toast.error("Couldn't remove guide", { description: String(e) });
+                                  }
+                                }}
+                              >
+                                <UserX className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {isAdminView && !guideView && (
+                        <AssignGuideCombobox
+                          shift={s}
+                          allStaff={allStaff.filter((m) => !excludedFromAdd.has(m.id))}
+                          allShifts={allShifts}
+                          label="Add another guide"
+                          onSelect={async (m) => {
+                            try {
+                              await addAdditionalGuide(s.id, m.id);
+                              toast.success(`${m.name} added as an additional guide`);
+                            } catch (e) {
+                              toast.error("Couldn't add guide", { description: String(e) });
+                            }
+                          }}
+                          className="!p-0 !border-0 !bg-transparent w-auto"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {currentRole === "admin" && <DispatchHistory shiftId={s.id} />}
 
