@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Waiver-Signature",
+  "Access-Control-Allow-Headers": "Content-Type, X-Waiverforever-Signature",
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -15,67 +15,139 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 /**
- * Try to extract our matching keys from a Waiver Forever payload.
- * The exact field names will be confirmed once we have access to a real payload —
- * for now we look in several plausible places (custom fields, top-level, signer block).
+ * Verify WaiverForever's webhook signature.
+ *
+ * Per WaiverForever's official docs (docs.waiverforever.com), the header is
+ * `X-Waiverforever-Signature: t=<unix_timestamp>,signature=<hex>`, and the
+ * signature is a PLAIN SHA256 hash (not a keyed HMAC) of the comma-joined
+ * string `"{timestamp},{raw_body},{app_secret}"`. The app_secret comes from
+ * the Dashboard's Webhooks settings in app.waiverforever.com.
  */
-function extractFromPayload(payload: Record<string, unknown>) {
-  const p = payload as any;
+function verifySignature(rawBody: string, header: string, secret: string): boolean {
+  const parts = Object.fromEntries(
+    header.split(",").map((kv) => {
+      const idx = kv.indexOf("=");
+      return idx === -1 ? [kv.trim(), ""] : [kv.slice(0, idx).trim(), kv.slice(idx + 1).trim()];
+    }),
+  );
+  const t = parts["t"];
+  const providedSig = parts["signature"];
+  if (!t || !providedSig) return false;
 
-  // Custom fields on Waiver Forever templates can show up as an array of {label/name/key, value}
-  // or as a flat object. We probe common shapes.
-  const customFields: Array<{ key?: string; label?: string; name?: string; value?: unknown }> =
-    p.custom_fields || p.customFields || p.fields || [];
+  const signedPayload = `${t},${rawBody},${secret}`;
+  const expected = createHash("sha256").update(signedPayload, "utf8").digest("hex");
 
-  const fieldByName = (needle: string): string | null => {
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const target = norm(needle);
-    for (const f of customFields) {
-      const k = f.key || f.label || f.name;
-      if (k && norm(String(k)).includes(target) && f.value != null) return String(f.value);
-    }
-    return null;
-  };
+  try {
+    if (providedSig.length !== expected.length) return false;
+    if (!timingSafeEqual(Buffer.from(providedSig), Buffer.from(expected))) return false;
+  } catch {
+    return false;
+  }
 
-  const bookingId =
-    fieldByName("booking") ||
-    fieldByName("confirmation") ||
-    p.booking_id ||
-    p.bookingId ||
-    p.bokun_booking_id ||
-    null;
+  // Basic replay protection: reject signatures older/newer than 5 minutes.
+  const tsSec = Number(t);
+  if (Number.isFinite(tsSec)) {
+    const ageMs = Date.now() - tsSec * 1000;
+    if (Math.abs(ageMs) > 5 * 60 * 1000) return false;
+  }
+
+  return true;
+}
+
+type WaiverField = {
+  id?: number | string;
+  type?: string;
+  title?: string;
+  value?: unknown;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+};
+
+type WaiverResource = {
+  id?: string;
+  status?: string; // "pending" | "approved" | "revoked"
+  template_id?: string;
+  signed_at?: number | string;
+  received_at?: number | string;
+  data?: WaiverField[];
+  [key: string]: unknown;
+};
+
+/**
+ * The docs list the webhook payload schema as "Event" (distinct from the
+ * "Waiver" resource returned by GET /waiver/{id}), but the fetched docs page
+ * never rendered a concrete "Event" schema/example. Every other WaiverForever
+ * response we do have an example for wraps the resource as
+ * `{ result, msg, data }`, so we defensively support the same `{ event,
+ * data }` shape here (event name + nested Waiver), while also accepting the
+ * Waiver resource unwrapped at the top level in case it's posted directly.
+ */
+function unwrapEvent(payload: Record<string, unknown>): {
+  eventName: string | null;
+  waiver: WaiverResource;
+} {
+  const eventName = typeof payload.event === "string" ? payload.event : null;
+  const nested = payload.data;
+  const looksLikeWaiver = (v: unknown): v is WaiverResource =>
+    !!v &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    "id" in (v as object) &&
+    "data" in (v as object);
+
+  if (looksLikeWaiver(nested)) {
+    return { eventName, waiver: nested };
+  }
+  return { eventName, waiver: payload as WaiverResource };
+}
+
+function unixToIso(value: unknown): string | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return new Date(n * 1000).toISOString();
+}
+
+function nameFieldToString(f: WaiverField): string {
+  if (typeof f.value === "string" && f.value.trim()) return f.value.trim();
+  return [f.first_name, f.middle_name, f.last_name].filter(Boolean).join(" ").trim();
+}
+
+/**
+ * Extract our matching keys from a real WaiverForever "Waiver" resource.
+ * Customer-entered data lives in `data`, an array of typed field objects
+ * (`type: "name_field" | "email_field" | "phone_field" | ...`), each with a
+ * template-customizable `title` (question text) — NOT a stable custom-field
+ * key. There is no dedicated "booking reference" field type; we only pick one
+ * up if the template happens to include a short-answer/single-choice field
+ * whose title mentions booking/confirmation/reservation.
+ */
+function extractFromWaiver(waiver: WaiverResource) {
+  const fields: WaiverField[] = Array.isArray(waiver.data) ? waiver.data : [];
+
+  const emailField = fields.find((f) => f?.type === "email_field");
+  const nameField = fields.find((f) => f?.type === "name_field");
+  const bookingField = fields.find(
+    (f) =>
+      (f?.type === "short_answer_field" || f?.type === "single_choice_field") &&
+      typeof f.title === "string" &&
+      /(booking|confirmation|reservation)/i.test(f.title),
+  );
 
   const email =
-    p.signer_email ||
-    p.email ||
-    p.signer?.email ||
-    fieldByName("email") ||
-    null;
+    emailField && typeof emailField.value === "string"
+      ? emailField.value.toLowerCase().trim()
+      : null;
+  const signerName = nameField ? nameFieldToString(nameField) || null : null;
+  const bookingId =
+    bookingField && bookingField.value != null ? String(bookingField.value).trim() || null : null;
 
-  const signerName =
-    p.signer_name ||
-    p.signer?.name ||
-    [p.signer?.firstName, p.signer?.lastName].filter(Boolean).join(" ") ||
-    p.name ||
-    null;
+  const signedAt = unixToIso(waiver.signed_at) ?? unixToIso(waiver.received_at);
+  const waiverTemplateId = waiver.template_id ? String(waiver.template_id) : null;
+  const externalId = waiver.id ? String(waiver.id) : null;
+  const status = typeof waiver.status === "string" ? waiver.status : null;
 
-  const signedAt =
-    p.signed_at || p.signedAt || p.completed_at || p.timestamp || new Date().toISOString();
-
-  const waiverTemplateId =
-    p.template_id || p.templateId || p.waiver_id || p.waiverId || null;
-
-  const externalId =
-    p.signature_id || p.signatureId || p.id || p.event_id || null;
-
-  return {
-    bookingId: bookingId ? String(bookingId) : null,
-    email: email ? String(email).toLowerCase().trim() : null,
-    signerName: signerName ? String(signerName) : null,
-    signedAt: String(signedAt),
-    waiverTemplateId: waiverTemplateId ? String(waiverTemplateId) : null,
-    externalId: externalId ? String(externalId) : null,
-  };
+  return { bookingId, email, signerName, signedAt, waiverTemplateId, externalId, status };
 }
 
 /** Normalize a person name for fuzzy comparison: lowercase, strip accents/punct, sort tokens. */
@@ -190,23 +262,17 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: corsHeaders }),
 
-      GET: async () =>
-        jsonResponse({ ok: true, name: "waiver-forever-webhook", method: "POST" }),
+      GET: async () => jsonResponse({ ok: true, name: "waiver-forever-webhook", method: "POST" }),
 
       POST: async ({ request }) => {
         const rawBody = await request.text();
 
-        // Optional HMAC verification — only enforced if WAIVER_FOREVER_WEBHOOK_SECRET is set.
+        // Signature verification — only enforced if WAIVER_FOREVER_WEBHOOK_SECRET is set.
+        // See verifySignature() for WaiverForever's actual (non-HMAC) scheme.
         const secret = process.env.WAIVER_FOREVER_WEBHOOK_SECRET;
         if (secret) {
-          const provided = request.headers.get("x-waiver-signature") || "";
-          const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-          try {
-            const ok =
-              provided.length === expected.length &&
-              timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-            if (!ok) return jsonResponse({ error: "Invalid signature" }, 401);
-          } catch {
+          const sigHeader = request.headers.get("x-waiverforever-signature") || "";
+          if (!sigHeader || !verifySignature(rawBody, sigHeader, secret)) {
             return jsonResponse({ error: "Invalid signature" }, 401);
           }
         }
@@ -218,7 +284,34 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
           return jsonResponse({ error: "Invalid JSON" }, 400);
         }
 
-        const extracted = extractFromPayload(payload);
+        const { eventName, waiver } = unwrapEvent(payload);
+        const extracted = extractFromWaiver(waiver);
+
+        // Only persist once the waiver is actually complete/signed.
+        // `pdf_generated` (equal to the deprecated `new_waiver_signed`) is the
+        // event WaiverForever fires once a waiver is signed and its PDF
+        // exists — `new_waiver_submitted`/`new_waiver_accepted`/
+        // `waiver_checkin` are not "signed" for our purposes. If we can't
+        // read an `event` name off the body (e.g. the Waiver resource was
+        // posted unwrapped), fall back to the resource's own `status` field,
+        // which is `"approved"` once fully signed.
+        const isSignedEvent = eventName
+          ? eventName === "pdf_generated" || eventName === "new_waiver_signed"
+          : extracted.status === "approved";
+
+        if (!isSignedEvent) {
+          return jsonResponse({
+            ok: true,
+            skipped: true,
+            event: eventName,
+            status: extracted.status,
+          });
+        }
+
+        if (!extracted.signedAt) {
+          return jsonResponse({ error: "Missing/invalid signed_at in payload" }, 400);
+        }
+
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const matchedShiftId = await findMatchingShiftId(
           supabaseAdmin,
