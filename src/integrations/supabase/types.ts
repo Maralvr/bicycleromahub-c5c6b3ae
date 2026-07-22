@@ -1435,6 +1435,7 @@ export type Database = {
         Args: { _profile_id: string; _shift_id: string }
         Returns: boolean
       }
+      is_bokun_runs_allowed: { Args: { _user_id: string }; Returns: boolean }
       is_primary_guide_for_shift: {
         Args: { _profile_id: string; _shift_id: string }
         Returns: boolean
