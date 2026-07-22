@@ -504,54 +504,26 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       const summariesToFetch: BokunBookingFull[] = [];
       for (const s of liveSummaries) {
         const bId = summaryBookingId(s);
-        const isDiag = bId === DIAG_ID;
         const existing = bId ? existingByBookingId.get(bId) : undefined;
-        if (isDiag) {
-          console.log(`[DIAG ${DIAG_ID}] existing lookup`, {
-            bId,
-            found: !!existing,
-            existing,
-          });
-        }
         if (!existing) {
-          if (isDiag) console.log(`[DIAG ${DIAG_ID}] → summariesToFetch (no existing)`);
+          // Never seen before -- always needs a full detail fetch to create it.
           summariesToFetch.push(s);
           continue;
         }
         const startMs = summaryStartMs(s);
         if (startMs !== null && startMs <= cutoffThreshold) {
-          if (isDiag) console.log(`[DIAG ${DIAG_ID}] SKIP: inside 10h cutoff`, { startMs, cutoffThreshold });
+          // Inside the 10h cutoff + already imported → Bokun guarantees the
+          // customer cannot have changed it. Skip.
           skipped++;
           continue;
         }
-        // Inline replicate summaryLooksChanged to report WHY
-        let changedReason: string | null = null;
-        if (startMs !== null) {
-          if (dateOnly(startMs) !== existing.date) changedReason = `date ${dateOnly(startMs)} != ${existing.date}`;
-          else if (fmtTime(startMs) !== existing.start_time) changedReason = `time ${fmtTime(startMs)} != ${existing.start_time}`;
-        }
-        if (!changedReason && existing.adults + existing.teens + existing.infants === 0) {
-          changedReason = "stored pax total = 0";
-        }
-        if (!changedReason) {
-          const summaryTotal = s.totalParticipants ?? s.fields?.totalParticipants;
-          if (typeof summaryTotal === "number") {
-            const storedTotal = existing.adults + existing.teens + existing.infants;
-            if (summaryTotal !== storedTotal) changedReason = `pax ${summaryTotal} != ${storedTotal}`;
-          }
-        }
-        if (isDiag) {
-          console.log(`[DIAG ${DIAG_ID}] summaryLooksChanged`, {
-            changed: !!changedReason,
-            reason: changedReason,
-            summaryTotal: s.totalParticipants ?? s.fields?.totalParticipants,
-            storedPax: existing.adults + existing.teens + existing.infants,
-          });
-        }
-        if (!changedReason) {
+        if (!summaryLooksChanged(s, existing)) {
+          // Already imported and nothing in the summary suggests a change.
           skipped++;
           continue;
         }
+        // Already imported but looks changed (time or pax differ) -- worth
+        // the detail fetch so we can update the stored row.
         summariesToFetch.push(s);
       }
 
