@@ -735,5 +735,10 @@ export async function assertAdmin(accessToken: string) {
     .select("role")
     .eq("user_id", userData.user.id);
   if (!roles?.some((r) => r.role === "admin")) throw new Error("Admin only");
+  // Bokun Runs diagnostics is further restricted to a single allowlisted account.
+  if ((userData.user.email ?? "").toLowerCase() !== "marallvalipour@gmail.com") {
+    throw new Error("Not authorized for Bokun Runs");
+  }
 }
+
 
