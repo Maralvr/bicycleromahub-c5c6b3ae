@@ -416,6 +416,22 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         if ((summary.status ?? "").toUpperCase() === "CANCELLED") { skipped++; continue; }
         liveSummaries.push(summary);
       }
+      // TEMP DIAG: trace BIC-T138721037
+      const DIAG_ID = "BIC-T138721037";
+      const diagSummary = liveSummaries.find(
+        (s) => String(s.productConfirmationCode ?? s.confirmationCode ?? "") === DIAG_ID,
+      );
+      if (diagSummary) {
+        console.log(`[DIAG ${DIAG_ID}] seen in liveSummaries page=${page}`, {
+          bookingId: diagSummary.bookingId,
+          parentBookingId: diagSummary.parentBookingId,
+          startDateTime: diagSummary.startDateTime,
+          startDate: diagSummary.startDate,
+          totalParticipants: diagSummary.totalParticipants,
+          status: diagSummary.status,
+          productConfirmationCode: diagSummary.productConfirmationCode,
+        });
+      }
 
       // Cost fix (see get_bokun_cron_status / audit discussion): this used
       // to fetch full Bokun detail (a separate API call + JSON download) for
