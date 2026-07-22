@@ -485,6 +485,14 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           if (dateOnly(startMs) !== existing.date) return true;
           if (fmtTime(startMs) !== existing.start_time) return true;
         }
+        // A stored zero-participant count is never actually correct -- every
+        // real booking has at least one person on it. If we ever see this,
+        // treat it as "changed" unconditionally so a booking that got stuck
+        // at 0 (e.g. a past detail-fetch failure silently fell back to the
+        // sparse search-summary shape) gets a real detail re-fetch on the
+        // very next scan instead of being skipped forever by the check
+        // below, which can't detect a wrong value it was never able to see.
+        if (existing.adults + existing.teens + existing.infants === 0) return true;
         const summaryTotal = s.totalParticipants ?? s.fields?.totalParticipants;
         if (typeof summaryTotal === "number") {
           const storedTotal = existing.adults + existing.teens + existing.infants;
@@ -522,23 +530,44 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       const fullBookings: BokunBookingFull[] = [];
       for (let i = 0; i < summariesToFetch.length; i += detailConcurrency) {
         const batch = summariesToFetch.slice(i, i + detailConcurrency);
-        const settled = await Promise.all(batch.map(async (summary) => {
-          const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
-          if (detailId == null) return summary;
-          try {
-            const parent = await bokunFetch("GET", `/booking.json/booking/${detailId}`) as BokunBookingFull;
-            return {
-              ...parent,
-              id: summary.id,
-              bookingId: summary.bookingId ?? summary.id,
-              productConfirmationCode: summary.productConfirmationCode,
-              parentBookingId: summary.parentBookingId ?? parent.bookingId,
-            } as BokunBookingFull;
-          } catch (e) {
-            errors.push(`Detail ${detailId}: ${(e as Error).message}`);
+        const settled = await Promise.all(
+          batch.map(async (summary) => {
+            const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
+            if (detailId == null) return summary;
+            // Retry once on transient failures (rate limit, timeout, brief
+            // 5xx) before giving up. Falling back to `summary` below
+            // silently writes a shift row from Bokun's sparse search-summary
+            // shape -- which has no pricingCategoryBookings/totalParticipants
+            // -- so a single network blip used to permanently store
+            // adults/teens/infants as 0 for a real booking. The retry cuts
+            // how often we ever reach that fallback; summaryLooksChanged()
+            // below is the second line of defense that keeps retrying a
+            // booking stuck at 0 on every future scan even if this retry
+            // still isn't enough.
+            for (let attempt = 0; attempt < 2; attempt++) {
+              try {
+                const parent = (await bokunFetch(
+                  "GET",
+                  `/booking.json/booking/${detailId}`,
+                )) as BokunBookingFull;
+                return {
+                  ...parent,
+                  id: summary.id,
+                  bookingId: summary.bookingId ?? summary.id,
+                  productConfirmationCode: summary.productConfirmationCode,
+                  parentBookingId: summary.parentBookingId ?? parent.bookingId,
+                } as BokunBookingFull;
+              } catch (e) {
+                if (attempt === 1) {
+                  errors.push(`Detail ${detailId}: ${(e as Error).message}`);
+                  return summary;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 500));
+              }
+            }
             return summary;
-          }
-        }));
+          }),
+        );
         fullBookings.push(...settled);
       }
 
