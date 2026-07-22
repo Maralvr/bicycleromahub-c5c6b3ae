@@ -124,7 +124,7 @@ function BokunRunsPage() {
     }
   }, [hasRunning, runningCount, load]);
 
-  if (!ready) return null;
+  if (!ready || !allowed) return null;
 
   return (
     <AppShell>
