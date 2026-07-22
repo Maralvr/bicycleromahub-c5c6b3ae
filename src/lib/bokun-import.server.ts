@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isExcludedBokunProductId, isExcludedTourName } from "./excluded-bokun-products";
 import { rentalLocationForProductId } from "./rental-products";
 import { cleanNoteText } from "./notes-format";
+import { BOKUN_RUNS_ALLOWED_EMAIL } from "./bokun-runs-access";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
   adult: "adults", adults: "adults", person: "adults", people: "adults", participant: "adults", participants: "adults", pax: "adults",
@@ -735,5 +736,11 @@ export async function assertAdmin(accessToken: string) {
     .select("role")
     .eq("user_id", userData.user.id);
   if (!roles?.some((r) => r.role === "admin")) throw new Error("Admin only");
+  // Bokun Runs (the only caller of this function -- see the two server
+  // functions in bokun-import.functions.ts) is restricted to one specific
+  // account, not every admin. See bokun-runs-access.ts for why.
+  if ((userData.user.email ?? "").toLowerCase() !== BOKUN_RUNS_ALLOWED_EMAIL) {
+    throw new Error("Bokun Runs is restricted to a single account");
+  }
 }
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useRequireAdmin } from "@/lib/require-admin";
+import { useRequireBokunRunsAccess } from "@/lib/require-admin";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -61,7 +61,7 @@ interface CronStatus {
 }
 
 function BokunRunsPage() {
-  const { ready } = useRequireAdmin();
+  const { ready } = useRequireBokunRunsAccess();
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);

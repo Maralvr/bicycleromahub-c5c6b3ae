@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
+import { BOKUN_RUNS_ALLOWED_EMAIL } from "@/lib/bokun-runs-access";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/notification-bell";
 import { RentalNotificationBell } from "@/components/rental-notification-bell";
@@ -27,8 +28,11 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
   const { role, setRole, staffId, setStaffId, displayName, initials, subtitle } = useCurrentUser();
   const { staff } = useStaffStore();
   const location = useLocation();
-  const { signOut, isAdmin, profile } = useAuth();
+  const { signOut, isAdmin, profile, user } = useAuth();
   const switchView = () => setRole(role === "admin" ? "staff" : "admin");
+  // Bokun Runs exposes internal sync diagnostics -- restricted to one
+  // specific account rather than every admin. See bokun-runs-access.ts.
+  const canSeeBokunRuns = (user?.email ?? "").toLowerCase() === BOKUN_RUNS_ALLOWED_EMAIL;
 
   const nav = role === "staff"
     ? [
@@ -47,7 +51,7 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
         { to: "/payouts", label: t.nav.payouts, icon: Euro },
         { to: "/notifications", label: t.nav.notifications, icon: Bell },
         { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
-        { to: "/bokun-runs", label: t.nav.bokunRuns, icon: RefreshCw },
+        ...(canSeeBokunRuns ? [{ to: "/bokun-runs", label: t.nav.bokunRuns, icon: RefreshCw }] : []),
         { to: "/dispatch-log", label: t.nav.dispatchLog, icon: History },
         { to: "/users", label: t.nav.users, icon: ShieldCheck },
       ];
