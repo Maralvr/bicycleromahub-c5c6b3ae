@@ -915,6 +915,11 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-foreground text-[15px] leading-tight">{s.tourName}</h3>
+                    {s.rateTitle && (
+                      <div className="mt-1 inline-flex items-center rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        {s.rateTitle}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5 flex-wrap">
                       <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {s.meetingPoint}</span>
                       {s.bookingId && <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" />{s.bookingId}</span>}
