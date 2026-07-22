@@ -1,5 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/lib/auth";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useRequireAdmin } from "@/lib/require-admin";
 import { AppShell } from "@/components/app-shell";
