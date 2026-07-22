@@ -1,7 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
+import { useAuth } from "@/lib/auth";
+
 import { supabase } from "@/integrations/supabase/client";
-import { useRequireBokunRunsAccess } from "@/lib/require-admin";
+import { useRequireAdmin } from "@/lib/require-admin";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -61,8 +63,15 @@ interface CronStatus {
 }
 
 function BokunRunsPage() {
-  const { ready } = useRequireBokunRunsAccess();
+  const { ready } = useRequireAdmin();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const allowed = (user?.email ?? "").toLowerCase() === "marallvalipour@gmail.com";
+  useEffect(() => {
+    if (ready && !allowed) void navigate({ to: "/shifts", replace: true });
+  }, [ready, allowed, navigate]);
   const [runs, setRuns] = useState<RunRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
   const fetchCronStatus = useServerFn(getBokunCronStatusFn);
@@ -115,7 +124,7 @@ function BokunRunsPage() {
     }
   }, [hasRunning, runningCount, load]);
 
-  if (!ready) return null;
+  if (!ready || !allowed) return null;
 
   return (
     <AppShell>
