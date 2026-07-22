@@ -62,7 +62,14 @@ interface CronStatus {
 
 function BokunRunsPage() {
   const { ready } = useRequireAdmin();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const allowed = (user?.email ?? "").toLowerCase() === "marallvalipour@gmail.com";
+  useEffect(() => {
+    if (ready && !allowed) void navigate({ to: "/shifts", replace: true });
+  }, [ready, allowed, navigate]);
   const [runs, setRuns] = useState<RunRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
   const fetchCronStatus = useServerFn(getBokunCronStatusFn);
