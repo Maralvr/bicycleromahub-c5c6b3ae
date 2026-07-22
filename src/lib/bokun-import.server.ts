@@ -577,23 +577,24 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         const settled = await Promise.all(
           batch.map(async (summary) => {
             const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
-            if (detailId == null) return summary;
-            // Retry once on transient failures (rate limit, timeout, brief
-            // 5xx) before giving up. Falling back to `summary` below
-            // silently writes a shift row from Bokun's sparse search-summary
-            // shape -- which has no pricingCategoryBookings/totalParticipants
-            // -- so a single network blip used to permanently store
-            // adults/teens/infants as 0 for a real booking. The retry cuts
-            // how often we ever reach that fallback; summaryLooksChanged()
-            // below is the second line of defense that keeps retrying a
-            // booking stuck at 0 on every future scan even if this retry
-            // still isn't enough.
+            const isDiag = summaryBookingId(summary) === DIAG_ID;
+            if (isDiag) console.log(`[DIAG ${DIAG_ID}] entering detail fetch`, { detailId });
+            if (detailId == null) {
+              if (isDiag) console.log(`[DIAG ${DIAG_ID}] no detailId, returning summary`);
+              return summary;
+            }
             for (let attempt = 0; attempt < 2; attempt++) {
               try {
                 const parent = (await bokunFetch(
                   "GET",
                   `/booking.json/booking/${detailId}`,
                 )) as BokunBookingFull;
+                if (isDiag) {
+                  console.log(`[DIAG ${DIAG_ID}] detail fetch OK attempt=${attempt}`, {
+                    parentBookingId: parent.bookingId,
+                    activityBookings: Array.isArray(parent.activityBookings) ? parent.activityBookings.length : null,
+                  });
+                }
                 return {
                   ...parent,
                   id: summary.id,
@@ -602,6 +603,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
                   parentBookingId: summary.parentBookingId ?? parent.bookingId,
                 } as BokunBookingFull;
               } catch (e) {
+                if (isDiag) console.log(`[DIAG ${DIAG_ID}] detail fetch FAIL attempt=${attempt}`, { err: (e as Error).message });
                 if (attempt === 1) {
                   errors.push(`Detail ${detailId}: ${(e as Error).message}`);
                   return summary;
