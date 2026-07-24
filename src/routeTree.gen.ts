@@ -27,6 +27,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
 import { Route as ApiPublicHooksSyncBokunRouteImport } from './routes/api/public/hooks/sync-bokun'
 import { Route as ApiPublicHooksSendShiftRemindersRouteImport } from './routes/api/public/hooks/send-shift-reminders'
+import { Route as ApiPublicHooksHealBokunZerosRouteImport } from './routes/api/public/hooks/heal-bokun-zeros'
 import { Route as ApiPublicHooksExpireShiftRequestsRouteImport } from './routes/api/public/hooks/expire-shift-requests'
 import { Route as ApiPublicHooksExpireRentalDayRequestsRouteImport } from './routes/api/public/hooks/expire-rental-day-requests'
 
@@ -122,6 +123,12 @@ const ApiPublicHooksSendShiftRemindersRoute =
     path: '/api/public/hooks/send-shift-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksHealBokunZerosRoute =
+  ApiPublicHooksHealBokunZerosRouteImport.update({
+    id: '/api/public/hooks/heal-bokun-zeros',
+    path: '/api/public/hooks/heal-bokun-zeros',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksExpireShiftRequestsRoute =
   ApiPublicHooksExpireShiftRequestsRouteImport.update({
     id: '/api/public/hooks/expire-shift-requests',
@@ -154,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
@@ -176,6 +184,7 @@ export interface FileRoutesByTo {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
@@ -199,6 +208,7 @@ export interface FileRoutesById {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
+  '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
 }
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   fileRoutesByTo: FileRoutesByTo
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   id:
@@ -267,6 +279,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
+    | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
   fileRoutesById: FileRoutesById
@@ -290,6 +303,7 @@ export interface RootRouteChildren {
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
   ApiPublicHooksExpireRentalDayRequestsRoute: typeof ApiPublicHooksExpireRentalDayRequestsRoute
   ApiPublicHooksExpireShiftRequestsRoute: typeof ApiPublicHooksExpireShiftRequestsRoute
+  ApiPublicHooksHealBokunZerosRoute: typeof ApiPublicHooksHealBokunZerosRoute
   ApiPublicHooksSendShiftRemindersRoute: typeof ApiPublicHooksSendShiftRemindersRoute
   ApiPublicHooksSyncBokunRoute: typeof ApiPublicHooksSyncBokunRoute
 }
@@ -422,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSendShiftRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/heal-bokun-zeros': {
+      id: '/api/public/hooks/heal-bokun-zeros'
+      path: '/api/public/hooks/heal-bokun-zeros'
+      fullPath: '/api/public/hooks/heal-bokun-zeros'
+      preLoaderRoute: typeof ApiPublicHooksHealBokunZerosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/expire-shift-requests': {
       id: '/api/public/hooks/expire-shift-requests'
       path: '/api/public/hooks/expire-shift-requests'
@@ -460,6 +481,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksExpireRentalDayRequestsRoute,
   ApiPublicHooksExpireShiftRequestsRoute:
     ApiPublicHooksExpireShiftRequestsRoute,
+  ApiPublicHooksHealBokunZerosRoute: ApiPublicHooksHealBokunZerosRoute,
   ApiPublicHooksSendShiftRemindersRoute: ApiPublicHooksSendShiftRemindersRoute,
   ApiPublicHooksSyncBokunRoute: ApiPublicHooksSyncBokunRoute,
 }
