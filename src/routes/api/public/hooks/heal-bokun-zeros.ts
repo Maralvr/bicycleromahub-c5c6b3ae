@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/public/hooks/heal-bokun-zeros")({
       POST: async () => {
         try {
           const { healStuckZeroParticipantBookings } = await import("@/lib/bokun-import.server");
-          const result = await healStuckZeroParticipantBookings(30);
+          const result = await healStuckZeroParticipantBookings(50);
           console.log("[heal-bokun-zeros]", result);
           return new Response(JSON.stringify({ success: true, ...result }), {
             headers: { "Content-Type": "application/json" },
