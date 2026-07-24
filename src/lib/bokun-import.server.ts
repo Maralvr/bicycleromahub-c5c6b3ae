@@ -760,8 +760,9 @@ export async function continueBokunImport(
  * Bounded to `limit` rows per call so a single invocation stays cheap;
  * call it repeatedly (like the main sync) if there's a large backlog.
  */
-export async function healStuckZeroParticipantBookings(limit = 30) {
+export async function healStuckZeroParticipantBookings(limit = 50) {
   const cutoffThreshold = Date.now() + CUTOFF_MS;
+  const todayIso = new Date().toISOString().slice(0, 10);
   const { data: stuckRows, error } = await supabaseAdmin
     .from("shifts")
     .select("id, booking_id, external_booking_ref, date, start_time")
@@ -769,6 +770,7 @@ export async function healStuckZeroParticipantBookings(limit = 30) {
     .eq("adults", 0)
     .eq("teens", 0)
     .eq("infants", 0)
+    .gte("date", todayIso)
     .order("date", { ascending: true })
     .limit(limit);
   if (error) throw new Error(`Could not load stuck rows: ${error.message}`);
