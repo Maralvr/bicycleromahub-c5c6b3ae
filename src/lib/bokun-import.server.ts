@@ -347,6 +347,15 @@ function extractSearchBookings(searchRes: BokunSearchResponse | null) {
 
 const PAGE_SIZE = 15;
 
+// Bookings departing within this window are never touched by a resync --
+// Bokun guarantees the customer can't change anything that close to
+// departure, so re-fetching would just burn an API call for no reason.
+// Shared by processBokunImportChunk (skip-if-changed heuristic) and
+// healStuckZeroParticipantBookings (which must never override that safety
+// margin even though it bypasses the rest of the normal change-detection
+// logic).
+const CUTOFF_MS = (9 * 60 + 30) * 60 * 1000;
+
 export async function startBokunImport(
   fromDate: string,
   toDate = "2099-12-31",
@@ -434,7 +443,6 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       // imported booking looks unchanged, and only pay for the detail fetch
       // when it's a brand-new booking_id or the summary suggests something
       // about it differs from what we have stored.
-      const CUTOFF_MS = (9 * 60 + 30) * 60 * 1000;
       const cutoffThreshold = Date.now() + CUTOFF_MS;
 
       const summaryBookingId = (s: BokunBookingFull): string | null => {
@@ -725,6 +733,102 @@ export async function continueBokunImport(
     skipped: lastResult?.skipped ?? 0,
     errors: lastResult?.errors ?? [],
   };
+}
+
+/**
+ * processBokunImportChunk() finds changed/new bookings by paging through
+ * Bokun's search results (sorted by startDate) and comparing each summary
+ * against what's already stored. That works well, but it depends on every
+ * relevant booking actually showing up on some page of some run.
+ *
+ * In practice a small number of far-future bookings have been observed to
+ * go unseen across multiple independent full sweeps (confirmed: not a
+ * duplicate-row/id-mismatch bug, not a payload-parsing bug -- Bokun's
+ * detail API returns perfectly good pricingCategoryBookings for these when
+ * fetched directly). The likely cause is pagination drift/tie-breaking on
+ * Bokun's side when many bookings share an identical startDateTime, or new
+ * bookings landing mid-sweep and shifting offsets -- neither of which this
+ * codebase controls.
+ *
+ * Rather than trying to make Bokun's search pagination airtight, this
+ * bypasses it entirely for the narrow case that actually matters: a row we
+ * already have, already know is wrong (adults+teens+infants = 0, which is
+ * never a real value), and already have a direct Bokun id for
+ * (external_booking_ref, captured from parentBookingId at import time).
+ * One GET per row, no search/pagination involved at all.
+ *
+ * Bounded to `limit` rows per call so a single invocation stays cheap;
+ * call it repeatedly (like the main sync) if there's a large backlog.
+ */
+export async function healStuckZeroParticipantBookings(limit = 30) {
+  const cutoffThreshold = Date.now() + CUTOFF_MS;
+  const { data: stuckRows, error } = await supabaseAdmin
+    .from("shifts")
+    .select("id, booking_id, external_booking_ref, date, start_time")
+    .eq("source", "bokun")
+    .eq("adults", 0)
+    .eq("teens", 0)
+    .eq("infants", 0)
+    .order("date", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`Could not load stuck rows: ${error.message}`);
+
+  const rentalPointIdByName = await getRentalPointNameMap();
+  let checked = 0;
+  let healed = 0;
+  let stillZero = 0;
+  let noRef = 0;
+  const errors: string[] = [];
+
+  for (const row of stuckRows ?? []) {
+    const startMs =
+      row.date && row.start_time ? Date.parse(`${row.date}T${row.start_time}Z`) : null;
+    // Never touch a booking this close to departure, same rule as the main
+    // sync -- even known-bad stored data isn't worth the (tiny) risk of
+    // racing a change Bokun guarantees can't happen this close in anyway.
+    if (startMs !== null && Number.isFinite(startMs) && startMs <= cutoffThreshold) continue;
+    if (!row.external_booking_ref) {
+      noRef++;
+      continue;
+    }
+    checked++;
+    try {
+      const detail = (await bokunFetch(
+        "GET",
+        `/booking.json/booking/${row.external_booking_ref}`,
+      )) as BokunBookingFull;
+      const mapped = mapToShiftRow(detail, rentalPointIdByName);
+      if (!mapped || mapped.adults + mapped.teens + mapped.infants === 0) {
+        stillZero++;
+        continue;
+      }
+      // Same scope as the main sync's updateRows patch: only the
+      // customer-controlled fields Bokun actually owns. Never touches
+      // assigned_staff_id, status, meeting_point, rate, notes, tags, etc.
+      const { error: updErr } = await supabaseAdmin
+        .from("shifts")
+        .update({
+          adults: mapped.adults,
+          teens: mapped.teens,
+          infants: mapped.infants,
+          trailers: mapped.trailers,
+          participants: mapped.participants,
+          customer_name: mapped.customer_name,
+          customer_phone: mapped.customer_phone,
+          customer_email: mapped.customer_email,
+        })
+        .eq("id", row.id);
+      if (updErr) {
+        errors.push(`${row.booking_id}: ${updErr.message}`);
+        continue;
+      }
+      healed++;
+    } catch (e) {
+      errors.push(`${row.booking_id}: ${(e as Error).message}`);
+    }
+  }
+
+  return { checked, healed, stillZero, noRef, errors };
 }
 
 export async function assertAdmin(accessToken: string) {
