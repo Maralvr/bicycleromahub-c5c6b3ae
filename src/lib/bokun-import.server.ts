@@ -140,7 +140,7 @@ async function bokunSign(method: string, path: string, accessKey: string, secret
   return { date, signature };
 }
 
-async function bokunFetch(method: "GET" | "POST", path: string, body?: unknown) {
+export async function bokunFetch(method: "GET" | "POST", path: string, body?: unknown) {
   const accessKey = process.env.BOKUN_ACCESS_KEY;
   const secretKey = process.env.BOKUN_SECRET_KEY;
   if (!accessKey || !secretKey) throw new Error("Missing BOKUN_ACCESS_KEY / BOKUN_SECRET_KEY");
