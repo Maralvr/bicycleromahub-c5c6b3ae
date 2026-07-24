@@ -762,13 +762,6 @@ export async function continueBokunImport(
  */
 export async function healStuckZeroParticipantBookings(limit = 50) {
   const cutoffThreshold = Date.now() + CUTOFF_MS;
-  // Bug found via live testing: without a lower bound, ORDER BY date ASC
-  // returns the *oldest* zero-participant rows first -- and there are
-  // hundreds of those from before the self-heal fix even existed, for
-  // tours that already departed. Bokun will never return real participant
-  // data for a departed tour, and every one of them is already older than
-  // the cutoff below, so they silently ate the entire `limit` budget every
-  // call while the actual far-future rows we care about were never reached.
   const todayIso = new Date().toISOString().slice(0, 10);
   const { data: stuckRows, error } = await supabaseAdmin
     .from("shifts")
