@@ -61,6 +61,15 @@ type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Prom
 type View = "day" | "week" | "month";
 export type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
+// Bokun sync stores the literal string "TBD" when no pickup/meeting-point
+// field is set on the booking (see bokun-import.server.ts). It's cheap to
+// show or hide -- it's already-synced table data, not a live fetch -- but
+// showing the raw placeholder as if it were a real address is confusing on
+// the compact calendar cards. Hide it there instead; the full shift detail
+// dialog still shows/edits it since that's where an admin would fix it.
+const hasRealMeetingPoint = (mp?: string | null): boolean =>
+  !!mp && mp.trim().toUpperCase() !== "TBD";
+
 /**
  * Status color system: solid bar + tinted bg + strong foreground contrast.
  * `bar`   — solid 4-6px accent stripe
@@ -714,7 +723,7 @@ function ShiftChip({
             {bookings > 1 ? ` · ${bookings} bookings` : ""}
           </div>
         )}
-        {s.meetingPoint && !dense && (
+        {hasRealMeetingPoint(s.meetingPoint) && !dense && (
           <div className="text-[9px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
             <MapPin className="h-2.5 w-2.5 shrink-0" />{" "}
             <span className="truncate">{s.meetingPoint}</span>
@@ -781,10 +790,12 @@ function DayView({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm text-foreground truncate">{s.tourName}</div>
-                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                  <MapPin className="h-3 w-3 shrink-0" />{" "}
-                  <span className="truncate">{s.meetingPoint}</span>
-                </div>
+                {hasRealMeetingPoint(s.meetingPoint) && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                    <MapPin className="h-3 w-3 shrink-0" />{" "}
+                    <span className="truncate">{s.meetingPoint}</span>
+                  </div>
+                )}
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-foreground/80 shrink-0">
                 {guide ? (
