@@ -89,7 +89,11 @@ export const Route = createFileRoute("/api/public/hooks/probe-bokun-id")({
         if (id && /^\d+$/.test(id)) {
           try {
             const detail: any = await bokunFetch("GET", `/booking.json/booking/${id}`);
-            return Response.json({ ok: true, id, totalParticipants: detail?.totalParticipants, bookingId: detail?.bookingId, parentBookingId: detail?.parentBookingId });
+            const topPcb: any[] | null = Array.isArray(detail?.pricingCategoryBookings) ? detail.pricingCategoryBookings : null;
+            const ab0 = Array.isArray(detail?.activityBookings) ? detail.activityBookings[0] : null;
+            const abPcb: any[] | null = Array.isArray(ab0?.pricingCategoryBookings) ? ab0.pricingCategoryBookings : null;
+            const summarizePcb = (arr: any[] | null) => arr?.map((p: any) => ({ title: p?.pricingCategory?.title ?? p?.pricingCategory?.fullTitle, quantity: p?.quantity })) ?? null;
+            return Response.json({ ok: true, id, totalParticipants: detail?.totalParticipants, bookingId: detail?.bookingId, parentBookingId: detail?.parentBookingId, confirmationCode: detail?.confirmationCode, productTitle: detail?.productTitle ?? ab0?.productTitle, topLevelPcb: summarizePcb(topPcb), activityBooking0Pcb: summarizePcb(abPcb) });
           } catch (e) {
             return Response.json({ ok: false, id, error: (e as Error).message });
           }
