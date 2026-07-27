@@ -7,8 +7,6 @@ export const PUBLIC_TOUR_LANGUAGES = [
   "Public tour in Italian",
   "Public tour in Spanish",
   "Public tour in French",
-  "Public tour in German",
-  "Public tour in Portuguese",
 ] as const;
 
 export type PublicTourLanguage = (typeof PUBLIC_TOUR_LANGUAGES)[number];
