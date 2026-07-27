@@ -539,19 +539,30 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       for (let i = 0; i < summariesToFetch.length; i += detailConcurrency) {
         const batch = summariesToFetch.slice(i, i + detailConcurrency);
         const settled = await Promise.all(
-          batch.map(async (summary) => {
+          batch.map(async (summary): Promise<BokunBookingFull | null> => {
             const detailId = summary.parentBookingId ?? summary.bookingId ?? summary.id;
-            if (detailId == null) return summary;
+            if (detailId == null) return null;
             // Retry once on transient failures (rate limit, timeout, brief
-            // 5xx) before giving up. Falling back to `summary` below
-            // silently writes a shift row from Bokun's sparse search-summary
-            // shape -- which has no pricingCategoryBookings/totalParticipants
-            // -- so a single network blip used to permanently store
-            // adults/teens/infants as 0 for a real booking. The retry cuts
-            // how often we ever reach that fallback; summaryLooksChanged()
-            // below is the second line of defense that keeps retrying a
-            // booking stuck at 0 on every future scan even if this retry
-            // still isn't enough.
+            // 5xx) before giving up.
+            //
+            // On double-failure this used to fall back to returning
+            // `summary` itself -- Bokun's sparse search-summary shape,
+            // which has no pricingCategoryBookings/totalParticipants (and,
+            // often, no parentBookingId either). That silently produced a
+            // shift row with adults/teens/infants = 0 and
+            // external_booking_ref = null for a *new* booking -- or, worse,
+            // for an *already-imported* booking whose summary looked
+            // changed (date/time shift), the same zero-derived counts got
+            // written straight into the update patch below, overwriting
+            // previously-correct participant data with 0 just because a
+            // network blip happened to hit at the wrong moment.
+            //
+            // Returning null instead means: don't write anything for this
+            // booking this scan. summaryLooksChanged() (existing rows) and
+            // the plain !existing check (new rows) both guarantee it gets
+            // reconsidered on the very next scan with a fresh retry budget
+            // -- a temporarily-skipped booking is far cheaper than a
+            // silently-corrupted one.
             for (let attempt = 0; attempt < 2; attempt++) {
               try {
                 const parent = (await bokunFetch(
@@ -568,15 +579,21 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
               } catch (e) {
                 if (attempt === 1) {
                   errors.push(`Detail ${detailId}: ${(e as Error).message}`);
-                  return summary;
+                  return null;
                 }
                 await new Promise((resolve) => setTimeout(resolve, 500));
               }
             }
-            return summary;
+            return null;
           }),
         );
-        fullBookings.push(...settled);
+        for (const s of settled) {
+          if (s === null) {
+            skipped++;
+          } else {
+            fullBookings.push(s);
+          }
+        }
       }
 
       // First-of-current-month threshold (UTC). Bokun bookings whose travel
