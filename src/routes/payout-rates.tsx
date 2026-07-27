@@ -21,7 +21,13 @@ export const Route = createFileRoute("/payout-rates")({
   component: PayoutRatesPage,
 });
 
-type Rate = { product_id: string; title: string; tier1: number; tier2: number };
+type Rate = {
+  product_id: string;
+  title: string;
+  tier1: number;
+  tier2: number;
+  private_rate: number | null;
+};
 
 function PayoutRatesPage() {
   const { role } = useCurrentUser();
@@ -32,7 +38,7 @@ function PayoutRatesPage() {
   useEffect(() => {
     void supabase
       .from("guide_payout_rates")
-      .select("product_id, title, tier1, tier2")
+      .select("product_id, title, tier1, tier2, private_rate")
       .order("title", { ascending: true })
       .then(({ data, error }) => {
         if (error) toast.error(error.message);
@@ -47,7 +53,7 @@ function PayoutRatesPage() {
     <AppShell>
       <PageHeader
         title="Payout Rates"
-        subtitle="What guides are paid per tour at Tier 1 / Tier 2. Changing a rate here only affects future and still-unpaid payouts -- shifts already marked paid keep the amount they were actually paid at."
+        subtitle="What guides are paid per tour at Tier 1 / Tier 2, plus an optional Private tour rate. Changing a rate here only affects future and still-unpaid payouts -- shifts already marked paid keep the amount they were actually paid at."
         actions={
           <Button variant="outline" onClick={() => void navigate({ to: "/payouts" })}>
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Payouts
@@ -79,14 +85,21 @@ function PayoutRatesPage() {
 function RateRow({ rate, onSaved }: { rate: Rate; onSaved: (updated: Rate) => void }) {
   const [tier1, setTier1] = useState(String(rate.tier1));
   const [tier2, setTier2] = useState(String(rate.tier2));
+  const [privateRate, setPrivateRate] = useState(
+    rate.private_rate == null ? "" : String(rate.private_rate),
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setTier1(String(rate.tier1));
     setTier2(String(rate.tier2));
-  }, [rate.product_id, rate.tier1, rate.tier2]);
+    setPrivateRate(rate.private_rate == null ? "" : String(rate.private_rate));
+  }, [rate.product_id, rate.tier1, rate.tier2, rate.private_rate]);
 
-  const changed = tier1 !== String(rate.tier1) || tier2 !== String(rate.tier2);
+  const changed =
+    tier1 !== String(rate.tier1) ||
+    tier2 !== String(rate.tier2) ||
+    privateRate !== (rate.private_rate == null ? "" : String(rate.private_rate));
 
   const save = async () => {
     const t1 = Number(tier1);
@@ -95,18 +108,26 @@ function RateRow({ rate, onSaved }: { rate: Rate; onSaved: (updated: Rate) => vo
       toast.error("Enter valid, non-negative amounts for both tiers");
       return;
     }
+    let pRate: number | null = null;
+    if (privateRate.trim() !== "") {
+      pRate = Number(privateRate);
+      if (!Number.isFinite(pRate) || pRate < 0) {
+        toast.error("Enter a valid, non-negative private tour rate, or leave it blank");
+        return;
+      }
+    }
     setSaving(true);
     try {
       const { error } = await supabase
         .from("guide_payout_rates")
-        .update({ tier1: t1, tier2: t2 })
+        .update({ tier1: t1, tier2: t2, private_rate: pRate })
         .eq("product_id", rate.product_id);
       if (error) {
         toast.error(error.message);
         return;
       }
       toast.success(`Updated ${rate.title}`);
-      onSaved({ ...rate, tier1: t1, tier2: t2 });
+      onSaved({ ...rate, tier1: t1, tier2: t2, private_rate: pRate });
     } finally {
       setSaving(false);
     }
@@ -136,6 +157,19 @@ function RateRow({ rate, onSaved }: { rate: Rate; onSaved: (updated: Rate) => vo
             value={tier2}
             onChange={(e) => setTier2(e.target.value)}
             inputMode="decimal"
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Label className="text-xs text-muted-foreground">Private</Label>
+        <div className="relative w-24">
+          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            className="pl-7 h-8"
+            value={privateRate}
+            onChange={(e) => setPrivateRate(e.target.value)}
+            inputMode="decimal"
+            placeholder="—"
           />
         </div>
       </div>

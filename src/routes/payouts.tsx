@@ -35,7 +35,13 @@ export const Route = createFileRoute("/payouts")({
   component: PayoutsPage,
 });
 
-type Rate = { product_id: string; title: string; tier1: number; tier2: number };
+type Rate = {
+  product_id: string;
+  title: string;
+  tier1: number;
+  tier2: number;
+  private_rate: number | null;
+};
 
 type PayoutShift = {
   id: string;
@@ -118,7 +124,7 @@ function PayoutsPage() {
   useEffect(() => {
     void supabase
       .from("guide_payout_rates")
-      .select("product_id, title, tier1, tier2")
+      .select("product_id, title, tier1, tier2, private_rate")
       .then(({ data }) => setRates((data ?? []) as Rate[]));
   }, []);
 
@@ -189,7 +195,12 @@ function PayoutsPage() {
     if (s.payout_paid && s.payout_amount != null) return Number(s.payout_amount);
     const r = findRate(s);
     if (!r) return 0;
-    const base = s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
+    const base =
+      s.payout_tier === 3 && r.private_rate != null
+        ? Number(r.private_rate)
+        : s.payout_tier === 2
+          ? Number(r.tier2)
+          : Number(r.tier1);
     return base + (paxOf(s) >= LARGE_GROUP_THRESHOLD ? LARGE_GROUP_BONUS : 0);
   };
 
@@ -260,7 +271,7 @@ function PayoutsPage() {
       .sort((a, b) => (a.guide?.name ?? "").localeCompare(b.guide?.name ?? ""));
   }, [allLines, staff, paidFilter, ratesByProduct, ratesByTitle]);
 
-  const setTier = async (line: { id: string; kind: "primary" | "additional" }, tier: 1 | 2) => {
+  const setTier = async (line: { id: string; kind: "primary" | "additional" }, tier: 1 | 2 | 3) => {
     if (line.kind === "primary") {
       const prev = shifts;
       setShifts((s) => s.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)));
@@ -539,7 +550,7 @@ function PayoutsPage() {
                   <div className="border-t divide-y">
                     {g.list.map((s) => {
                       const rate = findRate(s);
-                      const tier = (s.payout_tier ?? 1) as 1 | 2;
+                      const tier = (s.payout_tier ?? 1) as 1 | 2 | 3;
                       const amt = amountFor(s);
                       return (
                         <div key={s.id} className="flex flex-wrap items-center gap-3 p-3 px-4">
@@ -588,6 +599,17 @@ function PayoutsPage() {
                             >
                               T2 {rate ? `€${Number(rate.tier2)}` : ""}
                             </Button>
+                            {rate?.private_rate != null && (
+                              <Button
+                                size="sm"
+                                variant={tier === 3 ? "default" : "ghost"}
+                                className="h-7 px-2 text-xs"
+                                onClick={() => setTier(s, 3)}
+                                disabled={s.payout_paid}
+                              >
+                                Private €{Number(rate.private_rate)}
+                              </Button>
+                            )}
                           </div>
 
                           <div className="w-20 text-right tabular-nums font-semibold flex items-center justify-end gap-1">
