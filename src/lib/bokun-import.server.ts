@@ -833,6 +833,97 @@ export async function healStuckZeroParticipantBookings(limit = 50) {
   return { checked, healed, stillZero, noRef, errors };
 }
 
+/**
+ * healStuckZeroParticipantBookings() can only heal a row that has an
+ * external_booking_ref (the parent booking id) to fetch by. A batch of
+ * older rows -- imported before this session's fixes existed, likely via
+ * the original no-retry code path that fell back to a bare search-summary
+ * object lacking parentBookingId -- have external_booking_ref = NULL and
+ * can never be healed by that function no matter how many times it runs.
+ *
+ * Confirmed by direct testing (see chat) that the obvious shortcuts don't
+ * work: `/booking.json/booking/{id}` only accepts a real parent booking
+ * id, not the activity-level id embedded in booking_id (e.g. the
+ * "135626714" in "BIC-T135626714") -- that 404s. What does work: Bokun's
+ * `/booking.json/booking-search` with a `textFilter` set to the booking_id
+ * string reliably resolves to exactly one row, whose own `id` (or
+ * `parentBookingId`, if Bokun ever returns one directly) is the real
+ * parent id -- confirmed against two known-null-ref rows, both resolving
+ * to the correct parent and returning real passenger data on the
+ * follow-up detail fetch.
+ *
+ * This is a one-time recovery pass: it only sets external_booking_ref on
+ * rows that don't have one. It does NOT touch participant counts itself --
+ * once a row has a ref, the next call to healStuckZeroParticipantBookings
+ * picks it up normally through the already-tested path.
+ *
+ * textFilter is Bokun's free-text search, not an exact-match filter, so
+ * this only acts when the search returns exactly one hit -- anything
+ * ambiguous is left alone rather than guessed at. Runs sequentially with a
+ * delay between requests to stay well under Bokun's rate limit.
+ */
+export async function backfillMissingExternalBookingRefs(limit = 40) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { data: rows, error } = await supabaseAdmin
+    .from("shifts")
+    .select("id, booking_id, external_booking_ref, date")
+    .eq("source", "bokun")
+    .eq("adults", 0)
+    .eq("teens", 0)
+    .eq("infants", 0)
+    .is("external_booking_ref", null)
+    .gte("date", todayIso)
+    .order("date", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`Could not load rows missing external_booking_ref: ${error.message}`);
+
+  let checked = 0;
+  let backfilled = 0;
+  let ambiguous = 0;
+  const errors: string[] = [];
+
+  for (const row of rows ?? []) {
+    if (!row.booking_id) continue;
+    checked++;
+    try {
+      const searchRes = (await bokunFetch("POST", "/booking.json/booking-search", {
+        bookingRole: "SELLER",
+        textFilter: row.booking_id,
+        pageSize: 5,
+        page: 1,
+      })) as BokunSearchResponse;
+      const hits = extractSearchBookings(searchRes);
+      if (hits.length !== 1) {
+        // textFilter is free-text, not exact-match -- 0 or 2+ hits means we
+        // can't be sure which row (if any) is the right one. Don't guess.
+        ambiguous++;
+        continue;
+      }
+      const parentId = hits[0].parentBookingId ?? hits[0].id;
+      if (parentId == null) {
+        ambiguous++;
+        continue;
+      }
+      const { error: updErr } = await supabaseAdmin
+        .from("shifts")
+        .update({ external_booking_ref: String(parentId) })
+        .eq("id", row.id);
+      if (updErr) {
+        errors.push(`${row.booking_id}: ${updErr.message}`);
+        continue;
+      }
+      backfilled++;
+    } catch (e) {
+      errors.push(`${row.booking_id}: ${(e as Error).message}`);
+    }
+    // Bokun rate-limits search; stay well under it since this runs
+    // sequentially over a real (if small) batch.
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
+
+  return { checked, backfilled, ambiguous, errors };
+}
+
 export async function assertAdmin(accessToken: string) {
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(accessToken);
   if (userErr || !userData.user) throw new Error("Not authenticated");
