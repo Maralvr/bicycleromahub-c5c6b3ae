@@ -821,6 +821,14 @@ export async function healStuckZeroParticipantBookings(limit = 50) {
         `/booking.json/booking/${row.external_booking_ref}`,
       )) as BokunBookingFull;
       const mapped = mapToShiftRow(detail, rentalPointIdByName);
+      console.log(
+        "[heal-diag]",
+        row.booking_id,
+        "ref=" + row.external_booking_ref,
+        "detailFetched=" + (detail != null),
+        "detailStatus=" + (detail as unknown as { status?: string })?.status,
+        "mapped=" + (mapped == null ? "null" : JSON.stringify({ a: mapped.adults, t: mapped.teens, i: mapped.infants })),
+      );
       if (!mapped || mapped.adults + mapped.teens + mapped.infants === 0) {
         stillZero++;
         continue;
