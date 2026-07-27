@@ -493,14 +493,6 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           if (dateOnly(startMs) !== existing.date) return true;
           if (fmtTime(startMs) !== existing.start_time) return true;
         }
-        // A stored zero-participant count is never actually correct -- every
-        // real booking has at least one person on it. If we ever see this,
-        // treat it as "changed" unconditionally so a booking that got stuck
-        // at 0 (e.g. a past detail-fetch failure silently fell back to the
-        // sparse search-summary shape) gets a real detail re-fetch on the
-        // very next scan instead of being skipped forever by the check
-        // below, which can't detect a wrong value it was never able to see.
-        if (existing.adults + existing.teens + existing.infants === 0) return true;
         const summaryTotal = s.totalParticipants ?? s.fields?.totalParticipants;
         if (typeof summaryTotal === "number") {
           const storedTotal = existing.adults + existing.teens + existing.infants;
@@ -518,10 +510,23 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
           summariesToFetch.push(s);
           continue;
         }
+        // A stored zero-participant count is never actually correct -- every
+        // real booking has at least one person on it. Always worth a real
+        // detail re-fetch to correct it, *including* inside the near-
+        // departure cutoff below: that cutoff exists to avoid wasting an
+        // API call re-checking a booking Bokun guarantees a customer can't
+        // have changed any more -- a safety margin for otherwise-good data.
+        // It was never meant to protect a value we already know is wrong;
+        // re-fetching a same-day booking that's stuck at 0 can't clobber a
+        // legitimate change, since there's no legitimate value to lose.
+        if (existing.adults + existing.teens + existing.infants === 0) {
+          summariesToFetch.push(s);
+          continue;
+        }
         const startMs = summaryStartMs(s);
         if (startMs !== null && startMs <= cutoffThreshold) {
-          // Inside the 10h cutoff + already imported → Bokun guarantees the
-          // customer cannot have changed it. Skip.
+          // Inside the 10h cutoff + already imported + not stuck at 0 →
+          // Bokun guarantees the customer cannot have changed it. Skip.
           skipped++;
           continue;
         }
@@ -778,7 +783,6 @@ export async function continueBokunImport(
  * call it repeatedly (like the main sync) if there's a large backlog.
  */
 export async function healStuckZeroParticipantBookings(limit = 50) {
-  const cutoffThreshold = Date.now() + CUTOFF_MS;
   const todayIso = new Date().toISOString().slice(0, 10);
   const { data: stuckRows, error } = await supabaseAdmin
     .from("shifts")
@@ -800,12 +804,12 @@ export async function healStuckZeroParticipantBookings(limit = 50) {
   const errors: string[] = [];
 
   for (const row of stuckRows ?? []) {
-    const startMs =
-      row.date && row.start_time ? Date.parse(`${row.date}T${row.start_time}Z`) : null;
-    // Never touch a booking this close to departure, same rule as the main
-    // sync -- even known-bad stored data isn't worth the (tiny) risk of
-    // racing a change Bokun guarantees can't happen this close in anyway.
-    if (startMs !== null && Number.isFinite(startMs) && startMs <= cutoffThreshold) continue;
+    // No near-departure cutoff here, unlike the main sync -- every row this
+    // function selects is already known to be stuck at 0, which is never a
+    // legitimate value. The cutoff exists to avoid re-fetching a booking
+    // Bokun guarantees a customer can't have changed any more -- a safety
+    // margin for otherwise-good data, not a reason to leave known-wrong
+    // data uncorrected right up until departure.
     if (!row.external_booking_ref) {
       noRef++;
       continue;
