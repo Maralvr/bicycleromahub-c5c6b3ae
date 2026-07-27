@@ -385,7 +385,7 @@ function PayoutsPage() {
       ) : (
         <div className="space-y-3">
           {grouped.map((g) => {
-            const isOpen = expanded[g.guideId] ?? true;
+            const isOpen = expanded[g.guideId] ?? false;
             const unpaidLines = g.list
               .filter((s) => !s.payout_paid)
               .map((s) => ({ id: s.id, kind: s.kind }));
