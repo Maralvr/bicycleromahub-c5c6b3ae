@@ -34,6 +34,7 @@ function PayoutRatesPage() {
   const navigate = useNavigate();
   const [rates, setRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     void supabase
@@ -48,6 +49,9 @@ function PayoutRatesPage() {
   }, []);
 
   if (role !== "admin") return <Navigate to="/" />;
+
+  const q = search.trim().toLowerCase();
+  const filtered = q === "" ? rates : rates.filter((r) => r.title.toLowerCase().includes(q));
 
   return (
     <AppShell>
@@ -66,17 +70,34 @@ function PayoutRatesPage() {
       ) : rates.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">No rates configured.</Card>
       ) : (
-        <Card className="overflow-hidden divide-y">
-          {rates.map((r) => (
-            <RateRow
-              key={r.product_id}
-              rate={r}
-              onSaved={(updated) =>
-                setRates((rs) => rs.map((x) => (x.product_id === updated.product_id ? updated : x)))
-              }
+        <>
+          <div className="mb-3">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tour names…"
             />
-          ))}
-        </Card>
+          </div>
+          {filtered.length === 0 ? (
+            <Card className="p-8 text-center text-muted-foreground">
+              No tours match "{search}"
+            </Card>
+          ) : (
+            <Card className="overflow-hidden divide-y">
+              {filtered.map((r) => (
+                <RateRow
+                  key={r.product_id}
+                  rate={r}
+                  onSaved={(updated) =>
+                    setRates((rs) =>
+                      rs.map((x) => (x.product_id === updated.product_id ? updated : x)),
+                    )
+                  }
+                />
+              ))}
+            </Card>
+          )}
+        </>
       )}
     </AppShell>
   );
