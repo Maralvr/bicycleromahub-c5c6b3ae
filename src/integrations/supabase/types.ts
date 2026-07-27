@@ -315,6 +315,7 @@ export type Database = {
       guide_payout_rates: {
         Row: {
           created_at: string
+          private_rate: number | null
           product_id: string
           tier1: number
           tier2: number
@@ -323,6 +324,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          private_rate?: number | null
           product_id: string
           tier1: number
           tier2: number
@@ -331,6 +333,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          private_rate?: number | null
           product_id?: string
           tier1?: number
           tier2?: number
