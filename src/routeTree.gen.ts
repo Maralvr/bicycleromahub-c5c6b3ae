@@ -17,6 +17,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PayoutsRouteImport } from './routes/payouts'
+import { Route as PayoutRatesRouteImport } from './routes/payout-rates'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as DispatchLogRouteImport } from './routes/dispatch-log'
@@ -70,6 +71,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PayoutsRoute = PayoutsRouteImport.update({
   id: '/payouts',
   path: '/payouts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayoutRatesRoute = PayoutRatesRouteImport.update({
+  id: '/payout-rates',
+  path: '/payout-rates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
+  '/payout-rates': typeof PayoutRatesRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
+  '/payout-rates': typeof PayoutRatesRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/dispatch-log': typeof DispatchLogRoute
   '/live-shifts': typeof LiveShiftsRoute
   '/notifications': typeof NotificationsRoute
+  '/payout-rates': typeof PayoutRatesRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
+    | '/payout-rates'
     | '/payouts'
     | '/profile'
     | '/rental-points'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
+    | '/payout-rates'
     | '/payouts'
     | '/profile'
     | '/rental-points'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/dispatch-log'
     | '/live-shifts'
     | '/notifications'
+    | '/payout-rates'
     | '/payouts'
     | '/profile'
     | '/rental-points'
@@ -305,6 +317,7 @@ export interface RootRouteChildren {
   DispatchLogRoute: typeof DispatchLogRoute
   LiveShiftsRoute: typeof LiveShiftsRoute
   NotificationsRoute: typeof NotificationsRoute
+  PayoutRatesRoute: typeof PayoutRatesRoute
   PayoutsRoute: typeof PayoutsRoute
   ProfileRoute: typeof ProfileRoute
   RentalPointsRoute: typeof RentalPointsRoute
@@ -378,6 +391,13 @@ declare module '@tanstack/react-router' {
       path: '/payouts'
       fullPath: '/payouts'
       preLoaderRoute: typeof PayoutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payout-rates': {
+      id: '/payout-rates'
+      path: '/payout-rates'
+      fullPath: '/payout-rates'
+      preLoaderRoute: typeof PayoutRatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -489,6 +509,7 @@ const rootRouteChildren: RootRouteChildren = {
   DispatchLogRoute: DispatchLogRoute,
   LiveShiftsRoute: LiveShiftsRoute,
   NotificationsRoute: NotificationsRoute,
+  PayoutRatesRoute: PayoutRatesRoute,
   PayoutsRoute: PayoutsRoute,
   ProfileRoute: ProfileRoute,
   RentalPointsRoute: RentalPointsRoute,
@@ -510,3 +531,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -1,7 +1,15 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
-import { CalendarIcon, Check, CheckCheck, Euro, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  CalendarIcon,
+  Check,
+  CheckCheck,
+  Euro,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -39,6 +47,7 @@ type PayoutShift = {
   payout_tier: number | null;
   payout_paid: boolean;
   payout_paid_at: string | null;
+  payout_amount: number | null;
   adults: number | null;
   teens: number | null;
   infants: number | null;
@@ -50,6 +59,7 @@ type AdditionalPayoutRow = {
   payout_tier: number | null;
   payout_paid: boolean;
   payout_paid_at: string | null;
+  payout_amount: number | null;
   shifts: {
     tour_name: string;
     date: string;
@@ -78,6 +88,7 @@ type PayoutLine = {
   payout_tier: number | null;
   payout_paid: boolean;
   payout_paid_at: string | null;
+  payout_amount: number | null;
   adults: number | null;
   teens: number | null;
   infants: number | null;
@@ -92,6 +103,7 @@ function PayoutsPage() {
   const { role } = useCurrentUser();
   const { user } = useAuth();
   const { staff } = useStaffStore();
+  const navigate = useNavigate();
 
   const [from, setFrom] = useState<Date>(startOfMonth(new Date()));
   const [to, setTo] = useState<Date>(endOfMonth(new Date()));
@@ -118,7 +130,7 @@ function PayoutsPage() {
     const { data, error } = await supabase
       .from("shifts")
       .select(
-        "id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, adults, teens, infants",
+        "id, tour_name, date, start_time, assigned_staff_id, bokun_product_id, payout_tier, payout_paid, payout_paid_at, payout_amount, adults, teens, infants",
       )
       .gte("date", fromStr)
       .lte("date", toStr)
@@ -136,7 +148,7 @@ function PayoutsPage() {
     const { data: addlData, error: addlErr } = await supabase
       .from("shift_additional_guides" as never)
       .select(
-        "id, staff_id, payout_tier, payout_paid, payout_paid_at, shifts!inner(tour_name, date, start_time, bokun_product_id, adults, teens, infants, rental_point_id)" as never,
+        "id, staff_id, payout_tier, payout_paid, payout_paid_at, payout_amount, shifts!inner(tour_name, date, start_time, bokun_product_id, adults, teens, infants, rental_point_id)" as never,
       )
       .gte("shifts.date" as never, fromStr)
       .lte("shifts.date" as never, toStr)
@@ -168,7 +180,13 @@ function PayoutsPage() {
     if (s.bokun_product_id) return ratesByProduct.get(s.bokun_product_id);
     return ratesByTitle.get(s.tour_name.trim().toLowerCase());
   };
+  // Once a line is marked paid, its amount is frozen (payout_amount, set at
+  // the moment it was marked paid) rather than recomputed from the current
+  // rate table -- so editing a rate later never silently changes what a
+  // past payout displays as having been paid. Only still-unpaid lines are
+  // computed live.
   const amountFor = (s: PayoutLine): number => {
+    if (s.payout_paid && s.payout_amount != null) return Number(s.payout_amount);
     const r = findRate(s);
     if (!r) return 0;
     const base = s.payout_tier === 2 ? Number(r.tier2) : Number(r.tier1);
@@ -191,6 +209,7 @@ function PayoutsPage() {
       payout_tier: s.payout_tier,
       payout_paid: s.payout_paid,
       payout_paid_at: s.payout_paid_at,
+      payout_amount: s.payout_amount,
       adults: s.adults,
       teens: s.teens,
       infants: s.infants,
@@ -211,6 +230,7 @@ function PayoutsPage() {
         payout_tier: r.payout_tier,
         payout_paid: r.payout_paid,
         payout_paid_at: r.payout_paid_at,
+        payout_amount: r.payout_amount,
         adults: r.shifts.adults,
         teens: r.shifts.teens,
         infants: r.shifts.infants,
@@ -268,54 +288,132 @@ function PayoutsPage() {
     }
   };
 
-  const markPaid = async (
-    lines: { id: string; kind: "primary" | "additional" }[],
-    paid: boolean,
-  ) => {
-    const primaryIds = lines.filter((l) => l.kind === "primary").map((l) => l.id);
-    const additionalIds = lines.filter((l) => l.kind === "additional").map((l) => l.id);
+  // Marking paid freezes each line's amount (payout_amount) at whatever
+  // amountFor() computes right now -- while the line is still unpaid, i.e.
+  // still reading live off the current rate table. Different lines can
+  // have different tiers/rates/large-group bonuses, so this can't be one
+  // shared patch the way the plain paid/paid_at fields can; each line gets
+  // its own update carrying its own frozen amount. Unmarking (undo) clears
+  // the freeze back to null, since a reopened line is an active/pending
+  // payout again and should go back to tracking the live rate.
+  const markPaid = async (lines: PayoutLine[], paid: boolean) => {
+    const primaryLines = lines.filter((l) => l.kind === "primary");
+    const additionalLines = lines.filter((l) => l.kind === "additional");
     const nowIso = new Date().toISOString();
 
-    if (primaryIds.length > 0) {
-      const patch = paid
-        ? { payout_paid: true, payout_paid_at: nowIso, payout_paid_by: user?.id ?? null }
-        : { payout_paid: false, payout_paid_at: null, payout_paid_by: null };
+    if (primaryLines.length > 0) {
       const prev = shifts;
-      setShifts((s) =>
-        s.map((x) =>
-          primaryIds.includes(x.id)
-            ? { ...x, payout_paid: paid, payout_paid_at: paid ? nowIso : null }
-            : x,
-        ),
-      );
-      const { error } = await supabase.from("shifts").update(patch).in("id", primaryIds);
-      if (error) {
-        setShifts(prev);
-        toast.error(error.message);
-        return;
+      if (paid) {
+        const amounts = new Map(primaryLines.map((l) => [l.id, amountFor(l)]));
+        setShifts((s) =>
+          s.map((x) =>
+            amounts.has(x.id)
+              ? {
+                  ...x,
+                  payout_paid: true,
+                  payout_paid_at: nowIso,
+                  payout_amount: amounts.get(x.id)!,
+                }
+              : x,
+          ),
+        );
+        const results = await Promise.all(
+          primaryLines.map((l) =>
+            supabase
+              .from("shifts")
+              .update({
+                payout_paid: true,
+                payout_paid_at: nowIso,
+                payout_paid_by: user?.id ?? null,
+                payout_amount: amounts.get(l.id),
+              })
+              .eq("id", l.id),
+          ),
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) {
+          setShifts(prev);
+          toast.error(failed.error.message);
+          return;
+        }
+      } else {
+        const ids = primaryLines.map((l) => l.id);
+        setShifts((s) =>
+          s.map((x) =>
+            ids.includes(x.id)
+              ? { ...x, payout_paid: false, payout_paid_at: null, payout_amount: null }
+              : x,
+          ),
+        );
+        const { error } = await supabase
+          .from("shifts")
+          .update({
+            payout_paid: false,
+            payout_paid_at: null,
+            payout_paid_by: null,
+            payout_amount: null,
+          })
+          .in("id", ids);
+        if (error) {
+          setShifts(prev);
+          toast.error(error.message);
+          return;
+        }
       }
     }
 
-    if (additionalIds.length > 0) {
-      const patch = paid
-        ? { payout_paid: true, payout_paid_at: nowIso }
-        : { payout_paid: false, payout_paid_at: null };
+    if (additionalLines.length > 0) {
       const prev = additionalRows;
-      setAdditionalRows((rows) =>
-        rows.map((x) =>
-          additionalIds.includes(x.id)
-            ? { ...x, payout_paid: paid, payout_paid_at: paid ? nowIso : null }
-            : x,
-        ),
-      );
-      const { error } = await supabase
-        .from("shift_additional_guides" as never)
-        .update(patch as never)
-        .in("id", additionalIds);
-      if (error) {
-        setAdditionalRows(prev);
-        toast.error(error.message);
-        return;
+      if (paid) {
+        const amounts = new Map(additionalLines.map((l) => [l.id, amountFor(l)]));
+        setAdditionalRows((rows) =>
+          rows.map((x) =>
+            amounts.has(x.id)
+              ? {
+                  ...x,
+                  payout_paid: true,
+                  payout_paid_at: nowIso,
+                  payout_amount: amounts.get(x.id)!,
+                }
+              : x,
+          ),
+        );
+        const results = await Promise.all(
+          additionalLines.map((l) =>
+            supabase
+              .from("shift_additional_guides" as never)
+              .update({
+                payout_paid: true,
+                payout_paid_at: nowIso,
+                payout_amount: amounts.get(l.id),
+              } as never)
+              .eq("id", l.id),
+          ),
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) {
+          setAdditionalRows(prev);
+          toast.error(failed.error.message);
+          return;
+        }
+      } else {
+        const ids = additionalLines.map((l) => l.id);
+        setAdditionalRows((rows) =>
+          rows.map((x) =>
+            ids.includes(x.id)
+              ? { ...x, payout_paid: false, payout_paid_at: null, payout_amount: null }
+              : x,
+          ),
+        );
+        const { error } = await supabase
+          .from("shift_additional_guides" as never)
+          .update({ payout_paid: false, payout_paid_at: null, payout_amount: null } as never)
+          .in("id", ids);
+        if (error) {
+          setAdditionalRows(prev);
+          toast.error(error.message);
+          return;
+        }
       }
     }
 
@@ -331,6 +429,16 @@ function PayoutsPage() {
       <PageHeader
         title="Guide Payouts"
         subtitle="Track what's owed to each guide. Pick the rate tier for each shift, then mark as paid."
+        actions={
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => void navigate({ to: "/payout-rates" })}
+            title="Edit payout tier rates"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        }
       />
 
       <Card className="p-4 mb-4 flex flex-wrap items-end gap-3">
@@ -386,9 +494,7 @@ function PayoutsPage() {
         <div className="space-y-3">
           {grouped.map((g) => {
             const isOpen = expanded[g.guideId] ?? false;
-            const unpaidLines = g.list
-              .filter((s) => !s.payout_paid)
-              .map((s) => ({ id: s.id, kind: s.kind }));
+            const unpaidLines = g.list.filter((s) => !s.payout_paid);
             return (
               <Card key={g.guideId} className="overflow-hidden">
                 <button

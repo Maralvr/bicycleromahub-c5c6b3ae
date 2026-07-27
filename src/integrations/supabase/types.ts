@@ -858,6 +858,7 @@ export type Database = {
           assigned_by: string | null
           created_at: string
           id: string
+          payout_amount: number | null
           payout_paid: boolean
           payout_paid_at: string | null
           payout_tier: number | null
@@ -871,6 +872,7 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string
           id?: string
+          payout_amount?: number | null
           payout_paid?: boolean
           payout_paid_at?: string | null
           payout_tier?: number | null
@@ -884,6 +886,7 @@ export type Database = {
           assigned_by?: string | null
           created_at?: string
           id?: string
+          payout_amount?: number | null
           payout_paid?: boolean
           payout_paid_at?: string | null
           payout_tier?: number | null
@@ -991,6 +994,7 @@ export type Database = {
           notes: string | null
           operations_notes: string | null
           participants: Json
+          payout_amount: number | null
           payout_paid: boolean
           payout_paid_at: string | null
           payout_paid_by: string | null
@@ -1040,6 +1044,7 @@ export type Database = {
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
+          payout_amount?: number | null
           payout_paid?: boolean
           payout_paid_at?: string | null
           payout_paid_by?: string | null
@@ -1089,6 +1094,7 @@ export type Database = {
           notes?: string | null
           operations_notes?: string | null
           participants?: Json
+          payout_amount?: number | null
           payout_paid?: boolean
           payout_paid_at?: string | null
           payout_paid_by?: string | null
