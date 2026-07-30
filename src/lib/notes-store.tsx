@@ -37,7 +37,10 @@ export type GuideNotification = {
   read: boolean;
   archivedAt?: string;
   fieldUpdateId?: string;
+  /** Only present once lazily loaded via loadNotificationAttachments(). */
   attachments?: Attachment[];
+  /** Cheap count kept on the row so the list can badge without fetching bytes. */
+  attachmentCount?: number;
 };
 
 type NotesStore = {
@@ -60,6 +63,8 @@ type NotesStore = {
   unarchiveNotification: (id: string) => Promise<void>;
   clearForGuide: (staffId: string) => void;
   unreadCountFor: (staffId: string) => number;
+  /** Fetches the attachments column for a single notification, on demand. */
+  loadNotificationAttachments: (id: string) => Promise<Attachment[]>;
 };
 
 type GuideNoteRow = {
@@ -90,12 +95,21 @@ type GuideNotificationRow = {
   body: string;
   shift_id: string | null;
   link: string | null;
-  attachments: Attachment[] | null;
+  /** NEVER selected in list queries -- fetched per-notification on demand. */
+  attachments?: Attachment[] | null;
+  attachment_count?: number | null;
   read: boolean;
   created_at: string;
   archived_at?: string | null;
   field_update_id?: string | null;
 };
+
+// Cost fix: guide_notifications.attachments used to hold inline base64 blobs,
+// so `select *` in the list/poll path pulled megabytes per notification.
+// List queries select only what the list UI renders; attachments are loaded
+// one notification at a time when the user expands it.
+const NOTIFICATION_LIST_COLUMNS =
+  "id, staff_id, type, title, body, shift_id, link, read, created_at, archived_at, field_update_id, attachment_count";
 
 const NotesContext = createContext<NotesStore | null>(null);
 
@@ -132,6 +146,7 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
   shiftId: row.shift_id ?? undefined,
   link: row.link ?? undefined,
   attachments: row.attachments ?? undefined,
+  attachmentCount: row.attachment_count ?? row.attachments?.length ?? 0,
   read: row.read,
   createdAt: row.created_at,
   archivedAt: row.archived_at ?? undefined,
@@ -187,7 +202,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchNotifications = useCallback(async (staffId?: string | null) => {
-    let query = supabase.from("guide_notifications").select("*");
+    let query = supabase.from("guide_notifications").select(NOTIFICATION_LIST_COLUMNS);
     if (staffId) query = query.eq("staff_id", staffId);
     const { data, error } = await query.order("created_at", { ascending: false });
     if (!error) {
@@ -326,7 +341,17 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
             table: "guide_notifications",
           },
           (payload) => {
-            const newRow = payload.new as GuideNotificationRow | null;
+            const raw = payload.new as GuideNotificationRow | null;
+            // Realtime delivers the whole row; drop the heavy column so we
+            // never hold attachment bytes in the list state.
+            const newRow = raw
+              ? ({
+                  ...raw,
+                  attachments: undefined,
+                  attachment_count:
+                    raw.attachment_count ?? (raw.attachments?.length ?? 0),
+                } as GuideNotificationRow)
+              : null;
             const oldRow = payload.old as { id?: string } | null;
             if (payload.eventType === "INSERT" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
