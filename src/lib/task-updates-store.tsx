@@ -116,7 +116,10 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
       void fetchUpdates();
     });
 
-    const fallback = window.setInterval(() => void fetchUpdates(), 10000);
+    // Realtime is the primary sync path; this is only a safety net for a
+    // silently dropped socket. The old 10s poll was a major read-cost driver.
+    const fallback = window.setInterval(() => void fetchUpdates(), 5 * 60 * 1000);
+
 
     return () => {
       cancelled = true;
@@ -149,6 +152,26 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
     [updates],
   );
 
+  const loadedAttachmentTaskIds = useRef(new Set<string>());
+  const loadTaskAttachments = useCallback(async (taskId: string) => {
+    if (loadedAttachmentTaskIds.current.has(taskId)) return;
+    loadedAttachmentTaskIds.current.add(taskId);
+    const { data, error } = await supabase
+      .from("task_updates")
+      .select("id, attachments")
+      .eq("task_id", taskId);
+    if (error || !data) return;
+    const byId = new Map(
+      (data as { id: string; attachments: Attachment[] | null }[]).map((r) => [
+        r.id,
+        r.attachments ?? undefined,
+      ]),
+    );
+    setUpdates((prev) =>
+      prev.map((u) => (byId.has(u.id) ? { ...u, attachments: byId.get(u.id) } : u)),
+    );
+  }, []);
+
   const markRead = useCallback((id: string) => {
     void supabase.from("task_updates").update({ read: true }).eq("id", id);
     setUpdates((prev) => prev.map((u) => (u.id === id ? { ...u, read: true } : u)));
@@ -163,8 +186,17 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
 
   return (
     <Ctx.Provider
-      value={{ updates, addUpdate, updatesForTask, unreadCount, markRead, markAllRead }}
+      value={{
+        updates,
+        addUpdate,
+        updatesForTask,
+        loadTaskAttachments,
+        unreadCount,
+        markRead,
+        markAllRead,
+      }}
     >
+
       {children}
     </Ctx.Provider>
   );
