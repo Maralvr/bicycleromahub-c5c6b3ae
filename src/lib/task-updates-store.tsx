@@ -18,6 +18,8 @@ type TaskUpdatesStore = {
   updates: TaskUpdate[];
   addUpdate: (u: Omit<TaskUpdate, "id" | "createdAt" | "read">) => void;
   updatesForTask: (taskId: string) => TaskUpdate[];
+  /** Loads the attachments column for one task's updates, on demand. */
+  loadTaskAttachments: (taskId: string) => Promise<void>;
   unreadCount: number;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -33,8 +35,21 @@ type TaskUpdateRow = {
   type: TaskUpdate["type"];
   created_at: string;
   read: boolean;
-  attachments: Attachment[] | null;
+  attachments?: Attachment[] | null;
 };
+
+// Cost fix: this store used to `select("*")` the whole table every 10s per open
+// tab -- unbounded, including the heavy `attachments` jsonb -- on top of an
+// already-working realtime subscription. Same mistake that was fixed for
+// guide_notifications. List query is now column-limited (no attachments),
+// bounded to a rolling window + row cap, and the poll is a 5-minute safety net.
+const LIST_WINDOW_DAYS = 90;
+const LIST_LIMIT = 500;
+const TASK_UPDATE_LIST_COLUMNS =
+  "id, task_id, author_staff_id, message, type, created_at, read";
+
+const isoDaysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
 const fromRow = (row: TaskUpdateRow): TaskUpdate => ({
   id: row.id,
@@ -53,10 +68,13 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
   const fetchUpdates = useCallback(async () => {
     const { data, error } = await supabase
       .from("task_updates")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select(TASK_UPDATE_LIST_COLUMNS)
+      .gte("created_at", isoDaysAgo(LIST_WINDOW_DAYS))
+      .order("created_at", { ascending: false })
+      .limit(LIST_LIMIT);
     if (!error) setUpdates(((data ?? []) as TaskUpdateRow[]).map(fromRow));
   }, []);
+
 
   useEffect(() => {
     let cancelled = false;
