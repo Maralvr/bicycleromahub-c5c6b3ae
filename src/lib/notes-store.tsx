@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
 import { useCurrentUser } from "@/lib/current-user";
+import { persistAttachments } from "@/lib/attachment-storage";
 
 export type GuideNotification = {
   id: string;
@@ -37,7 +38,10 @@ export type GuideNotification = {
   read: boolean;
   archivedAt?: string;
   fieldUpdateId?: string;
+  /** Only present once lazily loaded via loadNotificationAttachments(). */
   attachments?: Attachment[];
+  /** Cheap count kept on the row so the list can badge without fetching bytes. */
+  attachmentCount?: number;
 };
 
 type NotesStore = {
@@ -60,6 +64,8 @@ type NotesStore = {
   unarchiveNotification: (id: string) => Promise<void>;
   clearForGuide: (staffId: string) => void;
   unreadCountFor: (staffId: string) => number;
+  /** Fetches the attachments column for a single notification, on demand. */
+  loadNotificationAttachments: (id: string) => Promise<Attachment[]>;
 };
 
 type GuideNoteRow = {
@@ -90,12 +96,21 @@ type GuideNotificationRow = {
   body: string;
   shift_id: string | null;
   link: string | null;
-  attachments: Attachment[] | null;
+  /** NEVER selected in list queries -- fetched per-notification on demand. */
+  attachments?: Attachment[] | null;
+  attachment_count?: number | null;
   read: boolean;
   created_at: string;
   archived_at?: string | null;
   field_update_id?: string | null;
 };
+
+// Cost fix: guide_notifications.attachments used to hold inline base64 blobs,
+// so `select *` in the list/poll path pulled megabytes per notification.
+// List queries select only what the list UI renders; attachments are loaded
+// one notification at a time when the user expands it.
+const NOTIFICATION_LIST_COLUMNS =
+  "id, staff_id, type, title, body, shift_id, link, read, created_at, archived_at, field_update_id, attachment_count";
 
 const NotesContext = createContext<NotesStore | null>(null);
 
@@ -132,6 +147,7 @@ const notificationFromRow = (row: GuideNotificationRow): GuideNotification => ({
   shiftId: row.shift_id ?? undefined,
   link: row.link ?? undefined,
   attachments: row.attachments ?? undefined,
+  attachmentCount: row.attachment_count ?? row.attachments?.length ?? 0,
   read: row.read,
   createdAt: row.created_at,
   archivedAt: row.archived_at ?? undefined,
@@ -187,7 +203,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchNotifications = useCallback(async (staffId?: string | null) => {
-    let query = supabase.from("guide_notifications").select("*");
+    let query = supabase.from("guide_notifications").select(NOTIFICATION_LIST_COLUMNS);
     if (staffId) query = query.eq("staff_id", staffId);
     const { data, error } = await query.order("created_at", { ascending: false });
     if (!error) {
@@ -285,7 +301,9 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       loadInitial();
     });
 
-    const fallback = window.setInterval(loadInitial, 10000);
+    // Realtime is the primary sync path; this is only a safety net for a
+    // silently dropped socket. 10s polling was a major read-cost driver.
+    const fallback = window.setInterval(loadInitial, 5 * 60 * 1000);
 
     return () => {
       cancelled = true;
@@ -326,7 +344,17 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
             table: "guide_notifications",
           },
           (payload) => {
-            const newRow = payload.new as GuideNotificationRow | null;
+            const raw = payload.new as GuideNotificationRow | null;
+            // Realtime delivers the whole row; drop the heavy column so we
+            // never hold attachment bytes in the list state.
+            const newRow = raw
+              ? ({
+                  ...raw,
+                  attachments: undefined,
+                  attachment_count:
+                    raw.attachment_count ?? (raw.attachments?.length ?? 0),
+                } as GuideNotificationRow)
+              : null;
             const oldRow = payload.old as { id?: string } | null;
             if (payload.eventType === "INSERT" && newRow) {
               if (newRow.staff_id !== myStaffId) return;
@@ -353,9 +381,10 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
           }
         });
 
+      // Safety net only -- notifications arrive over realtime.
       fallback = window.setInterval(() => {
         void fetchNotifications(myStaffId);
-      }, 5000);
+      }, 5 * 60 * 1000);
     };
 
     void startRealtime();
@@ -384,26 +413,30 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       };
       const message = `${author?.name || "Guide"} ${categoryLabel[note.category]} on "${tourName}": ${note.message}`;
 
-      void supabase.from("guide_notes").insert({
-        id: note.id,
-        shift_id: note.shiftId,
-        author_staff_id: note.authorStaffId,
-        message: note.message,
-        category: note.category,
-        attachments: note.attachments ?? [],
-      });
-      void supabase.from("field_updates").insert({
-        author_id: note.authorStaffId,
-        message,
-        type: "field",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        attachments: note.attachments ?? [],
-      });
+      void (async () => {
+        const attachments = await persistAttachments(note.attachments);
+        await supabase.from("guide_notes").insert({
+          id: note.id,
+          shift_id: note.shiftId,
+          author_staff_id: note.authorStaffId,
+          message: note.message,
+          category: note.category,
+          attachments,
+        });
+        await supabase.from("field_updates").insert({
+          author_id: note.authorStaffId,
+          message,
+          type: "field",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          attachments,
+        });
+      })();
     },
     [staff],
   );
 
   const notifyGuide: NotesStore["notifyGuide"] = useCallback(async (n) => {
+    const uploaded = await persistAttachments(n.attachments);
     const { error } = await supabase.from("guide_notifications").insert({
       staff_id: n.staffId,
       type: n.type,
@@ -411,7 +444,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       body: n.body,
       shift_id: n.shiftId ?? null,
       link: n.link ?? null,
-      attachments: n.attachments ?? [],
+      attachments: uploaded,
       read: false,
     });
     if (error) {
@@ -430,18 +463,20 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback(async (update) => {
+    const uploaded = await persistAttachments(update.attachments);
     const { error } = await supabase.from("field_updates").insert({
       author_id: update.authorId,
       message: update.message,
       type: update.type,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachments: update.attachments ?? [],
+      attachments: uploaded,
     });
     return { error: error ? { message: error.message } : null };
   }, []);
 
   const notifyGuides: NotesStore["notifyGuides"] = useCallback(async (staffIds, n) => {
     if (staffIds.length === 0) return;
+    const uploaded = await persistAttachments(n.attachments);
     const { error } = await supabase.from("guide_notifications").insert(
       staffIds.map((staffId) => ({
         staff_id: staffId,
@@ -450,7 +485,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         body: n.body,
         shift_id: n.shiftId ?? null,
         link: n.link ?? null,
-        attachments: n.attachments ?? [],
+        attachments: uploaded,
         field_update_id: n.fieldUpdateId ?? null,
         read: false,
       })),
@@ -547,6 +582,24 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.filter((n) => n.staffId !== staffId));
   }, []);
 
+  const loadNotificationAttachments = useCallback(async (id: string) => {
+    const { data, error } = await supabase
+      .from("guide_notifications")
+      .select("attachments")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) {
+      if (error) console.error("[loadNotificationAttachments] failed", error);
+      return [];
+    }
+    const attachments = ((data as { attachments: Attachment[] | null }).attachments ??
+      []) as Attachment[];
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, attachments, attachmentCount: attachments.length } : n)),
+    );
+    return attachments;
+  }, []);
+
   const unreadCountFor = (staffId: string) =>
     notifications.filter((n) => n.staffId === staffId && !n.read && !n.archivedAt).length;
 
@@ -558,6 +611,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         addNote,
         addFieldUpdate,
         deleteFieldUpdate,
+        loadNotificationAttachments,
         notifications,
         notifyGuide,
         notifyGuides,

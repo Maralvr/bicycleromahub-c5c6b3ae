@@ -255,6 +255,7 @@ export type Database = {
       guide_notifications: {
         Row: {
           archived_at: string | null
+          attachment_count: number | null
           attachments: Json
           body: string
           created_at: string
@@ -269,6 +270,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          attachment_count?: number | null
           attachments?: Json
           body: string
           created_at?: string
@@ -283,6 +285,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          attachment_count?: number | null
           attachments?: Json
           body?: string
           created_at?: string

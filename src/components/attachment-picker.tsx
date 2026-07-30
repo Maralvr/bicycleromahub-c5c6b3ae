@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "@/lib/mock-data";
+import { useAttachmentUrls } from "@/lib/attachment-storage";
 import { Paperclip, X, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -200,18 +201,21 @@ export function AttachmentPicker({
 }
 
 export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
+  const urls = useAttachmentUrls(attachments);
   if (!attachments?.length) return null;
   return (
     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
       {attachments.map((a) => (
         <a
           key={a.id}
-          href={a.dataUrl}
+          href={urls[a.id] ?? a.dataUrl}
           download={a.name}
+          target="_blank"
+          rel="noreferrer" 
           className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors"
         >
           {a.mime.startsWith("image/") ? (
-            <img src={a.dataUrl} alt={a.name} className="h-9 w-9 rounded object-cover shrink-0" />
+            <img src={urls[a.id]} alt={a.name} className="h-9 w-9 rounded object-cover shrink-0" />
           ) : (
             <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
               <FileText className="h-4 w-4 text-muted-foreground" />
