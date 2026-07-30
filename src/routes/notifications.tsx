@@ -208,7 +208,7 @@ function NotificationsPage() {
   const { staff } = useStaffStore();
   const isAdmin = role === "admin";
   const navigate = useNavigate();
-  const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate } = useNotesStore();
+  const { feed, notifications, markAllRead, markRead, archiveNotification, unarchiveNotification, deleteFieldUpdate, loadNotificationAttachments } = useNotesStore();
   const myNotifs = notifications.filter((n) => n.staffId === staffId);
   const myActiveNotifs = myNotifs.filter((n) => !n.archivedAt);
   const myArchivedNotifs = myNotifs.filter((n) => n.archivedAt);
@@ -254,11 +254,11 @@ function NotificationsPage() {
 
   const attachmentsForNotification = (notificationId: string, body: string) => {
     const notification = notifications.find((n) => n.id === notificationId);
-    if (notification?.attachments?.some((a) => a.dataUrl)) return notification.attachments;
+    if (notification?.attachments?.length) return notification.attachments;
     const matchingBroadcast = feed.find(
       (u) => u.type === "broadcast" && u.message === body && u.attachments?.length,
     );
-    return matchingBroadcast?.attachments ?? notification?.attachments?.filter((a) => a.dataUrl) ?? [];
+    return matchingBroadcast?.attachments ?? [];
   };
 
   const send = async () => {
@@ -519,6 +519,9 @@ function NotificationsPage() {
                             }
                             return;
                           }
+                          if (!isOpen && (n.attachmentCount ?? 0) > 0 && !n.attachments) {
+                            void loadNotificationAttachments(n.id);
+                          }
                           setExpandedNotif(isOpen ? null : n.id);
                         }}
                         className="w-full text-left p-2.5"
@@ -536,10 +539,11 @@ function NotificationsPage() {
                         <div className={`text-muted-foreground ${isOpen ? "" : "line-clamp-2"}`}>
                           {n.body}
                         </div>
-                        {!isOpen && visibleAttachments.length > 0 && (
+                        {!isOpen && (n.attachmentCount ?? visibleAttachments.length) > 0 && (
                           <div className="mt-1.5 flex items-center gap-1 text-[10px] text-primary">
                             <Paperclip className="h-2.5 w-2.5" />
-                            {visibleAttachments.length} attachment{visibleAttachments.length > 1 ? "s" : ""}
+                            {n.attachmentCount || visibleAttachments.length} attachment
+                            {(n.attachmentCount || visibleAttachments.length) > 1 ? "s" : ""}
                           </div>
                         )}
                       </button>
