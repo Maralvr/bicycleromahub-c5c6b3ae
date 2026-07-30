@@ -300,7 +300,9 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       loadInitial();
     });
 
-    const fallback = window.setInterval(loadInitial, 10000);
+    // Realtime is the primary sync path; this is only a safety net for a
+    // silently dropped socket. 10s polling was a major read-cost driver.
+    const fallback = window.setInterval(loadInitial, 5 * 60 * 1000);
 
     return () => {
       cancelled = true;
@@ -378,9 +380,10 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
           }
         });
 
+      // Safety net only -- notifications arrive over realtime.
       fallback = window.setInterval(() => {
         void fetchNotifications(myStaffId);
-      }, 5000);
+      }, 5 * 60 * 1000);
     };
 
     void startRealtime();
