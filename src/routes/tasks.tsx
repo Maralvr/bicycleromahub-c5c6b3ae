@@ -47,7 +47,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tasks")({
@@ -608,10 +608,19 @@ function TaskRow({
   onDelete?: () => void;
 }) {
   const { t } = useI18n();
+  const { loadTaskAttachments } = useTaskUpdates();
   const assignee = staff.find((s) => s.id === task.assigneeId);
   const canCheck = isAdmin || isMine;
   const canPostUpdate = isMine && !isAdmin;
   const hasUnread = updates.some((u) => !u.read);
+
+  // Attachments are excluded from the task_updates list query; fetch them once
+  // per task that actually has updates on screen.
+  const hasUpdates = updates.length > 0;
+  useEffect(() => {
+    if (hasUpdates) void loadTaskAttachments(task.id);
+  }, [hasUpdates, task.id, loadTaskAttachments]);
+
 
   return (
     <div

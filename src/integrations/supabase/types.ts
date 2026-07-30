@@ -1458,6 +1458,7 @@ export type Database = {
       }
       my_signed_waiver_shift_ids: { Args: never; Returns: string[] }
       next_invoice_number: { Args: { _year: number }; Returns: number }
+      prune_bokun_import_runs: { Args: never; Returns: number }
       reject_additional_guide_assignment: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined

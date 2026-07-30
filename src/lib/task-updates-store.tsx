@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from "react";
 import { Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { persistAttachments } from "@/lib/attachment-storage";
@@ -18,6 +18,8 @@ type TaskUpdatesStore = {
   updates: TaskUpdate[];
   addUpdate: (u: Omit<TaskUpdate, "id" | "createdAt" | "read">) => void;
   updatesForTask: (taskId: string) => TaskUpdate[];
+  /** Loads the attachments column for one task's updates, on demand. */
+  loadTaskAttachments: (taskId: string) => Promise<void>;
   unreadCount: number;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -33,8 +35,21 @@ type TaskUpdateRow = {
   type: TaskUpdate["type"];
   created_at: string;
   read: boolean;
-  attachments: Attachment[] | null;
+  attachments?: Attachment[] | null;
 };
+
+// Cost fix: this store used to `select("*")` the whole table every 10s per open
+// tab -- unbounded, including the heavy `attachments` jsonb -- on top of an
+// already-working realtime subscription. Same mistake that was fixed for
+// guide_notifications. List query is now column-limited (no attachments),
+// bounded to a rolling window + row cap, and the poll is a 5-minute safety net.
+const LIST_WINDOW_DAYS = 90;
+const LIST_LIMIT = 500;
+const TASK_UPDATE_LIST_COLUMNS =
+  "id, task_id, author_staff_id, message, type, created_at, read";
+
+const isoDaysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
 const fromRow = (row: TaskUpdateRow): TaskUpdate => ({
   id: row.id,
@@ -53,10 +68,13 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
   const fetchUpdates = useCallback(async () => {
     const { data, error } = await supabase
       .from("task_updates")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select(TASK_UPDATE_LIST_COLUMNS)
+      .gte("created_at", isoDaysAgo(LIST_WINDOW_DAYS))
+      .order("created_at", { ascending: false })
+      .limit(LIST_LIMIT);
     if (!error) setUpdates(((data ?? []) as TaskUpdateRow[]).map(fromRow));
   }, []);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +116,10 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
       void fetchUpdates();
     });
 
-    const fallback = window.setInterval(() => void fetchUpdates(), 10000);
+    // Realtime is the primary sync path; this is only a safety net for a
+    // silently dropped socket. The old 10s poll was a major read-cost driver.
+    const fallback = window.setInterval(() => void fetchUpdates(), 5 * 60 * 1000);
+
 
     return () => {
       cancelled = true;
@@ -131,6 +152,26 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
     [updates],
   );
 
+  const loadedAttachmentTaskIds = useRef(new Set<string>());
+  const loadTaskAttachments = useCallback(async (taskId: string) => {
+    if (loadedAttachmentTaskIds.current.has(taskId)) return;
+    loadedAttachmentTaskIds.current.add(taskId);
+    const { data, error } = await supabase
+      .from("task_updates")
+      .select("id, attachments")
+      .eq("task_id", taskId);
+    if (error || !data) return;
+    const byId = new Map(
+      (data as { id: string; attachments: Attachment[] | null }[]).map((r) => [
+        r.id,
+        r.attachments ?? undefined,
+      ]),
+    );
+    setUpdates((prev) =>
+      prev.map((u) => (byId.has(u.id) ? { ...u, attachments: byId.get(u.id) } : u)),
+    );
+  }, []);
+
   const markRead = useCallback((id: string) => {
     void supabase.from("task_updates").update({ read: true }).eq("id", id);
     setUpdates((prev) => prev.map((u) => (u.id === id ? { ...u, read: true } : u)));
@@ -145,8 +186,17 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
 
   return (
     <Ctx.Provider
-      value={{ updates, addUpdate, updatesForTask, unreadCount, markRead, markAllRead }}
+      value={{
+        updates,
+        addUpdate,
+        updatesForTask,
+        loadTaskAttachments,
+        unreadCount,
+        markRead,
+        markAllRead,
+      }}
     >
+
       {children}
     </Ctx.Provider>
   );
