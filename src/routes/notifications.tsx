@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { persistAttachments } from "@/lib/attachment-storage";
+import { persistAttachments, useAttachmentUrls } from "@/lib/attachment-storage";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -742,41 +742,6 @@ function NotificationsPage() {
                               {u.attachments && u.attachments.length > 0 && (
                                 <FeedAttachments attachments={u.attachments} />
                               )}
-                              {false && (
-                                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {u.attachments.map((a) => (
-                                    <a
-                                      key={a.id}
-                                      href={a.dataUrl}
-                                      download={a.name}
-                                      className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
-                                    >
-                                      {a.mime.startsWith("image/") ? (
-                                        <img
-                                          src={a.dataUrl}
-                                          alt={a.name}
-                                          className="h-10 w-10 rounded object-cover shrink-0"
-                                        />
-                                      ) : (
-                                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
-                                          {a.mime.startsWith("image/") ? (
-                                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                                          ) : (
-                                            <FileText className="h-4 w-4 text-muted-foreground" />
-                                          )}
-                                        </div>
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="truncate text-xs font-medium">{a.name}</div>
-                                        <div className="text-[10px] text-muted-foreground">
-                                          {(a.size / 1024).toFixed(1)} KB
-                                        </div>
-                                      </div>
-                                      <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
                             </div>
                             {u.type === "broadcast" && (
                               <BroadcastInteractions fieldUpdateId={u.id} />
@@ -793,5 +758,40 @@ function NotificationsPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+function FeedAttachments({ attachments }: { attachments: Attachment[] }) {
+  const urls = useAttachmentUrls(attachments);
+  return (
+    <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {attachments.map((a) => (
+        <a
+          key={a.id}
+          href={urls[a.id] ?? a.dataUrl}
+          download={a.name}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 p-2 rounded-md border border-border/60 bg-card hover:bg-accent/50 transition-colors group"
+        >
+          {a.mime.startsWith("image/") && urls[a.id] ? (
+            <img src={urls[a.id]} alt={a.name} className="h-10 w-10 rounded object-cover shrink-0" />
+          ) : (
+            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+              {a.mime.startsWith("image/") ? (
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="truncate text-xs font-medium">{a.name}</div>
+            <div className="text-[10px] text-muted-foreground">{(a.size / 1024).toFixed(1)} KB</div>
+          </div>
+          <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </a>
+      ))}
+    </div>
   );
 }
