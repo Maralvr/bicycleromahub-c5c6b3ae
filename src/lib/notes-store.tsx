@@ -112,6 +112,28 @@ type GuideNotificationRow = {
 const NOTIFICATION_LIST_COLUMNS =
   "id, staff_id, type, title, body, shift_id, link, read, created_at, archived_at, field_update_id, attachment_count";
 
+// Cost fix: guide_notes / field_updates used to be unbounded `select *` over
+// every row ever written, re-run on every focus, reconnect and poll. Both are
+// now explicit column lists bounded to a rolling window + hard row cap.
+// `attachments` is kept here (unlike notifications) because both lists render
+// their attachments inline, and post-Storage-migration the column only holds
+// small path metadata rather than base64 bytes.
+const LIST_WINDOW_DAYS = 90;
+const GUIDE_NOTES_LIMIT = 500;
+const FIELD_UPDATES_LIMIT = 200;
+const NOTIFICATIONS_LIMIT = 200;
+/** Admin/unfiltered view: never pull the whole table. */
+const ADMIN_NOTIFICATIONS_LIMIT = 200;
+
+const GUIDE_NOTE_LIST_COLUMNS =
+  "id, shift_id, author_staff_id, message, category, created_at, attachments";
+const FIELD_UPDATE_LIST_COLUMNS =
+  "id, author_id, message, type, time, created_at, attachments";
+
+const isoDaysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+
 const NotesContext = createContext<NotesStore | null>(null);
 
 const noteFromRow = (row: GuideNoteRow): GuideNote => ({
@@ -179,8 +201,10 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const fetchNotes = useCallback(async () => {
     const { data, error } = await supabase
       .from("guide_notes")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select(GUIDE_NOTE_LIST_COLUMNS)
+      .gte("created_at", isoDaysAgo(LIST_WINDOW_DAYS))
+      .order("created_at", { ascending: false })
+      .limit(GUIDE_NOTES_LIMIT);
     if (error) return;
     const grouped: Record<string, GuideNote[]> = {};
     for (const note of ((data ?? []) as GuideNoteRow[]).map(noteFromRow)) {
@@ -192,8 +216,10 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const fetchFeed = useCallback(async () => {
     const { data, error } = await supabase
       .from("field_updates")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select(FIELD_UPDATE_LIST_COLUMNS)
+      .gte("created_at", isoDaysAgo(LIST_WINDOW_DAYS))
+      .order("created_at", { ascending: false })
+      .limit(FIELD_UPDATES_LIMIT);
     if (!error) {
       setFeed(((data ?? []) as FieldUpdateRow[]).map(fieldUpdateFromRow));
       return;
@@ -205,7 +231,9 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const fetchNotifications = useCallback(async (staffId?: string | null) => {
     let query = supabase.from("guide_notifications").select(NOTIFICATION_LIST_COLUMNS);
     if (staffId) query = query.eq("staff_id", staffId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(staffId ? NOTIFICATIONS_LIMIT : ADMIN_NOTIFICATIONS_LIMIT);
     if (!error) {
       setNotifications(
         ((data ?? []) as GuideNotificationRow[]).map((row) => {
@@ -217,6 +245,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
     console.error("[notes] fetchNotifications failed", error);
   }, []);
+
 
   useEffect(() => {
     let cancelled = false;
