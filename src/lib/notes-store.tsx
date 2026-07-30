@@ -572,6 +572,24 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.filter((n) => n.staffId !== staffId));
   }, []);
 
+  const loadNotificationAttachments = useCallback(async (id: string) => {
+    const { data, error } = await supabase
+      .from("guide_notifications")
+      .select("attachments")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) {
+      if (error) console.error("[loadNotificationAttachments] failed", error);
+      return [];
+    }
+    const attachments = ((data as { attachments: Attachment[] | null }).attachments ??
+      []) as Attachment[];
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, attachments, attachmentCount: attachments.length } : n)),
+    );
+    return attachments;
+  }, []);
+
   const unreadCountFor = (staffId: string) =>
     notifications.filter((n) => n.staffId === staffId && !n.read && !n.archivedAt).length;
 
@@ -583,6 +601,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         addNote,
         addFieldUpdate,
         deleteFieldUpdate,
+        loadNotificationAttachments,
         notifications,
         notifyGuide,
         notifyGuides,
