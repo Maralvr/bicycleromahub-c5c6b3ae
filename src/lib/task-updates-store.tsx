@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from "react";
 import { Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { persistAttachments } from "@/lib/attachment-storage";
