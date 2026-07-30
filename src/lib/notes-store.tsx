@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
 import { useCurrentUser } from "@/lib/current-user";
+import { persistAttachments } from "@/lib/attachment-storage";
 
 export type GuideNotification = {
   id: string;
@@ -412,26 +413,30 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       };
       const message = `${author?.name || "Guide"} ${categoryLabel[note.category]} on "${tourName}": ${note.message}`;
 
-      void supabase.from("guide_notes").insert({
-        id: note.id,
-        shift_id: note.shiftId,
-        author_staff_id: note.authorStaffId,
-        message: note.message,
-        category: note.category,
-        attachments: note.attachments ?? [],
-      });
-      void supabase.from("field_updates").insert({
-        author_id: note.authorStaffId,
-        message,
-        type: "field",
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        attachments: note.attachments ?? [],
-      });
+      void (async () => {
+        const attachments = await persistAttachments(note.attachments);
+        await supabase.from("guide_notes").insert({
+          id: note.id,
+          shift_id: note.shiftId,
+          author_staff_id: note.authorStaffId,
+          message: note.message,
+          category: note.category,
+          attachments,
+        });
+        await supabase.from("field_updates").insert({
+          author_id: note.authorStaffId,
+          message,
+          type: "field",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          attachments,
+        });
+      })();
     },
     [staff],
   );
 
   const notifyGuide: NotesStore["notifyGuide"] = useCallback(async (n) => {
+    const uploaded = await persistAttachments(n.attachments);
     const { error } = await supabase.from("guide_notifications").insert({
       staff_id: n.staffId,
       type: n.type,
@@ -439,7 +444,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
       body: n.body,
       shift_id: n.shiftId ?? null,
       link: n.link ?? null,
-      attachments: n.attachments ?? [],
+      attachments: uploaded,
       read: false,
     });
     if (error) {
@@ -458,18 +463,20 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addFieldUpdate: NotesStore["addFieldUpdate"] = useCallback(async (update) => {
+    const uploaded = await persistAttachments(update.attachments);
     const { error } = await supabase.from("field_updates").insert({
       author_id: update.authorId,
       message: update.message,
       type: update.type,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachments: update.attachments ?? [],
+      attachments: uploaded,
     });
     return { error: error ? { message: error.message } : null };
   }, []);
 
   const notifyGuides: NotesStore["notifyGuides"] = useCallback(async (staffIds, n) => {
     if (staffIds.length === 0) return;
+    const uploaded = await persistAttachments(n.attachments);
     const { error } = await supabase.from("guide_notifications").insert(
       staffIds.map((staffId) => ({
         staff_id: staffId,
@@ -478,7 +485,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         body: n.body,
         shift_id: n.shiftId ?? null,
         link: n.link ?? null,
-        attachments: n.attachments ?? [],
+        attachments: uploaded,
         field_update_id: n.fieldUpdateId ?? null,
         read: false,
       })),
