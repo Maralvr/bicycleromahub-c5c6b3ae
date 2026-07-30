@@ -76,7 +76,10 @@ export type Attachment = {
   name: string;
   mime: string;
   size: number;
-  dataUrl: string; // base64 data URL (prototype storage)
+  /** Storage path in the private notification-attachments bucket. */
+  path?: string;
+  /** Legacy inline base64 data URL (pre-Storage rows) or local preview. */
+  dataUrl?: string;
 };
 
 export type FieldUpdate = {
