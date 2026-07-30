@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { persistAttachments } from "@/lib/attachment-storage";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -293,6 +294,8 @@ function NotificationsPage() {
         return;
       }
 
+      const storedAttachments = await persistAttachments(attachments);
+
       const { data: fuInserted, error: fuErr } = await supabase
         .from("field_updates")
         .insert({
@@ -300,7 +303,7 @@ function NotificationsPage() {
           message,
           type: "broadcast",
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          attachments: attachments.length ? attachments : [],
+          attachments: storedAttachments,
         })
         .select("id")
         .single();

@@ -7,6 +7,7 @@ import { AttachmentPicker, AttachmentList } from "@/components/attachment-picker
 import type { Attachment } from "@/lib/mock-data";
 import { MessageSquare, Send, Trash2, Loader2, FileText, Settings2 } from "lucide-react";
 import { toast } from "sonner";
+import { persistAttachments } from "@/lib/attachment-storage";
 import { useNoteTemplates } from "@/lib/note-templates";
 import { NoteTemplatesDialog } from "@/components/note-templates-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,13 +38,14 @@ export function BookingNotesThread({ shiftId, canPost, compact }: Props) {
     if (!user || !message.trim()) return;
     setPosting(true);
     try {
+      const storedAttachments = await persistAttachments(attachments);
       const payload = {
         shift_id: shiftId,
         author_profile_id: user.id,
         author_name: profile?.display_name || user.email || "User",
         author_role: isAdmin ? "admin" : "guide",
         message: message.trim(),
-        attachments,
+        attachments: storedAttachments,
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from("booking_notes" as never) as any).insert(payload);
