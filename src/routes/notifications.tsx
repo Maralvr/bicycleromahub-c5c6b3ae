@@ -740,6 +740,9 @@ function NotificationsPage() {
                                 </button>
                               )}
                               {u.attachments && u.attachments.length > 0 && (
+                                <FeedAttachments attachments={u.attachments} />
+                              )}
+                              {false && (
                                 <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   {u.attachments.map((a) => (
                                     <a

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { Attachment } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
+import { persistAttachments } from "@/lib/attachment-storage";
 
 export type TaskUpdate = {
   id: string;
@@ -109,20 +110,18 @@ export function TaskUpdatesStoreProvider({ children }: { children: ReactNode }) 
 
   const addUpdate: TaskUpdatesStore["addUpdate"] = useCallback(
     (u) => {
-      void supabase
-        .from("task_updates")
-        .insert({
+      void (async () => {
+        const { error } = await supabase.from("task_updates").insert({
           task_id: u.taskId,
           author_staff_id: u.authorStaffId,
           message: u.message,
           type: u.type,
-          attachments: u.attachments ?? [],
+          attachments: await persistAttachments(u.attachments),
           read: false,
-        })
-        .then(({ error }) => {
-          if (error) return;
-          void fetchUpdates();
         });
+        if (error) return;
+        void fetchUpdates();
+      })();
     },
     [fetchUpdates],
   );
