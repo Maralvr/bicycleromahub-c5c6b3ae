@@ -250,6 +250,77 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     [dateRange, fetchSlice],
   );
 
+  const loadShiftDetails = useCallback(async (ids: string[]) => {
+    const pending = ids.filter((id) => id && !detailsLoaded.current.has(id));
+    if (pending.length === 0) return;
+    pending.forEach((id) => detailsLoaded.current.add(id));
+    const { data, error: err } = await supabase
+      .from("shifts")
+      .select(SHIFT_DETAIL_COLUMNS)
+      .in("id", pending);
+    if (err) {
+      pending.forEach((id) => detailsLoaded.current.delete(id));
+      return;
+    }
+    const byId = new Map(
+      ((data ?? []) as unknown as Array<Partial<ShiftRow> & { id: string }>).map((d) => [d.id, d]),
+    );
+    setRows((prev) =>
+      prev.map((r) => {
+        const detail = byId.get(r.id);
+        return detail ? { ...r, ...detail } : r;
+      }),
+    );
+  }, []);
+
+  const setDateRange = useCallback((range: ShiftsDateRange) => {
+    setDateRangeState(range);
+  }, []);
+
+  // Keep the current window in a ref so the realtime subscription can be created
+  // once instead of being torn down and re-subscribed on every range change.
+  const dateRangeRef = useRef(dateRange);
+  dateRangeRef.current = dateRange;
+  const isWithinRange = useCallback(
+    (d: string | null | undefined) =>
+      !!d && d >= dateRangeRef.current.from && d <= dateRangeRef.current.to,
+    [],
+  );
+
+  useEffect(() => {
+    void fetchAll(dateRange);
+  }, [dateRange, fetchAll]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`shifts-realtime-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
+        const newRow = payload.new as ShiftRow | null;
+        const oldRow = payload.old as { id?: string } | null;
+        if (payload.eventType === "INSERT" && newRow) {
+          if (!isWithinRange(newRow.date)) return;
+          setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
+        } else if (payload.eventType === "UPDATE" && newRow) {
+          setRows((prev) => {
+            const exists = prev.some((r) => r.id === newRow.id);
+            if (!isWithinRange(newRow.date)) {
+              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
+            }
+            if (!exists) return [...prev, newRow];
+            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
+          });
+        } else if (payload.eventType === "DELETE" && oldRow?.id) {
+          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+        }
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isWithinRange]);
+
+
+
   const shifts = useMemo<Shift[]>(
     () =>
       rows
