@@ -202,6 +202,29 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, [dateRange]);
 
+  const loadShiftDetails = useCallback(async (ids: string[]) => {
+    const pending = ids.filter((id) => id && !detailsLoaded.current.has(id));
+    if (pending.length === 0) return;
+    pending.forEach((id) => detailsLoaded.current.add(id));
+    const { data, error: err } = await supabase
+      .from("shifts")
+      .select(SHIFT_DETAIL_COLUMNS)
+      .in("id", pending);
+    if (err) {
+      pending.forEach((id) => detailsLoaded.current.delete(id));
+      return;
+    }
+    const byId = new Map(
+      ((data ?? []) as unknown as Array<Partial<ShiftRow> & { id: string }>).map((d) => [d.id, d]),
+    );
+    setRows((prev) =>
+      prev.map((r) => {
+        const detail = byId.get(r.id);
+        return detail ? { ...r, ...detail } : r;
+      }),
+    );
+  }, []);
+
   const setDateRange = useCallback((range: ShiftsDateRange) => {
     setDateRangeState(range);
   }, []);
