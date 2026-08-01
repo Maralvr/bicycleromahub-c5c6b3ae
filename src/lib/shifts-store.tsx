@@ -172,38 +172,83 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRangeState] = useState<ShiftsDateRange>(() => defaultShiftsDateRange());
 
-  const fetchAll = useCallback(async (range: ShiftsDateRange = dateRange) => {
-    setLoading(true);
+  // Widest date window already downloaded. Used so that widening the range only
+  // fetches the missing slice instead of re-downloading everything.
+  const loadedRange = useRef<ShiftsDateRange | null>(null);
+
+  const shiftDay = (d: string, days: number) => {
+    const dt = new Date(`${d}T00:00:00Z`);
+    dt.setUTCDate(dt.getUTCDate() + days);
+    return dt.toISOString().slice(0, 10);
+  };
+
+  const fetchSlice = useCallback(async (from: string, to: string) => {
     const pageSize = 1000;
     const all: ShiftRow[] = [];
-    let from = 0;
+    let offset = 0;
     while (true) {
       const { data, error: err } = await supabase
         .from("shifts")
-        .select(
-          SHIFT_LIST_COLUMNS,
-        )
-        .gte("date", range.from)
-        .lte("date", range.to)
+        .select(SHIFT_LIST_COLUMNS)
+        .gte("date", from)
+        .lte("date", to)
         .order("date", { ascending: true })
         .order("start_time", { ascending: true })
         .order("id", { ascending: true })
-        .range(from, from + pageSize - 1);
-      if (err) {
-        setError(err.message);
-        setLoading(false);
-        return;
-      }
+        .range(offset, offset + pageSize - 1);
+      if (err) throw new Error(err.message);
       const batch = (data ?? []) as unknown as ShiftRow[];
       all.push(...batch);
       if (batch.length < pageSize) break;
-      from += pageSize;
+      offset += pageSize;
     }
-    detailsLoaded.current.clear();
-    setRows(all);
-    setError(null);
-    setLoading(false);
-  }, [dateRange]);
+    return all;
+  }, []);
+
+  const fetchAll = useCallback(
+    async (range: ShiftsDateRange = dateRange, opts?: { force?: boolean }) => {
+      const loaded = loadedRange.current;
+      // Which windows still need to be downloaded?
+      const gaps: Array<[string, string]> = [];
+      const full = opts?.force || !loaded;
+      if (full) {
+        gaps.push([range.from, range.to]);
+      } else {
+        if (range.from < loaded!.from) gaps.push([range.from, shiftDay(loaded!.from, -1)]);
+        if (range.to > loaded!.to) gaps.push([shiftDay(loaded!.to, 1), range.to]);
+      }
+      if (gaps.length === 0) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const batches = await Promise.all(gaps.map(([f, t]) => fetchSlice(f, t)));
+        const fetched = batches.flat();
+        if (full) {
+          detailsLoaded.current.clear();
+          setRows(fetched);
+          loadedRange.current = { from: range.from, to: range.to };
+        } else {
+          setRows((prev) => {
+            const byId = new Map(prev.map((r) => [r.id, r]));
+            fetched.forEach((r) => byId.set(r.id, { ...byId.get(r.id), ...r }));
+            return Array.from(byId.values());
+          });
+          loadedRange.current = {
+            from: range.from < loaded!.from ? range.from : loaded!.from,
+            to: range.to > loaded!.to ? range.to : loaded!.to,
+          };
+        }
+        setError(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load shifts");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [dateRange, fetchSlice],
+  );
 
   const loadShiftDetails = useCallback(async (ids: string[]) => {
     const pending = ids.filter((id) => id && !detailsLoaded.current.has(id));
@@ -232,13 +277,21 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     setDateRangeState(range);
   }, []);
 
+  // Keep the current window in a ref so the realtime subscription can be created
+  // once instead of being torn down and re-subscribed on every range change.
+  const dateRangeRef = useRef(dateRange);
+  dateRangeRef.current = dateRange;
   const isWithinRange = useCallback(
-    (d: string | null | undefined) => !!d && d >= dateRange.from && d <= dateRange.to,
-    [dateRange],
+    (d: string | null | undefined) =>
+      !!d && d >= dateRangeRef.current.from && d <= dateRangeRef.current.to,
+    [],
   );
 
   useEffect(() => {
-    void fetchAll();
+    void fetchAll(dateRange);
+  }, [dateRange, fetchAll]);
+
+  useEffect(() => {
     const channel = supabase
       .channel(`shifts-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
@@ -264,7 +317,9 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [fetchAll, isWithinRange]);
+  }, [isWithinRange]);
+
+
 
   const shifts = useMemo<Shift[]>(
     () =>
@@ -349,7 +404,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         error,
         dateRange,
         setDateRange,
-        refresh: () => fetchAll(),
+        refresh: () => fetchAll(dateRange, { force: true }),
         addShift,
         updateShift,
         deleteShift,
