@@ -166,6 +166,7 @@ function shiftToDbPatch(input: ShiftPatch): Record<string, unknown> {
 
 export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<ShiftRow[]>([]);
+  const detailsLoaded = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRangeState] = useState<ShiftsDateRange>(() => defaultShiftsDateRange());
