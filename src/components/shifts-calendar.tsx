@@ -286,9 +286,23 @@ export function ShiftsCalendar({
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const openShift = (s: CalendarShift) => {
+    const rows = s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s];
+    onLoadShiftDetails?.(rows.map((r) => r.id));
     if (onShiftClick) onShiftClick(s);
     else setSelectedShift(s);
   };
+  // Re-read the selected booking from the latest `shifts` prop so lazily loaded
+  // detail columns show up once they arrive.
+  const liveSelectedShift = useMemo<CalendarShift | null>(() => {
+    if (!selectedShift) return null;
+    const byId = new Map(shifts.map((s) => [s.id, s]));
+    const fresh = byId.get(selectedShift.id);
+    return {
+      ...selectedShift,
+      ...(fresh ?? {}),
+      groupedShifts: selectedShift.groupedShifts?.map((g) => byId.get(g.id) ?? g),
+    };
+  }, [selectedShift, shifts]);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
