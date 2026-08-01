@@ -29,13 +29,14 @@ type ShiftRow = {
   teens: number;
   infants: number;
   trailers: number;
-  participants: { name: string; category: string }[] | null;
+  // Heavy / detail-only fields: not fetched in the list query, filled in on demand.
+  participants?: { name: string; category: string }[] | null;
   rate: number | string | null;
   rate_title: string | null;
   seller: string | null;
   booking_channel: string | null;
   notes: string | null;
-  operations_notes: string | null;
+  operations_notes?: string | null;
   assigned_staff_id: string | null;
   status: Shift["status"];
   required_tags: string[] | null;
@@ -46,8 +47,17 @@ type ShiftRow = {
   no_show: boolean | null;
   no_show_reported_at: string | null;
   no_show_reported_by: string | null;
-  no_show_notes: string | null;
+  no_show_notes?: string | null;
 };
+
+// Columns loaded for every shift in the visible date range. Deliberately excludes
+// the heavy detail columns below to keep egress low on the calendar/list views.
+const SHIFT_LIST_COLUMNS =
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
+
+// Fetched lazily when a single shift is opened.
+const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
+
 
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
 type ShiftPatch = Partial<NewShiftInput>;
