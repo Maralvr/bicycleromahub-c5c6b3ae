@@ -239,6 +239,9 @@ function mapToShiftRow(p: FullBookingPayload) {
   return {
     source: "bokun" as const,
     booking_id: p.confirmationCode || String(p.bookingId),
+    // Parent booking id -- required later by healStuckZeroParticipantBookings
+    // to re-fetch booking detail. Never leave this unset on a create.
+    external_booking_ref: p.parentBookingId ? String(p.parentBookingId) : null,
     tour_name: p.productTitle,
     date: p.startDateTime.slice(0, 10),
     start_time: fmtTime(p.startDateTime),
