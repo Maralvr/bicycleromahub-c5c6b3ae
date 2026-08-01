@@ -354,6 +354,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         deleteShift,
         setStatus,
         assignShift,
+        loadShiftDetails,
       }}
     >
       {children}
