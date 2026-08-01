@@ -114,7 +114,7 @@ function rowToShift(r: ShiftRow): Shift {
       infants: r.infants,
       trailers: r.trailers,
     },
-    participantList: r.participants ?? [],
+    participantList: r.participants ?? undefined,
     rate: r.rate != null ? Number(r.rate) : undefined,
     rateTitle: r.rate_title,
     seller: r.seller,
