@@ -587,7 +587,7 @@ export function ShiftsCalendar({
         renderDayDialogSection={renderDayDialogSection}
       />
       <ShiftDetailsDialog
-        shift={selectedShift}
+        shift={liveSelectedShift}
         staff={staff}
         allShifts={shifts}
         showRates={showRates}
