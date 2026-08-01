@@ -204,6 +204,7 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
   // Normalize Bokun API response to our FullBookingPayload shape
   return {
     bookingId: raw.id ?? raw.bookingId ?? bookingId,
+    parentBookingId: raw.parentBookingId ?? raw.parentBooking?.id ?? raw.id,
     confirmationCode: raw.confirmationCode,
     productTitle: raw.product?.title ?? raw.productTitle ?? raw.activityBookings?.[0]?.activity?.title ?? "Bokun booking",
     startDateTime: raw.startDateTime ?? raw.startDate ?? raw.activityBookings?.[0]?.startDateTime ?? new Date().toISOString(),
