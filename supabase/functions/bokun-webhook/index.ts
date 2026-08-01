@@ -47,6 +47,7 @@ interface BokunEventPayload {
 }
 
 interface FullBookingPayload extends BokunEventPayload {
+  parentBookingId?: string | number;
   confirmationCode?: string;
   productTitle: string;
   startDateTime: string;
@@ -104,6 +105,7 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
   const fields = raw.fields ?? raw.parentBooking?.fields ?? {};
   return {
     bookingId: raw.bookingId ?? raw.id,
+    parentBookingId: raw.parentBookingId ?? raw.parentBooking?.id,
     confirmationCode: raw.productConfirmationCode ?? raw.confirmationCode,
     productTitle: raw.productTitle ?? raw.title ?? raw.product?.title ?? "Bokun booking",
     startDateTime: toIsoDateTime(raw.startDateTime ?? raw.startDate),
@@ -202,6 +204,9 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
   // Normalize Bokun API response to our FullBookingPayload shape
   return {
     bookingId: raw.id ?? raw.bookingId ?? bookingId,
+    // Only a real parent id -- raw.id may be an activity-booking id here,
+    // and external_booking_ref must always be the parent booking id.
+    parentBookingId: raw.parentBookingId ?? raw.parentBooking?.id,
     confirmationCode: raw.confirmationCode,
     productTitle: raw.product?.title ?? raw.productTitle ?? raw.activityBookings?.[0]?.activity?.title ?? "Bokun booking",
     startDateTime: raw.startDateTime ?? raw.startDate ?? raw.activityBookings?.[0]?.startDateTime ?? new Date().toISOString(),
@@ -234,6 +239,9 @@ function mapToShiftRow(p: FullBookingPayload) {
   return {
     source: "bokun" as const,
     booking_id: p.confirmationCode || String(p.bookingId),
+    // Parent booking id -- required later by healStuckZeroParticipantBookings
+    // to re-fetch booking detail. Never leave this unset on a create.
+    external_booking_ref: p.parentBookingId ? String(p.parentBookingId) : null,
     tour_name: p.productTitle,
     date: p.startDateTime.slice(0, 10),
     start_time: fmtTime(p.startDateTime),
@@ -324,7 +332,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existing } = await supabase
     .from("shifts")
-    .select("id")
+    .select("id, adults, teens, infants, trailers, external_booking_ref")
     .eq("source", "bokun")
     .in("booking_id", keys)
     .maybeSingle();
@@ -369,7 +377,54 @@ Deno.serve(async (req: Request) => {
   const row = mapToShiftRow(fullPayload);
 
   if (existing) {
-    const { error } = await supabase.from("shifts").update(row).eq("id", existing.id);
+    const updates: Record<string, unknown> = { ...row };
+
+    // Never null out a parent ref that was already resolved.
+    if (updates.external_booking_ref == null && existing.external_booking_ref) {
+      delete updates.external_booking_ref;
+    }
+
+    // Zero-participant guard (ported from bokun-import.server.ts).
+    // A payload without pricingCategoryBookings maps to 0/0/0. Writing that
+    // over a row that already holds real counts destroys good data, so:
+    // try the Bokun detail API first, and if that still yields 0, leave the
+    // existing participant fields untouched for heal-bokun-zeros to pick up.
+    const incomingTotal = row.adults + row.teens + row.infants;
+    const existingTotal =
+      (existing.adults ?? 0) + (existing.teens ?? 0) + (existing.infants ?? 0);
+
+    if (incomingTotal === 0 && existingTotal > 0) {
+      const detail = await fetchBokunBooking(fullPayload.bookingId);
+      const detailRow = detail ? mapToShiftRow(detail) : null;
+      const detailTotal = detailRow
+        ? detailRow.adults + detailRow.teens + detailRow.infants
+        : 0;
+
+      if (detailRow && detailTotal > 0) {
+        updates.adults = detailRow.adults;
+        updates.teens = detailRow.teens;
+        updates.infants = detailRow.infants;
+        updates.trailers = detailRow.trailers;
+        if (detailRow.external_booking_ref) {
+          updates.external_booking_ref = detailRow.external_booking_ref;
+        }
+        console.log(
+          `[bokun] Recovered participants from detail API for ${row.booking_id}: ${detailTotal}`,
+        );
+      } else {
+        delete updates.adults;
+        delete updates.teens;
+        delete updates.infants;
+        delete updates.trailers;
+        console.warn(
+          `[bokun] Refusing to zero participants for ${row.booking_id} ` +
+            `(existing=${existingTotal}, payload=0, detail fetch inconclusive). ` +
+            `Left for heal-bokun-zeros.`,
+        );
+      }
+    }
+
+    const { error } = await supabase.from("shifts").update(updates).eq("id", existing.id);
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
