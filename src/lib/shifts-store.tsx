@@ -404,7 +404,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         error,
         dateRange,
         setDateRange,
-        refresh: () => fetchAll(),
+        refresh: () => fetchAll(dateRange, { force: true }),
         addShift,
         updateShift,
         deleteShift,
