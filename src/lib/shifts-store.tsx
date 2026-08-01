@@ -120,7 +120,7 @@ function rowToShift(r: ShiftRow): Shift {
     seller: r.seller,
     bookingChannel: r.booking_channel,
     notes: r.notes ?? undefined,
-    operationsNotes: r.operations_notes,
+    operationsNotes: r.operations_notes ?? null,
     assignedStaffId: r.assigned_staff_id,
     status: r.status,
     requiredTags: r.required_tags ?? [],
