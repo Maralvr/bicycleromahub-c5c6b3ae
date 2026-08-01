@@ -105,6 +105,7 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
   const fields = raw.fields ?? raw.parentBooking?.fields ?? {};
   return {
     bookingId: raw.bookingId ?? raw.id,
+    parentBookingId: raw.parentBookingId ?? raw.parentBooking?.id,
     confirmationCode: raw.productConfirmationCode ?? raw.confirmationCode,
     productTitle: raw.productTitle ?? raw.title ?? raw.product?.title ?? "Bokun booking",
     startDateTime: toIsoDateTime(raw.startDateTime ?? raw.startDate),
