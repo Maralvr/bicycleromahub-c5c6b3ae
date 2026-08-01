@@ -332,7 +332,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existing } = await supabase
     .from("shifts")
-    .select("id")
+    .select("id, adults, teens, infants, trailers, external_booking_ref")
     .eq("source", "bokun")
     .in("booking_id", keys)
     .maybeSingle();
