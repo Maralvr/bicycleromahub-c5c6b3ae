@@ -199,6 +199,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       if (batch.length < pageSize) break;
       from += pageSize;
     }
+    detailsLoaded.current.clear();
     setRows(all);
     setError(null);
     setLoading(false);
