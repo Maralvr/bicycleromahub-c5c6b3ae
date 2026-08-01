@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,18 +25,19 @@ type ShiftRow = {
   meeting_point: string;
   customer_name: string | null;
   customer_phone: string | null;
-  customer_email: string | null;
+  customer_email?: string | null;
   adults: number;
   teens: number;
   infants: number;
   trailers: number;
-  participants: { name: string; category: string }[] | null;
+  // Heavy / detail-only fields: not fetched in the list query, filled in on demand.
+  participants?: { name: string; category: string }[] | null;
   rate: number | string | null;
   rate_title: string | null;
   seller: string | null;
   booking_channel: string | null;
   notes: string | null;
-  operations_notes: string | null;
+  operations_notes?: string | null;
   assigned_staff_id: string | null;
   status: Shift["status"];
   required_tags: string[] | null;
@@ -46,8 +48,17 @@ type ShiftRow = {
   no_show: boolean | null;
   no_show_reported_at: string | null;
   no_show_reported_by: string | null;
-  no_show_notes: string | null;
+  no_show_notes?: string | null;
 };
+
+// Columns loaded for every shift in the visible date range. Deliberately excludes
+// the heavy detail columns below to keep egress low on the calendar/list views.
+const SHIFT_LIST_COLUMNS =
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
+
+// Fetched lazily when a single shift is opened.
+const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
+
 
 type NewShiftInput = Omit<Shift, "id" | "guideNotes">;
 type ShiftPatch = Partial<NewShiftInput>;
@@ -78,6 +89,8 @@ type ShiftsStoreContextValue = {
   deleteShift: (id: string) => Promise<void>;
   setStatus: (id: string, status: Shift["status"]) => Promise<void>;
   assignShift: (id: string, assignedStaffId: string | null) => Promise<void>;
+  /** Lazily fetch the heavy detail columns (participant list, ops notes, email) for specific shifts. */
+  loadShiftDetails: (ids: string[]) => Promise<void>;
 };
 
 const ShiftsStoreContext = createContext<ShiftsStoreContextValue | null>(null);
@@ -104,13 +117,13 @@ function rowToShift(r: ShiftRow): Shift {
       infants: r.infants,
       trailers: r.trailers,
     },
-    participantList: r.participants ?? [],
+    participantList: r.participants ?? undefined,
     rate: r.rate != null ? Number(r.rate) : undefined,
     rateTitle: r.rate_title,
     seller: r.seller,
     bookingChannel: r.booking_channel,
     notes: r.notes ?? undefined,
-    operationsNotes: r.operations_notes,
+    operationsNotes: r.operations_notes ?? null,
     assignedStaffId: r.assigned_staff_id,
     status: r.status,
     requiredTags: r.required_tags ?? [],
@@ -120,7 +133,7 @@ function rowToShift(r: ShiftRow): Shift {
     noShow: r.no_show ?? false,
     noShowReportedAt: r.no_show_reported_at,
     noShowReportedBy: r.no_show_reported_by,
-    noShowNotes: r.no_show_notes,
+    noShowNotes: r.no_show_notes ?? null,
   };
 }
 
@@ -154,6 +167,7 @@ function shiftToDbPatch(input: ShiftPatch): Record<string, unknown> {
 
 export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<ShiftRow[]>([]);
+  const detailsLoaded = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRangeState] = useState<ShiftsDateRange>(() => defaultShiftsDateRange());
@@ -167,7 +181,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, no_show_notes",
+          SHIFT_LIST_COLUMNS,
         )
         .gte("date", range.from)
         .lte("date", range.to)
@@ -185,10 +199,34 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       if (batch.length < pageSize) break;
       from += pageSize;
     }
+    detailsLoaded.current.clear();
     setRows(all);
     setError(null);
     setLoading(false);
   }, [dateRange]);
+
+  const loadShiftDetails = useCallback(async (ids: string[]) => {
+    const pending = ids.filter((id) => id && !detailsLoaded.current.has(id));
+    if (pending.length === 0) return;
+    pending.forEach((id) => detailsLoaded.current.add(id));
+    const { data, error: err } = await supabase
+      .from("shifts")
+      .select(SHIFT_DETAIL_COLUMNS)
+      .in("id", pending);
+    if (err) {
+      pending.forEach((id) => detailsLoaded.current.delete(id));
+      return;
+    }
+    const byId = new Map(
+      ((data ?? []) as unknown as Array<Partial<ShiftRow> & { id: string }>).map((d) => [d.id, d]),
+    );
+    setRows((prev) =>
+      prev.map((r) => {
+        const detail = byId.get(r.id);
+        return detail ? { ...r, ...detail } : r;
+      }),
+    );
+  }, []);
 
   const setDateRange = useCallback((range: ShiftsDateRange) => {
     setDateRangeState(range);
@@ -271,7 +309,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data: fresh } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, no_show_notes",
+          SHIFT_LIST_COLUMNS,
         )
         .eq("id", id)
         .maybeSingle();
@@ -317,6 +355,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         deleteShift,
         setStatus,
         assignShift,
+        loadShiftDetails,
       }}
     >
       {children}

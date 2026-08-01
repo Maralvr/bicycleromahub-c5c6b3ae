@@ -244,6 +244,7 @@ export function ShiftsCalendar({
   renderDayOverlay,
   renderDayDialogSection,
   onVisibleRangeChange,
+  onLoadShiftDetails,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -262,6 +263,10 @@ export function ShiftsCalendar({
   // this calendar forward just shows an empty month once you page past
   // whatever the parent already fetched.
   onVisibleRangeChange?: (range: { from: string; to: string }) => void;
+  // Called with the ids of the booking(s) being opened, so a parent backed by a
+  // column-limited list query can lazily fetch the heavy detail columns
+  // (participant list, ops notes) only for what's actually being viewed.
+  onLoadShiftDetails?: (ids: string[]) => void;
 }) {
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
@@ -281,9 +286,23 @@ export function ShiftsCalendar({
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const openShift = (s: CalendarShift) => {
+    const rows = s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s];
+    onLoadShiftDetails?.(rows.map((r) => r.id));
     if (onShiftClick) onShiftClick(s);
     else setSelectedShift(s);
   };
+  // Re-read the selected booking from the latest `shifts` prop so lazily loaded
+  // detail columns show up once they arrive.
+  const liveSelectedShift = useMemo<CalendarShift | null>(() => {
+    if (!selectedShift) return null;
+    const byId = new Map(shifts.map((s) => [s.id, s]));
+    const fresh = byId.get(selectedShift.id);
+    return {
+      ...selectedShift,
+      ...(fresh ?? {}),
+      groupedShifts: selectedShift.groupedShifts?.map((g) => byId.get(g.id) ?? g),
+    };
+  }, [selectedShift, shifts]);
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
@@ -568,7 +587,7 @@ export function ShiftsCalendar({
         renderDayDialogSection={renderDayDialogSection}
       />
       <ShiftDetailsDialog
-        shift={selectedShift}
+        shift={liveSelectedShift}
         staff={staff}
         allShifts={shifts}
         showRates={showRates}
