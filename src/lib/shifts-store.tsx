@@ -130,7 +130,7 @@ function rowToShift(r: ShiftRow): Shift {
     noShow: r.no_show ?? false,
     noShowReportedAt: r.no_show_reported_at,
     noShowReportedBy: r.no_show_reported_by,
-    noShowNotes: r.no_show_notes,
+    noShowNotes: r.no_show_notes ?? null,
   };
 }
 
