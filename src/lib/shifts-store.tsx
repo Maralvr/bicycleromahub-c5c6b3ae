@@ -24,7 +24,7 @@ type ShiftRow = {
   meeting_point: string;
   customer_name: string | null;
   customer_phone: string | null;
-  customer_email: string | null;
+  customer_email?: string | null;
   adults: number;
   teens: number;
   infants: number;
