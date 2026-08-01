@@ -244,6 +244,7 @@ export function ShiftsCalendar({
   renderDayOverlay,
   renderDayDialogSection,
   onVisibleRangeChange,
+  onLoadShiftDetails,
 }: {
   shifts: Shift[];
   staff: Staff[];
