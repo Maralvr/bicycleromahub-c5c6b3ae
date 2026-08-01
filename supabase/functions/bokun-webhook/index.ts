@@ -377,7 +377,54 @@ Deno.serve(async (req: Request) => {
   const row = mapToShiftRow(fullPayload);
 
   if (existing) {
-    const { error } = await supabase.from("shifts").update(row).eq("id", existing.id);
+    const updates: Record<string, unknown> = { ...row };
+
+    // Never null out a parent ref that was already resolved.
+    if (updates.external_booking_ref == null && existing.external_booking_ref) {
+      delete updates.external_booking_ref;
+    }
+
+    // Zero-participant guard (ported from bokun-import.server.ts).
+    // A payload without pricingCategoryBookings maps to 0/0/0. Writing that
+    // over a row that already holds real counts destroys good data, so:
+    // try the Bokun detail API first, and if that still yields 0, leave the
+    // existing participant fields untouched for heal-bokun-zeros to pick up.
+    const incomingTotal = row.adults + row.teens + row.infants;
+    const existingTotal =
+      (existing.adults ?? 0) + (existing.teens ?? 0) + (existing.infants ?? 0);
+
+    if (incomingTotal === 0 && existingTotal > 0) {
+      const detail = await fetchBokunBooking(fullPayload.bookingId);
+      const detailRow = detail ? mapToShiftRow(detail) : null;
+      const detailTotal = detailRow
+        ? detailRow.adults + detailRow.teens + detailRow.infants
+        : 0;
+
+      if (detailRow && detailTotal > 0) {
+        updates.adults = detailRow.adults;
+        updates.teens = detailRow.teens;
+        updates.infants = detailRow.infants;
+        updates.trailers = detailRow.trailers;
+        if (detailRow.external_booking_ref) {
+          updates.external_booking_ref = detailRow.external_booking_ref;
+        }
+        console.log(
+          `[bokun] Recovered participants from detail API for ${row.booking_id}: ${detailTotal}`,
+        );
+      } else {
+        delete updates.adults;
+        delete updates.teens;
+        delete updates.infants;
+        delete updates.trailers;
+        console.warn(
+          `[bokun] Refusing to zero participants for ${row.booking_id} ` +
+            `(existing=${existingTotal}, payload=0, detail fetch inconclusive). ` +
+            `Left for heal-bokun-zeros.`,
+        );
+      }
+    }
+
+    const { error } = await supabase.from("shifts").update(updates).eq("id", existing.id);
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 500,
