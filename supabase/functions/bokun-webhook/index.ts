@@ -47,6 +47,7 @@ interface BokunEventPayload {
 }
 
 interface FullBookingPayload extends BokunEventPayload {
+  parentBookingId?: string | number;
   confirmationCode?: string;
   productTitle: string;
   startDateTime: string;
