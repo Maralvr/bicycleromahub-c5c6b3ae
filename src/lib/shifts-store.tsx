@@ -88,6 +88,8 @@ type ShiftsStoreContextValue = {
   deleteShift: (id: string) => Promise<void>;
   setStatus: (id: string, status: Shift["status"]) => Promise<void>;
   assignShift: (id: string, assignedStaffId: string | null) => Promise<void>;
+  /** Lazily fetch the heavy detail columns (participant list, ops notes, email) for specific shifts. */
+  loadShiftDetails: (ids: string[]) => Promise<void>;
 };
 
 const ShiftsStoreContext = createContext<ShiftsStoreContextValue | null>(null);
