@@ -263,6 +263,10 @@ export function ShiftsCalendar({
   // this calendar forward just shows an empty month once you page past
   // whatever the parent already fetched.
   onVisibleRangeChange?: (range: { from: string; to: string }) => void;
+  // Called with the ids of the booking(s) being opened, so a parent backed by a
+  // column-limited list query can lazily fetch the heavy detail columns
+  // (participant list, ops notes) only for what's actually being viewed.
+  onLoadShiftDetails?: (ids: string[]) => void;
 }) {
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
