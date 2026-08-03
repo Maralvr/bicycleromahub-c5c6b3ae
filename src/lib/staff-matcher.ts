@@ -77,7 +77,7 @@ function findUnavailabilityConflict(
  * Score a single staff member against a shift. Higher score = better match.
  * Returns null if the staff member is hard-disqualified.
  */
-function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSuggestion | null {
+function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[], busy: BusyMap): StaffSuggestion | null {
   const reasons: string[] = [];
   const warnings: string[] = [];
   let score = 0;
