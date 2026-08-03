@@ -132,9 +132,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // calendar's ?date=/?view=).
     if (!isAuthenticated && signedOut && !isPublic) {
       // Capture path AND query so any bounce restores exactly where we were.
-      void navigate({ to: "/auth", search: { redirect: location.pathname + location.searchStr } });
+      // Read from window: the router's parsed `searchStr` can still be empty
+      // while a navigation to this location is settling.
+      const here =
+        typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : location.pathname + location.searchStr;
+      void navigate({ to: "/auth", search: { redirect: here } });
       return;
     }
+
     if (
       isAuthenticated &&
       rolesLoaded &&
