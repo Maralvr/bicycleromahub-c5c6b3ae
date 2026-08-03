@@ -251,6 +251,9 @@ export function ShiftsCalendar({
   view: viewProp,
   onDateChange,
   onViewChange,
+  shiftId,
+  onShiftIdChange,
+
 }: {
   shifts: Shift[];
   staff: Staff[];
