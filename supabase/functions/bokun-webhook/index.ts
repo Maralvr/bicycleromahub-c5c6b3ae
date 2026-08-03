@@ -68,8 +68,45 @@ interface FullBookingPayload extends BokunEventPayload {
   currency?: string;
   notes?: string;
   productTags?: string[];
+  // Bokun's booked *rate* (pricing option) -- "Public tour in English",
+  // "Regular Bike (City or Mtb) 2-hour" -- distinct from `totalPrice`.
+  rateTitle?: string;
   status?: "CONFIRMED" | "CANCELLED" | "PENDING";
 }
+
+/**
+ * Where the booked rate actually lives in Bokun payloads (verified against
+ * parent bookings 98672696 / 99370402): on the activity booking as
+ * `rateTitle`, with a numeric `rateId` that maps into
+ * `activity.rates[] -> { title, rateCode }`. It's also mirrored under the
+ * invoice product. Keep this in sync with mapToShiftRow in
+ * src/lib/bokun-import.server.ts -- these two mappers are hand-ported
+ * duplicates.
+ */
+// deno-lint-ignore no-explicit-any
+function extractRateTitle(raw: any): string | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const fromRates = (() => {
+    const rateId = raw.rateId ?? a0?.rateId;
+    if (rateId == null) return undefined;
+    const rates = raw.activity?.rates ?? a0?.activity?.rates ?? [];
+    // deno-lint-ignore no-explicit-any
+    return rates.find((r: any) => String(r?.id) === String(rateId))?.title;
+  })();
+  return (
+    raw.rateTitle ??
+    raw.rate?.title ??
+    raw.invoice?.product?.rateTitle ??
+    raw.invoice?.productInvoices?.[0]?.product?.rateTitle ??
+    a0?.rateTitle ??
+    a0?.rate?.title ??
+    a0?.invoice?.product?.rateTitle ??
+    fromRates ??
+    undefined
+  );
+}
+
 
 function validate(input: unknown): { ok: true; data: BokunEventPayload } | { ok: false; error: string } {
   if (!input || typeof input !== "object") return { ok: false, error: "Body must be an object" };
@@ -126,6 +163,7 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
     currency: raw.currency ?? raw.product?.vendor?.currencyCode,
     notes: raw.notes ?? customer.notes,
     productTags: raw.productTags ?? raw.product?.tags,
+    rateTitle: extractRateTitle(raw),
     status: raw.status,
   };
 }
@@ -221,6 +259,7 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
     currency: raw.currency ?? raw.totalAsMoney?.currency,
     notes: raw.notes ?? raw.customer?.notes,
     productTags: raw.productTags ?? raw.product?.tags,
+    rateTitle: extractRateTitle(raw),
     status: raw.status,
   } as FullBookingPayload;
 }
@@ -254,6 +293,7 @@ function mapToShiftRow(p: FullBookingPayload) {
     infants: participants.infants,
     trailers: participants.trailers,
     rate: p.totalPrice ?? null,
+    rate_title: p.rateTitle ?? null,
     notes: p.notes ?? null,
     required_tags: inferTags(p.productTitle, p.productTags),
     status: "unassigned" as const,
@@ -332,7 +372,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existing } = await supabase
     .from("shifts")
-    .select("id, adults, teens, infants, trailers, external_booking_ref")
+    .select("id, adults, teens, infants, trailers, external_booking_ref, rate_title")
     .eq("source", "bokun")
     .in("booking_id", keys)
     .maybeSingle();
@@ -383,6 +423,14 @@ Deno.serve(async (req: Request) => {
     if (updates.external_booking_ref == null && existing.external_booking_ref) {
       delete updates.external_booking_ref;
     }
+
+    // rate_title is fill-only: admins can override it in the app, and a
+    // webhook push must never clobber that (or blank it out when Bokun's
+    // payload happens not to carry the rate).
+    if (updates.rate_title == null || existing.rate_title) {
+      delete updates.rate_title;
+    }
+
 
     // Zero-participant guard (ported from bokun-import.server.ts).
     // A payload without pricingCategoryBookings maps to 0/0/0. Writing that
