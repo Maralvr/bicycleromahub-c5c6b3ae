@@ -186,7 +186,7 @@ export function BulkDispatchDialog({
                             {staff
                               .filter((s) => s.role === "guide" && s.active !== false)
                               .map((s) => {
-                                const conflict = findGuideConflict(s.id, sh, allShifts);
+                                const conflict = busyByShift.get(sh.id)?.get(s.id) ?? null;
                                 return (
                                   <SelectItem key={s.id} value={s.id} disabled={!!conflict}>
                                     {s.name}
