@@ -47,6 +47,7 @@ import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, Exte
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { parseCalendarSearch, type CalendarSearch } from "@/lib/calendar-search";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
 import { useEffect, useState } from "react";
