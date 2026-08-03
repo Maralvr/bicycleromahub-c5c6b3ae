@@ -718,7 +718,16 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             ...(!existingRow?.rate_title && r!.rate_title
               ? { rate_title: r!.rate_title }
               : {}),
+            // Same deal for meeting_point: "TBD" is our placeholder for "we
+            // never got a start point", so treat it as missing and fill it,
+            // but leave any real value (imported or admin-edited) alone.
+            ...((!existingRow?.meeting_point || existingRow.meeting_point === "TBD") &&
+            r!.meeting_point &&
+            r!.meeting_point !== "TBD"
+              ? { meeting_point: r!.meeting_point }
+              : {}),
           };
+
 
           const { error: updateErr } = await supabaseAdmin
             .from("shifts")
