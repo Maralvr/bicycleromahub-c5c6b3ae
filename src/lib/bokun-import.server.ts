@@ -525,7 +525,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         teens: number;
         infants: number;
         rate_title: string | null;
-
+        meeting_point: string | null;
       };
 
       // Look up EVERY booking_id on this page up front (one query), not just
@@ -538,7 +538,8 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       if (pageBookingIds.length > 0) {
         const { data: existingRowsPage } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id, date, start_time, adults, teens, infants, rate_title")
+          .select("booking_id, date, start_time, adults, teens, infants, rate_title, meeting_point")
+
           .eq("source", "bokun")
           .in("booking_id", pageBookingIds);
         for (const r of existingRowsPage ?? []) {
