@@ -245,10 +245,11 @@ export function RentalStaffShiftsView({
             </section>
           )}
 
-          <Tabs value={innerTab} onValueChange={(v) => setInnerTab(v as "list" | "calendar")}>
+          <Tabs value={innerTab} onValueChange={(v) => setInnerTab(v as "list" | "calendar" | "all")}>
             <TabsList>
               <TabsTrigger value="list">List</TabsTrigger>
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="all">All rental points</TabsTrigger>
             </TabsList>
             <TabsContent value="list" className="space-y-6 mt-4">
               <section>
