@@ -10,6 +10,10 @@ import type { View } from "@/components/shifts-calendar";
 export type CalendarSearch = { date?: string; view?: View };
 
 export function parseCalendarSearch(search: Record<string, unknown>): CalendarSearch {
+  console.log("[calendar-debug][parseCalendarSearch]", new Date().toISOString(), {
+    rawSearch: search,
+    href: typeof window !== "undefined" ? window.location.href : "ssr",
+  });
   const date = search.date;
   const view = search.view;
   return {

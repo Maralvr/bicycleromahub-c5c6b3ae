@@ -90,12 +90,22 @@ function ShiftsPageRouter() {
   const { isRentalStaff, isAuthenticated, loading, rolesLoaded } = useAuth();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const authEarlyReturn = loading || !isAuthenticated || !rolesLoaded;
+  useEffect(() => {
+    console.log("[calendar-debug][ShiftsPageRouter:early-return]", new Date().toISOString(), {
+      active: authEarlyReturn,
+      loading,
+      isAuthenticated,
+      rolesLoaded,
+      href: window.location.href,
+    });
+  }, [authEarlyReturn, loading, isAuthenticated, rolesLoaded]);
   // Guard against rendering ShiftsPage/RentalStaffShiftsView before the auth
   // providers (CurrentUserProvider, StaffStoreProvider, etc.) are mounted.
   // AuthGate in __root normally handles this, but during the auth transition
   // there can be a render frame where isAuthenticated flips and the child
   // hooks would throw "must be used within Provider".
-  if (loading || !isAuthenticated || !rolesLoaded) return null;
+  if (authEarlyReturn) return null;
   if (isRentalStaff) {
     return (
       <RentalStaffShiftsView

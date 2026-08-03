@@ -125,7 +125,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const isRentalAllowed = RENTAL_ROUTES.some((p) => location.pathname.startsWith(p));
 
   useEffect(() => {
-    if (loading) return;
+    console.log("[calendar-debug][AuthGate:effect]", new Date().toISOString(), {
+      isAuthenticated,
+      signedOut,
+      loading,
+      rolesLoaded,
+      isPublic,
+      href: typeof window !== "undefined" ? window.location.href : location.pathname + location.searchStr,
+    });
+    if (loading) {
+      console.log("[calendar-debug][AuthGate:loading-return]", new Date().toISOString());
+      return;
+    }
     // `signedOut` (not just a falsy session) is required here: a transient null
     // session during Supabase's token refresh on tab refocus used to bounce
     // through /auth and back, wiping the current route's query string (the
@@ -138,6 +149,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         typeof window !== "undefined"
           ? window.location.pathname + window.location.search
           : location.pathname + location.searchStr;
+      console.log("[calendar-debug][AuthGate:redirect]", new Date().toISOString(), { here });
       void navigate({ to: "/auth", search: { redirect: here } });
       return;
     }
