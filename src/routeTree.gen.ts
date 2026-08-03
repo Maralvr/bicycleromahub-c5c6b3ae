@@ -13,6 +13,7 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
+import { Route as ResetPasswordCursorcheckRouteImport } from './routes/reset-password-cursorcheck'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -55,6 +56,12 @@ const ShiftsRoute = ShiftsRouteImport.update({
   path: '/shifts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordCursorcheckRoute =
+  ResetPasswordCursorcheckRouteImport.update({
+    id: '/reset-password-cursorcheck',
+    path: '/reset-password-cursorcheck',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/reset-password-cursorcheck': typeof ResetPasswordCursorcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -209,6 +217,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/reset-password-cursorcheck': typeof ResetPasswordCursorcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -237,6 +246,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/reset-password-cursorcheck': typeof ResetPasswordCursorcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
+    | '/reset-password-cursorcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
+    | '/reset-password-cursorcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -320,6 +332,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
+    | '/reset-password-cursorcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -348,6 +361,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RentalPointsRoute: typeof RentalPointsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ResetPasswordCursorcheckRoute: typeof ResetPasswordCursorcheckRoute
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
@@ -391,6 +405,13 @@ declare module '@tanstack/react-router' {
       path: '/shifts'
       fullPath: '/shifts'
       preLoaderRoute: typeof ShiftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password-cursorcheck': {
+      id: '/reset-password-cursorcheck'
+      path: '/reset-password-cursorcheck'
+      fullPath: '/reset-password-cursorcheck'
+      preLoaderRoute: typeof ResetPasswordCursorcheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -556,6 +577,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RentalPointsRoute: RentalPointsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ResetPasswordCursorcheckRoute: ResetPasswordCursorcheckRoute,
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
@@ -576,3 +598,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
