@@ -94,9 +94,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
     requiredTags: form.required_tags ?? [],
   } as unknown as Shift), [form, initial]);
 
+  const busy = useBusyGuides(candidateShift);
   const tiers = useMemo(
-    () => categorizeForAssignment(candidateShift, richStaff, allShifts),
-    [candidateShift, richStaff, allShifts],
+    () => categorizeForAssignment(candidateShift, richStaff, allShifts, busy),
+    [candidateShift, richStaff, allShifts, busy],
   );
   const available = tiers.filter((c) => c.tier === "available");
   const requestable = tiers.filter((c) => c.tier === "requestable");
