@@ -31,6 +31,7 @@ import { Route as ApiPublicHooksSendShiftRemindersRouteImport } from './routes/a
 import { Route as ApiPublicHooksHealBokunZerosRouteImport } from './routes/api/public/hooks/heal-bokun-zeros'
 import { Route as ApiPublicHooksExpireShiftRequestsRouteImport } from './routes/api/public/hooks/expire-shift-requests'
 import { Route as ApiPublicHooksExpireRentalDayRequestsRouteImport } from './routes/api/public/hooks/expire-rental-day-requests'
+import { Route as ApiPublicHooksBackfillRateTitlesRouteImport } from './routes/api/public/hooks/backfill-rate-titles'
 import { Route as ApiPublicHooksBackfillBokunRefsRouteImport } from './routes/api/public/hooks/backfill-bokun-refs'
 
 const UsersRoute = UsersRouteImport.update({
@@ -148,6 +149,12 @@ const ApiPublicHooksExpireRentalDayRequestsRoute =
     path: '/api/public/hooks/expire-rental-day-requests',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksBackfillRateTitlesRoute =
+  ApiPublicHooksBackfillRateTitlesRouteImport.update({
+    id: '/api/public/hooks/backfill-rate-titles',
+    path: '/api/public/hooks/backfill-rate-titles',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksBackfillBokunRefsRoute =
   ApiPublicHooksBackfillBokunRefsRouteImport.update({
     id: '/api/public/hooks/backfill-bokun-refs',
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
+  '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
+  '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
+  '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
+    | '/api/public/hooks/backfill-rate-titles'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
+    | '/api/public/hooks/backfill-rate-titles'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -302,6 +314,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
+    | '/api/public/hooks/backfill-rate-titles'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -328,6 +341,7 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRoute
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
   ApiPublicHooksBackfillBokunRefsRoute: typeof ApiPublicHooksBackfillBokunRefsRoute
+  ApiPublicHooksBackfillRateTitlesRoute: typeof ApiPublicHooksBackfillRateTitlesRoute
   ApiPublicHooksExpireRentalDayRequestsRoute: typeof ApiPublicHooksExpireRentalDayRequestsRoute
   ApiPublicHooksExpireShiftRequestsRoute: typeof ApiPublicHooksExpireShiftRequestsRoute
   ApiPublicHooksHealBokunZerosRoute: typeof ApiPublicHooksHealBokunZerosRoute
@@ -491,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksExpireRentalDayRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/backfill-rate-titles': {
+      id: '/api/public/hooks/backfill-rate-titles'
+      path: '/api/public/hooks/backfill-rate-titles'
+      fullPath: '/api/public/hooks/backfill-rate-titles'
+      preLoaderRoute: typeof ApiPublicHooksBackfillRateTitlesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/backfill-bokun-refs': {
       id: '/api/public/hooks/backfill-bokun-refs'
       path: '/api/public/hooks/backfill-bokun-refs'
@@ -520,6 +541,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsersRoute: UsersRoute,
   ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
   ApiPublicHooksBackfillBokunRefsRoute: ApiPublicHooksBackfillBokunRefsRoute,
+  ApiPublicHooksBackfillRateTitlesRoute: ApiPublicHooksBackfillRateTitlesRoute,
   ApiPublicHooksExpireRentalDayRequestsRoute:
     ApiPublicHooksExpireRentalDayRequestsRoute,
   ApiPublicHooksExpireShiftRequestsRoute:

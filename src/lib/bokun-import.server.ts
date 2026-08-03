@@ -220,6 +220,12 @@ interface BokunBookingFull {
   channel?: { title?: string; systemType?: string };
   rateTitle?: string;
   rate?: { title?: string };
+  invoice?: {
+    product?: { rateTitle?: string };
+    productInvoices?: Array<{ product?: { rateTitle?: string } }>;
+  };
+
+
   fields?: {
     priceCategoryBookings?: BokunPricingCategoryBooking[];
     bookedExtras?: BokunExtraBooking[];
@@ -231,7 +237,7 @@ interface BokunBookingFull {
     parentBookingId?: number | string;
     confirmationCode?: string;
     productConfirmationCode?: string;
-    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }> };
+    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }>; defaultRateId?: number | string; rates?: Array<{ id?: number | string; title?: string; rateCode?: string }> };
     product?: { title?: string; tags?: string[]; id?: number | string };
     title?: string;
     startDateTime?: BokunDateValue;
@@ -240,7 +246,10 @@ interface BokunBookingFull {
     startPoint?: { title?: string; address?: string | BokunAddress };
     pickup?: false | { title?: string; address?: string | BokunAddress };
     rateTitle?: string;
+    rateId?: number | string;
     rate?: { title?: string };
+    invoice?: { product?: { rateTitle?: string } };
+
     pricingCategoryBookings?: BokunPricingCategoryBooking[];
     extraBookings?: BokunExtraBooking[];
     extras?: BokunExtraBooking[];
@@ -295,7 +304,32 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   const channelRef = raw.externalBookingReference || null;
   const externalRef = (raw.parentBookingId ?? activity?.parentBookingId) ? String(raw.parentBookingId ?? activity?.parentBookingId) : null;
 
-  const rateTitle = activity?.rateTitle || activity?.rate?.title || raw.rateTitle || raw.rate?.title || a0?.rateTitle || a0?.rate?.title || null;
+  // Bokun's "rate" = the booked pricing option ("Public tour in English",
+  // "Regular Bike 2-hour"), NOT the price. On the booking-detail payload it
+  // lives on the activity booking as `rateTitle` (+ numeric `rateId`, which
+  // maps into activity.rates[] for the human rate code, e.g.
+  // "APPIA NAVETTA PUBLIC"). Also mirrored under the invoice product.
+  // Verified against parent bookings 98672696 / 99370402.
+  const rateFromRates = (() => {
+    const rateId = activity?.rateId ?? a0?.rateId;
+    if (rateId == null) return null;
+    const rates = activity?.activity?.rates ?? a0?.activity?.rates ?? [];
+    return rates.find((r) => String(r.id) === String(rateId))?.title ?? null;
+  })();
+  const rateTitle =
+    activity?.rateTitle ||
+    activity?.rate?.title ||
+    activity?.invoice?.product?.rateTitle ||
+    a0?.rateTitle ||
+    a0?.rate?.title ||
+    a0?.invoice?.product?.rateTitle ||
+    raw.rateTitle ||
+    raw.rate?.title ||
+    raw.invoice?.product?.rateTitle ||
+    raw.invoice?.productInvoices?.[0]?.product?.rateTitle ||
+    rateFromRates ||
+    null;
+
   const seller = activity?.seller?.title || raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
   const createdRaw = raw.creationDate || raw.createdDate || null;
@@ -463,6 +497,8 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         adults: number;
         teens: number;
         infants: number;
+        rate_title: string | null;
+
       };
 
       // Look up EVERY booking_id on this page up front (one query), not just
@@ -475,7 +511,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       if (pageBookingIds.length > 0) {
         const { data: existingRowsPage } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id, date, start_time, adults, teens, infants")
+          .select("booking_id, date, start_time, adults, teens, infants, rate_title")
           .eq("source", "bokun")
           .in("booking_id", pageBookingIds);
         for (const r of existingRowsPage ?? []) {
@@ -633,6 +669,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         skipped += rows.length - newRows.length - updateRows.length;
 
         for (const r of updateRows) {
+          const existingRow = existingByBookingId.get(r!.booking_id!);
           const patch = {
             date: r!.date,
             start_time: r!.start_time,
@@ -645,7 +682,16 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             customer_name: r!.customer_name,
             customer_phone: r!.customer_phone,
             customer_email: r!.customer_email,
+            // Fill-only, never overwrite: rows created by the Bokun webhook
+            // (which historically didn't map the rate at all) sit here with
+            // rate_title = NULL forever, since resyncs only patch
+            // customer-controlled fields. Setting it when it's missing
+            // recovers those without clobbering an admin's manual override.
+            ...(!existingRow?.rate_title && r!.rate_title
+              ? { rate_title: r!.rate_title }
+              : {}),
           };
+
           const { error: updateErr } = await supabaseAdmin
             .from("shifts")
             .update(patch)
@@ -945,7 +991,70 @@ export async function backfillMissingExternalBookingRefs(limit = 40) {
   return { checked, backfilled, ambiguous, errors };
 }
 
+/**
+ * One-off/recurring recovery pass for `rate_title` (Bokun's booked pricing
+ * option -- "Public tour in English", "Regular Bike 2-hour" -- NOT the price).
+ *
+ * Rows created by the Bokun webhook never had the rate mapped at all, and a
+ * later resync only patches customer-controlled fields, so those rows stay
+ * NULL forever even though Bokun has the value. This re-fetches the booking
+ * detail for rows still missing it and fills it in. Fill-only: never
+ * overwrites a value an admin set manually.
+ */
+export async function backfillMissingRateTitles(limit = 40) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { data: rows, error } = await supabaseAdmin
+    .from("shifts")
+    .select("id, booking_id, external_booking_ref, date")
+    .eq("source", "bokun")
+    .is("rate_title", null)
+    .not("external_booking_ref", "is", null)
+    .gte("date", todayIso)
+    .order("date", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`Could not load rows missing rate_title: ${error.message}`);
+
+  let checked = 0;
+  let backfilled = 0;
+  let notFound = 0;
+  const errors: string[] = [];
+  const rentalPointIdByName = await getRentalPointNameMap();
+
+  for (const row of rows ?? []) {
+    if (!row.external_booking_ref) continue;
+    checked++;
+    try {
+      const detail = (await bokunFetch(
+        "GET",
+        `/booking.json/booking/${row.external_booking_ref}`,
+      )) as BokunBookingFull;
+      const mapped = mapToShiftRow(detail, rentalPointIdByName);
+      const rateTitle = mapped?.rate_title ?? null;
+      if (!rateTitle) {
+        notFound++;
+        continue;
+      }
+      const { error: updErr } = await supabaseAdmin
+        .from("shifts")
+        .update({ rate_title: rateTitle })
+        .eq("id", row.id)
+        .is("rate_title", null);
+      if (updErr) {
+        errors.push(`${row.booking_id}: ${updErr.message}`);
+        continue;
+      }
+      backfilled++;
+    } catch (e) {
+      errors.push(`${row.booking_id}: ${(e as Error).message}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  return { checked, backfilled, notFound, errors };
+}
+
 export async function assertAdmin(accessToken: string) {
+
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(accessToken);
   if (userErr || !userData.user) throw new Error("Not authenticated");
   const { data: roles } = await supabaseAdmin
