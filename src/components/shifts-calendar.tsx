@@ -337,6 +337,13 @@ export function ShiftsCalendar({
     setSelectedShift(null);
     if (shiftId) onShiftIdChange?.(null);
   };
+  // Restoring from `?shift=` after a remount: local state is gone, so ask the
+  // parent to load the heavy detail columns for that booking again.
+  useEffect(() => {
+    if (shiftId) onLoadShiftDetails?.([shiftId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shiftId]);
+
   // Re-read the selected booking from the latest `shifts` prop so lazily loaded
   // detail columns show up once they arrive. When the parent persists the open
   // booking in the URL (`?shift=`), fall back to that id so the dialog survives
