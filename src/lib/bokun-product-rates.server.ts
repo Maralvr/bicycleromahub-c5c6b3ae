@@ -22,15 +22,21 @@ type BokunActivity = {
 /** Product ids currently referenced by any shift (that's the set the dropdown needs). */
 export async function distinctBokunProductIds(): Promise<string[]> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("shifts")
-    .select("bokun_product_id")
-    .not("bokun_product_id", "is", null)
-    .limit(20000);
-  if (error) throw new Error(error.message);
-  return Array.from(
-    new Set((data ?? []).map((r) => String(r.bokun_product_id)).filter(Boolean)),
-  );
+  const ids = new Set<string>();
+  const pageSize = 1000;
+  for (let offset = 0; offset < 100_000; offset += pageSize) {
+    const { data, error } = await supabaseAdmin
+      .from("shifts")
+      .select("bokun_product_id")
+      .not("bokun_product_id", "is", null)
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const batch = data ?? [];
+    for (const r of batch) if (r.bokun_product_id) ids.add(String(r.bokun_product_id));
+    if (batch.length < pageSize) break;
+  }
+  return Array.from(ids);
 }
 
 export async function fetchProductRates(productId: string) {
