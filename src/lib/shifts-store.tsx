@@ -38,6 +38,7 @@ type ShiftRow = {
   rate_title: string | null;
   seller: string | null;
   booking_channel: string | null;
+  bokun_product_id?: string | null;
   notes: string | null;
   operations_notes?: string | null;
   assigned_staff_id: string | null;
