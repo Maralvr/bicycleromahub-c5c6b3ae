@@ -38,6 +38,12 @@ export function BulkDispatchDialog({
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  // One database-backed busy map per row window (primary + additional guides).
+  const dispatchable = useMemo(
+    () => unassignedShifts.filter((sh) => !isNoGuideTour(sh.tourName)),
+    [unassignedShifts],
+  );
+  const busyByShift = useBusyGuidesForShifts(open ? dispatchable : []);
 
   // Build suggestions when the dialog opens.
   useEffect(() => {
