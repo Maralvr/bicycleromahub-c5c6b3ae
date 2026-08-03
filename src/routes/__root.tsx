@@ -7,7 +7,8 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { CurrentUserProvider } from "@/lib/current-user";
@@ -157,25 +158,36 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const location = useLocation();
   const isResetPassword = location.pathname.startsWith("/reset-password");
+  // Required by every useQuery in the app (busy-guide conflict checks,
+  // Bokun product rate lists). Without it those hooks throw
+  // "No QueryClient set" and the whole route hits the error boundary.
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+      }),
+  );
 
   return (
-    <I18nProvider>
-      {isResetPassword ? (
-        <>
-          <Outlet />
-          <Toaster />
-        </>
-      ) : (
-        <AuthProvider>
-          <AuthenticatedDataProviders>
-            <AuthGate>
-              <Outlet />
-              <Toaster />
-            </AuthGate>
-          </AuthenticatedDataProviders>
-        </AuthProvider>
-      )}
-    </I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <I18nProvider>
+        {isResetPassword ? (
+          <>
+            <Outlet />
+            <Toaster />
+          </>
+        ) : (
+          <AuthProvider>
+            <AuthenticatedDataProviders>
+              <AuthGate>
+                <Outlet />
+                <Toaster />
+              </AuthGate>
+            </AuthenticatedDataProviders>
+          </AuthProvider>
+        )}
+      </I18nProvider>
+    </QueryClientProvider>
   );
 }
 
