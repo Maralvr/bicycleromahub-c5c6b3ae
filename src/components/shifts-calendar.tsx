@@ -303,12 +303,34 @@ export function ShiftsCalendar({
   };
   // (Month view has a mobile-friendly variant below.)
   const [localCursor, setLocalCursor] = useState(() => new Date());
+  console.log("[calendar-debug][ShiftsCalendar:render]", new Date().toISOString(), {
+    dateProp: date,
+    viewProp,
+    localCursor: toISO(localCursor),
+    href: typeof window !== "undefined" ? window.location.href : "ssr",
+  });
   const cursor = useMemo(() => {
-    if (!date) return localCursor;
+    if (!date) {
+      console.log("[calendar-debug][ShiftsCalendar:cursor-fallback]", new Date().toISOString(), {
+        reason: "missing-date-prop",
+        dateProp: date,
+        viewProp,
+        localCursor: toISO(localCursor),
+      });
+      return localCursor;
+    }
     const [y, m, d] = date.split("-").map(Number);
-    if (!y || !m || !d) return localCursor;
+    if (!y || !m || !d) {
+      console.log("[calendar-debug][ShiftsCalendar:cursor-fallback]", new Date().toISOString(), {
+        reason: "invalid-date-prop",
+        dateProp: date,
+        viewProp,
+        localCursor: toISO(localCursor),
+      });
+      return localCursor;
+    }
     return new Date(y, m - 1, d);
-  }, [date, localCursor]);
+  }, [date, localCursor, viewProp]);
   const setCursor = (d: Date) => {
     setLocalCursor(d);
     onDateChange?.(toISO(d));
