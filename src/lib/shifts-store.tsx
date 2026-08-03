@@ -9,7 +9,10 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { guideConflictMessage } from "./guide-conflicts";
 import type { Shift } from "./mock-data";
+
 
 type ShiftRow = {
   id: string;
@@ -358,7 +361,12 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       .update(dbPatch as any)
       .eq("id", id);
     if (err) {
+      const conflict = guideConflictMessage(err);
+      if (conflict) {
+        toast.error("Guide already booked", { description: conflict });
+      }
       setError(err.message);
+
       // Roll back just this row by refetching it from the server.
       const { data: fresh } = await supabase
         .from("shifts")

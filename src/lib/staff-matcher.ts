@@ -1,4 +1,6 @@
 import type { Shift, Staff } from "./mock-data";
+import { conflictLabel, findGuideConflict } from "./guide-conflicts";
+
 
 export type StaffSuggestion = {
   staff: Staff;
@@ -105,21 +107,12 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
   if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
   if (conflict) warnings.push(conflict.reason);
 
-  // Check for overlapping shifts already assigned — soft warning, admin may
-  // still override.
-  const overlapping = allShifts.find((other) => {
-    if (other.id === shift.id) return false;
-    if (other.assignedStaffId !== staff.id) return false;
-    if (other.date !== shift.date) return false;
-    if (other.status === "rejected") return false;
-    const oStart = toMinutes(other.startTime);
-    const oEnd = toMinutes(other.endTime);
-    return toMinutes(shift.startTime) < oEnd && toMinutes(shift.endTime) > oStart;
-  });
-  if (overlapping) {
-    warnings.push(`Overlaps with ${overlapping.startTime}–${overlapping.endTime} shift`);
-    score -= 30;
-  }
+  // Overlapping commitment on the same day — HARD block, mirrors the database
+  // trigger `shifts_block_guide_conflict_trg`. Same-departure rows (several
+  // bookings of one departure) are exempt, see @/lib/guide-conflicts.
+  const overlapping = findGuideConflict(staff.id, shift, allShifts);
+  if (overlapping) return null;
+
 
   // --- 4. Status preference ---
   if (staff.status === "available") {
@@ -241,11 +234,14 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Only "all day off" remains as a hard block now
+      // Hard blocks: all-day off, or an overlapping commitment (DB-enforced)
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      if (conflict?.hard) reason = conflict.reason;
+      const overlap = findGuideConflict(s.id, shift, allShifts);
+      if (overlap) reason = conflictLabel(overlap);
+      else if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
+
     })
     .sort((a, b) => {
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
@@ -278,6 +274,10 @@ export function categorizeForAssignment(
   allShifts: Shift[],
 ): TieredCandidate[] {
   const out: TieredCandidate[] = allStaff.map((s) => {
+    const overlap = findGuideConflict(s.id, shift, allShifts);
+    if (overlap) {
+      return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflictLabel(overlap) };
+    }
     const conflict = findUnavailabilityConflict(s, shift);
     if (conflict?.hard) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflict.reason };
@@ -286,6 +286,7 @@ export function categorizeForAssignment(
     if (!scored) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: "Unavailable" };
     }
+
     const tier: AssignmentTier = scored.warnings.length === 0 ? "available" : "requestable";
     return { staff: s, tier, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
   });

@@ -1429,6 +1429,15 @@ export type Database = {
         Returns: undefined
       }
       accept_shift: { Args: { _shift_id: string }; Returns: undefined }
+      busy_staff_ids: {
+        Args: {
+          _date: string
+          _end: string
+          _exclude_shift_id?: string
+          _start: string
+        }
+        Returns: string[]
+      }
       can_read_attachment: { Args: { _path: string }; Returns: boolean }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
@@ -1437,6 +1446,16 @@ export type Database = {
       expire_rental_day_requests: { Args: never; Returns: number }
       expire_shift_requests: { Args: never; Returns: number }
       get_bokun_cron_status: { Args: never; Returns: Json }
+      guide_conflicting_shift: {
+        Args: {
+          _date: string
+          _end: string
+          _exclude_shift_id?: string
+          _staff_id: string
+          _start: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1461,6 +1480,10 @@ export type Database = {
       my_signed_waiver_shift_ids: { Args: never; Returns: string[] }
       next_invoice_number: { Args: { _year: number }; Returns: number }
       prune_bokun_import_runs: { Args: never; Returns: number }
+      raise_guide_conflict: {
+        Args: { _conflict_id: string }
+        Returns: undefined
+      }
       reject_additional_guide_assignment: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined

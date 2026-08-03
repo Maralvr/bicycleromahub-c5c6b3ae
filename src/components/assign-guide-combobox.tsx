@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/command";
 import { Avatar } from "@/components/avatar";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+
 import type { Shift, Staff } from "@/lib/mock-data";
 
 export function AssignGuideCombobox({
@@ -107,20 +109,26 @@ export function AssignGuideCombobox({
                   const isTop = !!sg && !!top && top.staff.id === m.id;
                   const isRec = !!sg && sg.score > 0;
                   const isCurrent = m.id === currentStaffId;
+                  const conflict = isCurrent ? null : findGuideConflict(m.id, shift, allShifts);
                   return (
                     <CommandItem
                       key={m.id}
                       value={m.name}
+                      disabled={!!conflict}
                       onSelect={() => {
+                        if (conflict) return;
                         onSelect(m);
                         setOpen(false);
                       }}
                       className={
-                        isRec
-                          ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
-                          : ""
+                        conflict
+                          ? "opacity-50 cursor-not-allowed"
+                          : isRec
+                            ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
+                            : ""
                       }
                     >
+
                       <Avatar
                         name={m.name}
                         initials={m.avatar}
@@ -159,17 +167,25 @@ export function AssignGuideCombobox({
                             </span>
                           )}
                         </div>
-                        {sg && (sg.reasons.length > 0 || sg.warnings.length > 0) && (
-                          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {sg.reasons.join(" · ")}
-                            {sg.warnings.length > 0 && (
-                              <span className="text-warning-foreground">
-                                {" "}
-                                · ⚠ {sg.warnings.join(", ")}
-                              </span>
-                            )}
+                        {conflict ? (
+                          <div className="text-[10px] text-destructive mt-0.5 truncate">
+                            {conflictLabel(conflict)}
                           </div>
+                        ) : (
+                          sg &&
+                          (sg.reasons.length > 0 || sg.warnings.length > 0) && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {sg.reasons.join(" · ")}
+                              {sg.warnings.length > 0 && (
+                                <span className="text-warning-foreground">
+                                  {" "}
+                                  · ⚠ {sg.warnings.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          )
                         )}
+
                       </div>
                     </CommandItem>
                   );

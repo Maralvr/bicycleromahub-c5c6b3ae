@@ -9,6 +9,8 @@ import { Wand2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import type { Shift } from "@/lib/mock-data";
 import type { Staff } from "@/lib/mock-data";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+
 import { isNoGuideTour } from "@/lib/partner-tours";
 
 type Row = {
@@ -177,11 +179,16 @@ export function BulkDispatchDialog({
                             <SelectItem value="__none">— Skip this shift —</SelectItem>
                             {staff
                               .filter((s) => s.role === "guide" && s.active !== false)
-                              .map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
+                              .map((s) => {
+                                const conflict = findGuideConflict(s.id, sh, allShifts);
+                                return (
+                                  <SelectItem key={s.id} value={s.id} disabled={!!conflict}>
+                                    {s.name}
+                                    {conflict ? ` — ${conflictLabel(conflict)}` : ""}
+                                  </SelectItem>
+                                );
+                              })}
+
                           </SelectContent>
                         </Select>
                         {r.suggestionScore != null && r.chosenStaffId && (
