@@ -45,8 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
-  const authDebugRef = useRef({ hasSession: false, signedOut: false });
-  authDebugRef.current = { hasSession: !!session, signedOut };
 
 
   const loadUserData = async (userId: string) => {
