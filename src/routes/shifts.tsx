@@ -56,7 +56,7 @@ type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
 type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
 
 export const Route = createFileRoute("/shifts")({
-  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string; rental_day?: string } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string; rental_day?: string } & CalendarSearch => {
     const tab = search.tab as string | undefined;
     const status = search.status as string | undefined;
     const shift = search.shift as string | undefined;
@@ -72,7 +72,9 @@ export const Route = createFileRoute("/shifts")({
       // notify_rental_assignment / accept_rental_day / reject_rental_day
       // migrations) -- previously ignored entirely by RentalStaffShiftsView.
       rental_day: rentalDay && rentalDay.length > 0 ? rentalDay : undefined,
+      ...parseCalendarSearch(search),
     };
+
   },
   head: () => ({
     meta: [
