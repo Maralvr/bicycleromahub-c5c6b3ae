@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
+
 
   const loadUserData = async (userId: string) => {
     // NOTE: intentionally do NOT reset rolesLoaded=false here. Once roles are
