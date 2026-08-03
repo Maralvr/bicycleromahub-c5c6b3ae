@@ -1,5 +1,5 @@
 import type { Shift, Staff } from "./mock-data";
-import { conflictLabel, findGuideConflict } from "./guide-conflicts";
+import { conflictLabel, EMPTY_BUSY, type BusyMap } from "./guide-conflicts";
 
 
 export type StaffSuggestion = {
@@ -77,7 +77,7 @@ function findUnavailabilityConflict(
  * Score a single staff member against a shift. Higher score = better match.
  * Returns null if the staff member is hard-disqualified.
  */
-function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSuggestion | null {
+function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[], busy: BusyMap): StaffSuggestion | null {
   const reasons: string[] = [];
   const warnings: string[] = [];
   let score = 0;
@@ -107,11 +107,10 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
   if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
   if (conflict) warnings.push(conflict.reason);
 
-  // Overlapping commitment on the same day — HARD block, mirrors the database
-  // trigger `shifts_block_guide_conflict_trg`. Same-departure rows (several
-  // bookings of one departure) are exempt, see @/lib/guide-conflicts.
-  const overlapping = findGuideConflict(staff.id, shift, allShifts);
-  if (overlapping) return null;
+  // Overlapping commitment — HARD block. `busy` comes straight from the
+  // database helper `busy_guides`, the same function the write triggers use,
+  // so it covers primary shifts AND additional-guide assignments.
+  if (busy.get(staff.id)) return null;
 
 
   // --- 4. Status preference ---
@@ -205,9 +204,10 @@ export function suggestStaffForShift(
   allStaff: Staff[],
   allShifts: Shift[],
   limit = 3,
+  busy: BusyMap = EMPTY_BUSY,
 ): StaffSuggestion[] {
   return allStaff
-    .map((s) => scoreStaff(s, shift, allShifts))
+    .map((s) => scoreStaff(s, shift, allShifts, busy))
     .filter((s): s is StaffSuggestion => s !== null)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
@@ -227,17 +227,22 @@ export type StaffCandidate = {
  * ones with the human-readable reason they can't take this shift. Used by the
  * admin "Smart assignment" dialog to show full transparency.
  */
-export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Shift[]): StaffCandidate[] {
+export function rankAllCandidates(
+  shift: Shift,
+  allStaff: Staff[],
+  allShifts: Shift[],
+  busy: BusyMap = EMPTY_BUSY,
+): StaffCandidate[] {
   return allStaff
     .map<StaffCandidate>((s) => {
-      const scored = scoreStaff(s, shift, allShifts);
+      const scored = scoreStaff(s, shift, allShifts, busy);
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
       // Hard blocks: all-day off, or an overlapping commitment (DB-enforced)
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      const overlap = findGuideConflict(s.id, shift, allShifts);
+      const overlap = busy.get(s.id);
       if (overlap) reason = conflictLabel(overlap);
       else if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
@@ -272,9 +277,10 @@ export function categorizeForAssignment(
   shift: Shift,
   allStaff: Staff[],
   allShifts: Shift[],
+  busy: BusyMap = EMPTY_BUSY,
 ): TieredCandidate[] {
   const out: TieredCandidate[] = allStaff.map((s) => {
-    const overlap = findGuideConflict(s.id, shift, allShifts);
+    const overlap = busy.get(s.id);
     if (overlap) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflictLabel(overlap) };
     }
@@ -282,7 +288,7 @@ export function categorizeForAssignment(
     if (conflict?.hard) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflict.reason };
     }
-    const scored = scoreStaff(s, shift, allShifts);
+    const scored = scoreStaff(s, shift, allShifts, busy);
     if (!scored) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: "Unavailable" };
     }

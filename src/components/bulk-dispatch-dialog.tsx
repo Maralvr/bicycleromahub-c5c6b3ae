@@ -9,7 +9,7 @@ import { Wand2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import type { Shift } from "@/lib/mock-data";
 import type { Staff } from "@/lib/mock-data";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
-import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+import { conflictLabel, useBusyGuidesForShifts, EMPTY_BUSY } from "@/lib/guide-conflicts";
 
 import { isNoGuideTour } from "@/lib/partner-tours";
 
@@ -38,17 +38,23 @@ export function BulkDispatchDialog({
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
+  // One database-backed busy map per row window (primary + additional guides).
+  const dispatchable = useMemo(
+    () => unassignedShifts.filter((sh) => !isNoGuideTour(sh.tourName)),
+    [unassignedShifts],
+  );
+  const busyByShift = useBusyGuidesForShifts(open ? dispatchable : []);
 
   // Build suggestions when the dialog opens.
   useEffect(() => {
     if (!open) return;
     // Mutable working copy so each row's suggestion accounts for prior picks (load balancing).
     let working = [...allShifts];
-    const seedRows: Row[] = unassignedShifts
-      .filter((sh) => !isNoGuideTour(sh.tourName))
+    const seedRows: Row[] = dispatchable
+      .slice()
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .map((sh) => {
-        const top = suggestStaffForShift(sh, staff, working, 1)[0];
+        const top = suggestStaffForShift(sh, staff, working, 1, busyByShift.get(sh.id) ?? EMPTY_BUSY)[0];
         if (top) {
           working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
         }
@@ -61,7 +67,7 @@ export function BulkDispatchDialog({
         };
       });
     setRows(seedRows);
-  }, [open, unassignedShifts, staff, allShifts]);
+  }, [open, dispatchable, staff, allShifts, busyByShift]);
 
   const selectedCount = rows.filter((r) => r.selected && r.chosenStaffId).length;
   const unmatchedCount = rows.filter((r) => !r.chosenStaffId).length;
@@ -180,7 +186,7 @@ export function BulkDispatchDialog({
                             {staff
                               .filter((s) => s.role === "guide" && s.active !== false)
                               .map((s) => {
-                                const conflict = findGuideConflict(s.id, sh, allShifts);
+                                const conflict = busyByShift.get(sh.id)?.get(s.id) ?? null;
                                 return (
                                   <SelectItem key={s.id} value={s.id} disabled={!!conflict}>
                                     {s.name}

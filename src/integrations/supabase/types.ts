@@ -1429,6 +1429,21 @@ export type Database = {
         Returns: undefined
       }
       accept_shift: { Args: { _shift_id: string }; Returns: undefined }
+      busy_guides: {
+        Args: {
+          _date: string
+          _end: string
+          _exclude_shift_id?: string
+          _start: string
+        }
+        Returns: {
+          conflict_shift_id: string
+          end_time: string
+          staff_id: string
+          start_time: string
+          tour_name: string
+        }[]
+      }
       busy_staff_ids: {
         Args: {
           _date: string

@@ -15,6 +15,7 @@ import { useLiveStaff } from "@/lib/live-staff";
 import { useStaffStore } from "@/lib/staff-store";
 import { useShiftsStore } from "@/lib/shifts-store";
 import { categorizeForAssignment } from "@/lib/staff-matcher";
+import { useBusyGuides } from "@/lib/guide-conflicts";
 import type { Shift } from "@/lib/mock-data";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
 import { Package, MapPin, Users, User, FileText, Sparkles, Ban, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -94,9 +95,10 @@ export function ShiftDialog({ open, initial, onClose, onSubmit }: Props) {
     requiredTags: form.required_tags ?? [],
   } as unknown as Shift), [form, initial]);
 
+  const busy = useBusyGuides(candidateShift);
   const tiers = useMemo(
-    () => categorizeForAssignment(candidateShift, richStaff, allShifts),
-    [candidateShift, richStaff, allShifts],
+    () => categorizeForAssignment(candidateShift, richStaff, allShifts, busy),
+    [candidateShift, richStaff, allShifts, busy],
   );
   const available = tiers.filter((c) => c.tier === "available");
   const requestable = tiers.filter((c) => c.tier === "requestable");

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Shift } from "@/lib/mock-data";
 import { useStaffStore } from "@/lib/staff-store";
 import { rankAllCandidates, type StaffCandidate } from "@/lib/staff-matcher";
+import { useBusyGuides } from "@/lib/guide-conflicts";
 
 type SortMode = "score" | "name" | "least_busy";
 
@@ -33,6 +34,8 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
   const [note, setNote] = useState("");
   const [rate, setRate] = useState<string>("");
   const [rateTitle, setRateTitle] = useState<string>("");
+  // Database-backed busy map — primary shifts AND additional-guide commitments.
+  const busyGuides = useBusyGuides(shift);
 
   useEffect(() => {
     if (!open) {
@@ -47,7 +50,7 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
 
   const candidates = useMemo<StaffCandidate[]>(() => {
     if (!shift) return [];
-    const ranked = rankAllCandidates(shift, staff, allShifts);
+    const ranked = rankAllCandidates(shift, staff, allShifts, busyGuides);
     const sorted = [...ranked].sort((a, b) => {
       if (sortMode === "name") return a.staff.name.localeCompare(b.staff.name);
       if (sortMode === "least_busy") {
@@ -63,11 +66,11 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
     const q = search.trim().toLowerCase();
     if (!q) return filtered;
     return filtered.filter((c) => c.staff.name.toLowerCase().includes(q));
-  }, [shift, staff, allShifts, sortMode, showIneligible, search]);
+  }, [shift, staff, allShifts, busyGuides, sortMode, showIneligible, search]);
 
   const eligibleCount = useMemo(
-    () => (shift ? rankAllCandidates(shift, staff, allShifts).filter((c) => c.eligible).length : 0),
-    [shift, staff, allShifts],
+    () => (shift ? rankAllCandidates(shift, staff, allShifts, busyGuides).filter((c) => c.eligible).length : 0),
+    [shift, staff, allShifts, busyGuides],
   );
   const best = candidates.find((c) => c.eligible);
 

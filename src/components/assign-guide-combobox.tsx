@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/command";
 import { Avatar } from "@/components/avatar";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
-import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+import { conflictLabel, useBusyGuides } from "@/lib/guide-conflicts";
 
 import type { Shift, Staff } from "@/lib/mock-data";
 
@@ -38,6 +38,8 @@ export function AssignGuideCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Database-backed: covers primary shifts AND additional-guide commitments.
+  const busy = useBusyGuides(shift);
   if (isNoGuideTour(shift.tourName) && !currentStaffId) {
     return (
       <div className={`p-3 rounded-lg border border-partner/40 bg-partner/5 ${className}`}>
@@ -53,7 +55,7 @@ export function AssignGuideCombobox({
       </div>
     );
   }
-  const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length);
+  const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length, busy);
   const byId = new Map(ranked.map((r) => [r.staff.id, r]));
   const top = ranked[0];
   const assignable = allStaff.filter((m) => m.role === "guide" || m.role === "admin");
@@ -109,7 +111,7 @@ export function AssignGuideCombobox({
                   const isTop = !!sg && !!top && top.staff.id === m.id;
                   const isRec = !!sg && sg.score > 0;
                   const isCurrent = m.id === currentStaffId;
-                  const conflict = isCurrent ? null : findGuideConflict(m.id, shift, allShifts);
+                  const conflict = isCurrent ? null : (busy.get(m.id) ?? null);
                   return (
                     <CommandItem
                       key={m.id}
