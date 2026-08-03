@@ -26,6 +26,7 @@ import { useRequireAdmin } from "@/lib/require-admin";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
 import { setShiftNoShow } from "@/lib/no-show";
+import { PartnerBadge, isPartnerTour } from "@/components/partner-tour-badge";
 
 
 
@@ -243,7 +244,10 @@ function Section({
                 <div className="flex-1 min-w-0 p-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground text-[15px] leading-tight">{s.tour_name}</h3>
+                      <h3 className="font-semibold text-foreground text-[15px] leading-tight flex items-center gap-2 flex-wrap">
+                        {s.tour_name}
+                        {isPartnerTour(s.tour_name) && <PartnerBadge />}
+                      </h3>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5 flex-wrap">
                         {point && (
                           <span className="flex items-center gap-1">
