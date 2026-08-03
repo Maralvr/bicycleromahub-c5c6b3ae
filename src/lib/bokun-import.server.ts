@@ -1059,6 +1059,9 @@ export async function backfillMissingRateTitles(limit = 40) {
   let notFound = 0;
   let rateTitles = 0;
   let meetingPoints = 0;
+  // Rows whose write-time guard no longer matched (an admin filled the field
+  // in while this batch was running) -- skipped, not overwritten.
+  let skippedRaced = 0;
   const errors: string[] = [];
   const rentalPointIdByName = await getRentalPointNameMap();
 
@@ -1135,7 +1138,7 @@ export async function backfillMissingRateTitles(limit = 40) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  return { checked, backfilled, rateTitles, meetingPoints, notFound, errors };
+  return { checked, backfilled, rateTitles, meetingPoints, notFound, skippedRaced, errors };
 }
 
 
