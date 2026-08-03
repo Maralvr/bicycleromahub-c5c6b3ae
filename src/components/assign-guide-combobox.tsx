@@ -167,17 +167,25 @@ export function AssignGuideCombobox({
                             </span>
                           )}
                         </div>
-                        {sg && (sg.reasons.length > 0 || sg.warnings.length > 0) && (
-                          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                            {sg.reasons.join(" · ")}
-                            {sg.warnings.length > 0 && (
-                              <span className="text-warning-foreground">
-                                {" "}
-                                · ⚠ {sg.warnings.join(", ")}
-                              </span>
-                            )}
+                        {conflict ? (
+                          <div className="text-[10px] text-destructive mt-0.5 truncate">
+                            {conflictLabel(conflict)}
                           </div>
+                        ) : (
+                          sg &&
+                          (sg.reasons.length > 0 || sg.warnings.length > 0) && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                              {sg.reasons.join(" · ")}
+                              {sg.warnings.length > 0 && (
+                                <span className="text-warning-foreground">
+                                  {" "}
+                                  · ⚠ {sg.warnings.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          )
                         )}
+
                       </div>
                     </CommandItem>
                   );
