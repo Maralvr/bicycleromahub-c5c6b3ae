@@ -227,17 +227,22 @@ export type StaffCandidate = {
  * ones with the human-readable reason they can't take this shift. Used by the
  * admin "Smart assignment" dialog to show full transparency.
  */
-export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Shift[]): StaffCandidate[] {
+export function rankAllCandidates(
+  shift: Shift,
+  allStaff: Staff[],
+  allShifts: Shift[],
+  busy: BusyMap = EMPTY_BUSY,
+): StaffCandidate[] {
   return allStaff
     .map<StaffCandidate>((s) => {
-      const scored = scoreStaff(s, shift, allShifts);
+      const scored = scoreStaff(s, shift, allShifts, busy);
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
       // Hard blocks: all-day off, or an overlapping commitment (DB-enforced)
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      const overlap = findGuideConflict(s.id, shift, allShifts);
+      const overlap = busy.get(s.id);
       if (overlap) reason = conflictLabel(overlap);
       else if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
