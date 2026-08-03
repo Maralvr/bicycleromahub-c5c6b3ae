@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PartnerTag, isPartnerTour } from "@/components/partner-tour-badge";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
@@ -298,6 +299,7 @@ function MyAvailabilityView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-foreground truncate">{s.tourName}</div>
+                      {isPartnerTour(s.tourName) && <PartnerTag />}
                       <div className="text-[10px] text-muted-foreground tabular-nums">{s.startTime} → {s.endTime}</div>
                     </div>
                     <StatusPill status={s.status} />
