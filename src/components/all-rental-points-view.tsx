@@ -1,0 +1,261 @@
+import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/avatar";
+import { Input } from "@/components/ui/input";
+import { CalendarDays, MapPin, Phone, Users, Clock, Users2, Search } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { getAllRentalDays, type RentalCoverageDay } from "@/lib/rental-staff.functions";
+import { useRentalShifts } from "@/lib/rental-shifts";
+
+function fmtDate(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+const PAGE_SIZE = 7;
+
+/**
+ * Cross-point view for rental staff: every rental point's coverage (who's on
+ * duty) plus the bookings scheduled there, for all points -- not just the
+ * caller's own days.
+ *
+ * Privacy note: this view intentionally shows NO customer PII (no name,
+ * phone or email) even though shifts_rental_staff_select technically allows
+ * reading it. It's a planning/coverage overview, so it sticks to tour name,
+ * time, pax counts and which rental point. Customer details stay in "My
+ * rental days", where the person actually handling the booking needs them.
+ */
+export function AllRentalPointsView() {
+  const fetchAll = useServerFn(getAllRentalDays);
+  const { shifts, loading: shiftsLoading } = useRentalShifts();
+
+  const [days, setDays] = useState<RentalCoverageDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchAll({ data: {} });
+        if (!cancelled) setDays(res.days);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAll]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // date -> pointId -> { point, staff[], bookings[] }
+  const grouped = useMemo(() => {
+    type Entry = {
+      pointId: string;
+      pointName: string;
+      address: string | null;
+      phone: string | null;
+      staff: { name: string; avatar: string; status: string }[];
+      bookings: { id: string; tourName: string; startTime: string; pax: number }[];
+    };
+    const byDate = new Map<string, Map<string, Entry>>();
+
+    const ensure = (
+      date: string,
+      pointId: string,
+      point?: { name: string; address: string | null; phone: string | null },
+    ) => {
+      if (!byDate.has(date)) byDate.set(date, new Map());
+      const pts = byDate.get(date)!;
+      if (!pts.has(pointId)) {
+        pts.set(pointId, {
+          pointId,
+          pointName: point?.name ?? "Rental point",
+          address: point?.address ?? null,
+          phone: point?.phone ?? null,
+          staff: [],
+          bookings: [],
+        });
+      }
+      const e = pts.get(pointId)!;
+      if (point?.name && !e.pointName) e.pointName = point.name;
+      return e;
+    };
+
+    for (const d of days) {
+      if (d.date < today) continue;
+      const e = ensure(d.date, d.rentalPoint.id, d.rentalPoint);
+      if (d.staff) e.staff.push({ name: d.staff.name, avatar: d.staff.avatar, status: d.status });
+    }
+
+    for (const s of shifts) {
+      if (!s.rentalPointId || s.date < today) continue;
+      // Only surface bookings at points that appear in the coverage data, so
+      // point names stay resolvable.
+      const pts = byDate.get(s.date);
+      if (!pts?.has(s.rentalPointId)) continue;
+      const p = s.participants;
+      pts.get(s.rentalPointId)!.bookings.push({
+        id: s.id,
+        tourName: s.tourName,
+        startTime: s.startTime,
+        pax: (p?.adults ?? 0) + (p?.teens ?? 0) + (p?.infants ?? 0),
+      });
+    }
+
+    const q = query.trim().toLowerCase();
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, pts]) => ({
+        date,
+        points: Array.from(pts.values())
+          .filter((p) => !q || p.pointName.toLowerCase().includes(q))
+          .sort((a, b) => a.pointName.localeCompare(b.pointName))
+          .map((p) => ({
+            ...p,
+            bookings: p.bookings.sort((x, y) => x.startTime.localeCompare(y.startTime)),
+          })),
+      }))
+      .filter((g) => g.points.length > 0);
+  }, [days, shifts, today, query]);
+
+  if (loading || shiftsLoading) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setLimit(PAGE_SIZE);
+          }}
+          placeholder="Filter by rental point…"
+          className="pl-8 h-9"
+        />
+      </div>
+
+      {grouped.length === 0 ? (
+        <Card className="p-6 border-dashed text-sm text-muted-foreground text-center">
+          No upcoming rental-point days.
+        </Card>
+      ) : (
+        <>
+          {grouped.slice(0, limit).map((g) => (
+            <section key={g.date}>
+              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                {fmtDate(g.date)}
+              </h3>
+              <div className="grid gap-3">
+                {g.points.map((p) => (
+                  <Card key={p.pointId} className="p-3 border-border/60">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-foreground">{p.pointName}</div>
+                        {p.address && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                            <MapPin className="h-3 w-3" /> {p.address}
+                          </div>
+                        )}
+                        {p.phone && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                            <Phone className="h-3 w-3" /> {p.phone}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {p.bookings.length} booking{p.bookings.length === 1 ? "" : "s"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {p.bookings.reduce((s, b) => s + b.pax, 0)} pax
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      <Users2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      {p.staff.length === 0 ? (
+                        <span className="text-xs text-muted-foreground italic">No staff assigned</span>
+                      ) : (
+                        p.staff.map((s, i) => (
+                          <span
+                            key={`${s.name}-${i}`}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+                              s.status === "accepted"
+                                ? "border-success/40 bg-success/10"
+                                : s.status === "rejected"
+                                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                                  : "border-warning/40 bg-warning/10",
+                            )}
+                          >
+                            <Avatar
+                              name={s.name}
+                              initials={s.avatar}
+                              size="sm"
+                              className="!h-4 !w-4 text-[8px]"
+                            />
+                            {s.name}
+                            {s.status !== "accepted" && (
+                              <span className="text-[9px] uppercase tracking-wide font-bold">
+                                {s.status}
+                              </span>
+                            )}
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {p.bookings.length > 0 && (
+                      <div className="mt-2 border-t border-border/40 pt-2 space-y-1">
+                        {p.bookings.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+                          >
+                            <span className="flex items-center gap-1 min-w-0">
+                              <Clock className="h-3 w-3 shrink-0" />
+                              <span className="font-medium text-foreground">{b.startTime}</span>
+                              <span className="truncate">{b.tourName}</span>
+                            </span>
+                            <span className="shrink-0">{b.pax} pax</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </section>
+          ))}
+          {grouped.length > limit && (
+            <div className="flex justify-center">
+              <Button variant="outline" size="sm" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
+                Load more ({grouped.length - limit} more days)
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
