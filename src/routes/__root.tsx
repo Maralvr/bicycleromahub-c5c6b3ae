@@ -118,7 +118,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
+  const { loading, isAuthenticated, signedOut, rolesLoaded, isRentalStaff, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some((p) => location.pathname.startsWith(p));
@@ -126,8 +126,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (!isAuthenticated && !isPublic) {
-      void navigate({ to: "/auth", search: { redirect: location.pathname } });
+    // `signedOut` (not just a falsy session) is required here: a transient null
+    // session during Supabase's token refresh on tab refocus used to bounce
+    // through /auth and back, wiping the current route's query string (the
+    // calendar's ?date=/?view=).
+    if (!isAuthenticated && signedOut && !isPublic) {
+      // Capture path AND query so any bounce restores exactly where we were.
+      void navigate({ to: "/auth", search: { redirect: location.pathname + location.search } });
       return;
     }
     if (
@@ -140,9 +145,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     ) {
       void navigate({ to: "/shifts", replace: true });
     }
-  }, [loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin, isPublic, isRentalAllowed, location.pathname, navigate]);
+  }, [loading, isAuthenticated, signedOut, rolesLoaded, isRentalStaff, isAdmin, isPublic, isRentalAllowed, location.pathname, location.search, navigate]);
 
-  if (loading || (isAuthenticated && !rolesLoaded && !isPublic)) {
+  if (loading || (!isAuthenticated && !signedOut && !isPublic) || (isAuthenticated && !rolesLoaded && !isPublic)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
         <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin" />
@@ -154,6 +159,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (isAuthenticated && rolesLoaded && isRentalStaff && !isAdmin && !isPublic && !isRentalAllowed) return null;
   return <>{children}</>;
 }
+
 
 function RootComponent() {
   const location = useLocation();
