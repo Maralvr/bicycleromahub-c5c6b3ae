@@ -8,8 +8,10 @@ import { useShiftsStore } from "@/lib/shifts-store";
 import { useNotesStore } from "@/lib/notes-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { Navigate } from "@tanstack/react-router";
+import { parseCalendarSearch, useCalendarUrlState } from "@/lib/calendar-search";
 
 export const Route = createFileRoute("/calendar")({
+  validateSearch: parseCalendarSearch,
   head: () => ({
     meta: [
       { title: "Calendar — Bicycle Roma" },
@@ -25,6 +27,7 @@ function CalendarPage() {
   const { staff } = useStaffStore();
   const { shifts, dateRange, setDateRange, assignShift, updateShift, loadShiftDetails } = useShiftsStore();
   const { notifyGuide } = useNotesStore();
+  const calendarUrlState = useCalendarUrlState(Route);
 
   // Guides have their own /shifts view; the all-tours calendar is admin-only.
   if (role !== "admin") {
@@ -75,7 +78,7 @@ function CalendarPage() {
         title={t.nav.calendar}
         subtitle="All scheduled tours across day, week and month."
       />
-      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateDeparture={handleUpdateDeparture} onVisibleRangeChange={widenDateRange} onLoadShiftDetails={(ids) => void loadShiftDetails(ids)} />
+      <ShiftsCalendar shifts={shifts} staff={staff} onAssign={handleAssign} onUpdateDeparture={handleUpdateDeparture} onVisibleRangeChange={widenDateRange} onLoadShiftDetails={(ids) => void loadShiftDetails(ids)} {...calendarUrlState} />
     </AppShell>
   );
 }
