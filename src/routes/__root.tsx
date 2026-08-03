@@ -169,7 +169,7 @@ function RootComponent() {
   );
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <I18nProvider>
         {isResetPassword ? (
           <>
@@ -187,7 +187,7 @@ function RootComponent() {
           </AuthProvider>
         )}
       </I18nProvider>
-    </>
+    </QueryClientProvider>
   );
 }
 
