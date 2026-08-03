@@ -643,7 +643,7 @@ export function ShiftsCalendar({
         staff={staff}
         allShifts={shifts}
         showRates={showRates}
-        onClose={() => setSelectedShift(null)}
+        onClose={closeShift}
         onAssign={onAssign}
         onUnassign={onUnassign}
         onDelete={onDelete}
