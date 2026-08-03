@@ -9,7 +9,7 @@ import { Wand2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import type { Shift } from "@/lib/mock-data";
 import type { Staff } from "@/lib/mock-data";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
-import { isPartnerTour } from "@/lib/partner-tours";
+import { isNoGuideTour } from "@/lib/partner-tours";
 
 type Row = {
   shift: Shift;
@@ -43,7 +43,7 @@ export function BulkDispatchDialog({
     // Mutable working copy so each row's suggestion accounts for prior picks (load balancing).
     let working = [...allShifts];
     const seedRows: Row[] = unassignedShifts
-      .filter((sh) => !isPartnerTour(sh.tourName))
+      .filter((sh) => !isNoGuideTour(sh.tourName))
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .map((sh) => {
         const top = suggestStaffForShift(sh, staff, working, 1)[0];

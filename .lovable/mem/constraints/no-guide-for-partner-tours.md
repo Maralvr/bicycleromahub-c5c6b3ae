@@ -1,11 +1,13 @@
 ---
-name: Partner tours never get a guide
-description: Livitaly / Le Meridien Visconti / Roma 'n Bike partner tours are visible but not assignable to guides
+name: Livitaly needs no guide
+description: Only Livitaly tours skip guide assignment; Le Meridien and Roma 'n Bike are partner-tagged but still guide-assignable
 type: constraint
 ---
-Partner-operated bookings (isPartnerTour in src/lib/partner-tours.ts — Livitaly / Appia Antica, Le Meridien Visconti, Roma 'n Bike Card) must never be assigned a Bicycle Roma guide. **Why:** the partner services them.
+Only Livitaly / "Appia Antica by Livitaly" bookings must never be assigned a Bicycle Roma guide (`isNoGuideTour` in src/lib/partner-tours.ts). **Why:** Livitaly provides its own guide.
+
+Le Meridien Visconti and Roma 'n Bike Card are partner-tagged (Partner badge) but DO still get guides assigned — do not block assignment for them.
 
 How to apply:
-- Assign/reassign picker (assign-guide-combobox) shows a "Partner-operated — no guide needed" notice instead of the combobox when unassigned.
-- Excluded from auto-assign (shifts.tsx autoAssignAll) and bulk dispatch suggestions.
-- They stay fully visible and enriched everywhere, tagged with the Partner badge.
+- assign-guide-combobox shows "Partner-operated — no guide needed" only for isNoGuideTour shifts when unassigned.
+- Auto-assign (shifts.tsx) and bulk dispatch skip only isNoGuideTour shifts.
+- Partner badge/visibility (isPartnerTour) still covers all three products.

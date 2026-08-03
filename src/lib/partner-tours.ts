@@ -38,3 +38,16 @@ export function isPartnerBokunProductId(id: string | number | null | undefined):
   if (id == null) return false;
   return PARTNER_BOKUN_PRODUCT_IDS.has(String(id));
 }
+
+/**
+ * Partner products that Bicycle Roma does NOT staff with a guide at all
+ * (currently only Livitaly / Appia Antica by Livitaly). Le Meridien Visconti
+ * and Roma 'n Bike Card are partner-tagged but still guide-assignable.
+ */
+export const NO_GUIDE_TOUR_NAME_PATTERNS: ReadonlyArray<string> = ["livitaly", "livital"];
+
+export function isNoGuideTour(tourName: string | null | undefined): boolean {
+  if (!tourName) return false;
+  const t = tourName.toLowerCase();
+  return NO_GUIDE_TOUR_NAME_PATTERNS.some((p) => t.includes(p));
+}
