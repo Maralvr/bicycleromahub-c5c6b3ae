@@ -1084,17 +1084,51 @@ export async function backfillMissingRateTitles(limit = 40) {
         notFound++;
         continue;
       }
-      const { error: updErr } = await supabaseAdmin
-        .from("shifts")
-        .update(patch)
-        .eq("id", row.id);
-      if (updErr) {
-        errors.push(`${row.booking_id}: ${updErr.message}`);
-        continue;
+
+      // Write each field with its own guard IN the UPDATE's WHERE clause, so
+      // the fill-only condition is re-checked atomically at write time rather
+      // than trusted from the SELECT above. This loop sleeps 250ms per Bokun
+      // call, so a batch can straddle several minutes; without these guards an
+      // admin correcting rate_title / meeting_point mid-run would get silently
+      // overwritten. The two fields need different conditions (NULL vs
+      // NULL-or-"TBD"), which one statement can't express, hence two updates.
+      // `.select("id")` tells us whether the guard actually matched.
+      let wroteRateTitle = false;
+      let wroteMeetingPoint = false;
+
+      if (patch.rate_title) {
+        const { data: hit, error: updErr } = await supabaseAdmin
+          .from("shifts")
+          .update({ rate_title: patch.rate_title })
+          .eq("id", row.id)
+          .is("rate_title", null)
+          .select("id");
+        if (updErr) {
+          errors.push(`${row.booking_id} (rate_title): ${updErr.message}`);
+        } else {
+          wroteRateTitle = (hit?.length ?? 0) > 0;
+        }
       }
-      backfilled++;
-      if (patch.rate_title) rateTitles++;
-      if (patch.meeting_point) meetingPoints++;
+
+      if (patch.meeting_point) {
+        const { data: hit, error: updErr } = await supabaseAdmin
+          .from("shifts")
+          .update({ meeting_point: patch.meeting_point })
+          .eq("id", row.id)
+          .or("meeting_point.is.null,meeting_point.eq.TBD")
+          .select("id");
+        if (updErr) {
+          errors.push(`${row.booking_id} (meeting_point): ${updErr.message}`);
+        } else {
+          wroteMeetingPoint = (hit?.length ?? 0) > 0;
+        }
+      }
+
+      if (wroteRateTitle) rateTitles++;
+      if (wroteMeetingPoint) meetingPoints++;
+      if (wroteRateTitle || wroteMeetingPoint) backfilled++;
+      else skippedRaced++;
+
     } catch (e) {
       errors.push(`${row.booking_id}: ${(e as Error).message}`);
     }
