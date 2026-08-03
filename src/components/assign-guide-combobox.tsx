@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/command";
 import { Avatar } from "@/components/avatar";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
-import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+import { conflictLabel, useBusyGuides } from "@/lib/guide-conflicts";
 
 import type { Shift, Staff } from "@/lib/mock-data";
 
