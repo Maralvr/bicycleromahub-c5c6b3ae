@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Shift } from "@/lib/mock-data";
 import { useStaffStore } from "@/lib/staff-store";
 import { rankAllCandidates, type StaffCandidate } from "@/lib/staff-matcher";
+import { useBusyGuides } from "@/lib/guide-conflicts";
 
 type SortMode = "score" | "name" | "least_busy";
 
