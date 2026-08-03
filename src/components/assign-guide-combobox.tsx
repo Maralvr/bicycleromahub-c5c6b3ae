@@ -55,7 +55,7 @@ export function AssignGuideCombobox({
       </div>
     );
   }
-  const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length);
+  const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length, busy);
   const byId = new Map(ranked.map((r) => [r.staff.id, r]));
   const top = ranked[0];
   const assignable = allStaff.filter((m) => m.role === "guide" || m.role === "admin");
