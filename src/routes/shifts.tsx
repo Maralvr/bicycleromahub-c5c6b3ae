@@ -474,7 +474,10 @@ function ShiftsPage() {
     let assignedCount = 0;
     const skipped: string[] = [];
     for (const sh of queue) {
-      const top = suggestStaffForShift(sh, staff, working, 1)[0];
+      // Re-check against the database for every shift so additional-guide
+      // commitments count too (same helper the write triggers use).
+      const busy = await fetchBusyGuides(sh);
+      const top = suggestStaffForShift(sh, staff, working, 1, busy)[0];
       if (top) {
         working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
         await assignShift(sh.id, top.staff.id);
