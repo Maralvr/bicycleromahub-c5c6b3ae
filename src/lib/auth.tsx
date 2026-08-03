@@ -129,24 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Refresh roles/profile when the tab regains focus so DB-side role changes
     // (e.g. an admin promoted the user) take effect without a hard reload.
     const onFocus = () => {
-      const before = authDebugRef.current;
-      console.log("[calendar-debug][auth:onFocus:entry]", new Date().toISOString(), {
-        event: document.visibilityState,
-        hasSession: before.hasSession,
-        signedOut: before.signedOut,
-        href: window.location.href,
-      });
       void supabase.auth.getSession().then(({ data }) => {
-        const after = authDebugRef.current;
-        console.log("[calendar-debug][auth:onFocus:resolved]", new Date().toISOString(), {
-          getSessionHasSession: !!data.session,
-          reactHasSession: after.hasSession,
-          signedOut: after.signedOut,
-          href: window.location.href,
-        });
         if (data.session?.user) void loadUserData(data.session.user.id);
       });
     };
+
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
 
