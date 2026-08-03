@@ -111,7 +111,7 @@ export function AssignGuideCombobox({
                   const isTop = !!sg && !!top && top.staff.id === m.id;
                   const isRec = !!sg && sg.score > 0;
                   const isCurrent = m.id === currentStaffId;
-                  const conflict = isCurrent ? null : findGuideConflict(m.id, shift, allShifts);
+                  const conflict = isCurrent ? null : (busy.get(m.id) ?? null);
                   return (
                     <CommandItem
                       key={m.id}
