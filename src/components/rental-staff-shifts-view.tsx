@@ -102,7 +102,7 @@ export function RentalStaffShiftsView({
   // Which sub-tab (List/Calendar) is active -- needs to be controlled so a
   // deep link or a calendar-day click can force it to "list" to reveal the
   // day card being jumped to.
-  const [innerTab, setInnerTab] = useState<"list" | "calendar">("list");
+  const [innerTab, setInnerTab] = useState<"list" | "calendar" | "all">("list");
   // Briefly ring-highlight whichever day card was just jumped to, so it's
   // obvious which one the click/link was about.
   const [highlightId, setHighlightId] = useState<string | null>(null);
