@@ -1,5 +1,5 @@
 import type { Shift, Staff } from "./mock-data";
-import { conflictLabel, findGuideConflict } from "./guide-conflicts";
+import { conflictLabel, EMPTY_BUSY, type BusyMap } from "./guide-conflicts";
 
 
 export type StaffSuggestion = {
