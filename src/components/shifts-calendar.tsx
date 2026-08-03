@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PartnerBadge, PartnerTag, isPartnerTour } from "@/components/partner-tour-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -731,6 +732,7 @@ function ShiftChip({
         <div className="text-[11px] text-foreground font-semibold leading-tight break-words">
           {s.tourName}
         </div>
+        {isPartnerTour(s.tourName) && <PartnerTag className="mt-0.5 mr-1" />}
         {s.rateTitle && (
           <div className="mt-0.5 inline-flex items-center rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
             {s.rateTitle}
@@ -833,6 +835,7 @@ function DayView({
                   </span>
                 )}
               </div>
+              {isPartnerTour(s.tourName) && <PartnerBadge />}
               <Badge
                 variant="outline"
                 className={`shrink-0 capitalize text-[10px] gap-1 ${meta.text} border-current/30`}
@@ -1190,7 +1193,7 @@ function MonthView({
                         e.stopPropagation();
                         onOpenShift(s);
                       }}
-                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${meta.bar.replace("bg-", "border-")} bg-card text-foreground font-medium hover:bg-muted transition`}
+                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${isPartnerTour(s.tourName) ? "border-partner bg-partner/10" : `${meta.bar.replace("bg-", "border-")} bg-card`} text-foreground font-medium hover:bg-muted transition`}
                     >
                       <span className="tabular-nums">{s.startTime}</span> {s.tourName}
                     </button>
@@ -1297,12 +1300,15 @@ function DayDetailsDialog({
                           </span>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                      {isPartnerTour(s.tourName) && <PartnerBadge />}
                       <Badge
                         variant="outline"
                         className={`capitalize text-[10px] shrink-0 gap-1 ${meta.text} border-current/30`}
                       >
                         <Icon className="h-2.5 w-2.5" /> {meta.label}
                       </Badge>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-foreground/85">
                       <div className="flex items-center gap-1.5">
@@ -1480,6 +1486,7 @@ function ShiftDetailsDialog({
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             <span>{s.tourName}</span>
+            {isPartnerTour(s.tourName) && <PartnerBadge />}
             {s.rateTitle && (
               <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
                 {s.rateTitle}
