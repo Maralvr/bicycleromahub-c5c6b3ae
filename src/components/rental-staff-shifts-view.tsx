@@ -325,6 +325,13 @@ export function RentalStaffShiftsView({
             <TabsContent value="calendar" className="mt-4">
               <RentalCalendar days={days} onSelectDay={openDay} />
             </TabsContent>
+            <TabsContent value="all" className="mt-4">
+              {/* Cross-point schedule + roster: every rental point, not just
+                  the caller's own days. Mounted lazily (only when the tab is
+                  active) so the default "My rental days" view doesn't pay for
+                  the business-wide fetch. */}
+              {innerTab === "all" && <AllRentalPointsView />}
+            </TabsContent>
           </Tabs>
         </>
       )}
