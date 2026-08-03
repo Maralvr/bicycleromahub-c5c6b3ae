@@ -44,6 +44,7 @@ export type Shift = {
   participantList?: { name: string; category: string }[];
   rate?: number;
   rateTitle?: string | null;
+  bokunProductId?: string | null;
   seller?: string | null;
   bookingChannel?: string | null;
   notes?: string;
