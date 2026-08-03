@@ -237,13 +237,15 @@ interface BokunBookingFull {
     parentBookingId?: number | string;
     confirmationCode?: string;
     productConfirmationCode?: string;
-    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }>; defaultRateId?: number | string; rates?: Array<{ id?: number | string; title?: string; rateCode?: string }> };
+    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ id?: number | string; title?: string; address?: string | BokunAddress }>; defaultRateId?: number | string; rates?: Array<{ id?: number | string; title?: string; rateCode?: string }> };
     product?: { title?: string; tags?: string[]; id?: number | string };
     title?: string;
     startDateTime?: BokunDateValue;
     endDateTime?: BokunDateValue;
     pickupPlace?: { title?: string; address?: string | BokunAddress };
     startPoint?: { title?: string; address?: string | BokunAddress };
+    startPointId?: number | string;
+
     pickup?: false | { title?: string; address?: string | BokunAddress };
     rateTitle?: string;
     rateId?: number | string;
@@ -276,7 +278,32 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
   const durationMinutes = raw.durationMinutes ?? activity?.activity?.durationMinutes ?? (activity?.activity?.durationHours ? activity.activity.durationHours * 60 : undefined) ?? a0?.activity?.durationMinutes;
   const pickup = activity?.pickup && typeof activity.pickup === "object" ? activity.pickup : null;
-  const meeting = placeText(raw.pickupPlace) ?? placeText(activity?.pickupPlace) ?? placeText(pickup) ?? placeText(raw.startPoint) ?? placeText(activity?.startPoint) ?? placeText(activity?.activity?.startPoints?.[0]) ?? "TBD";
+  // Meeting point. Booking detail payloads (verified on parents 99421117 /
+  // 99186399 / 98600858 / 99224013) carry it as
+  // activityBookings[].activity.startPoints[] -- an array, so prefer the entry
+  // the booking actually selected via startPointId instead of blindly taking
+  // [0]. Summary/search objects have none of this, which is why webhook- and
+  // search-created rows sat at "TBD".
+  const selectedStartPoint = (() => {
+    const points = activity?.activity?.startPoints ?? a0?.activity?.startPoints ?? [];
+    if (points.length === 0) return null;
+    const wantedId = activity?.startPointId ?? a0?.startPointId;
+    if (wantedId != null) {
+      const match = points.find((p) => String(p?.id ?? "") === String(wantedId));
+      if (match) return match;
+    }
+    return points[0] ?? null;
+  })();
+  const meeting =
+    placeText(raw.pickupPlace) ??
+    placeText(activity?.pickupPlace) ??
+    placeText(pickup) ??
+    placeText(raw.startPoint) ??
+    placeText(activity?.startPoint) ??
+    placeText(a0?.startPoint) ??
+    placeText(selectedStartPoint) ??
+    "TBD";
+
   const pcbs = raw.pricingCategoryBookings ?? activity?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
   const extras = raw.extraBookings ?? activity?.extraBookings ?? activity?.extras ?? raw.fields?.bookedExtras ?? [];
 
@@ -498,7 +525,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         teens: number;
         infants: number;
         rate_title: string | null;
-
+        meeting_point: string | null;
       };
 
       // Look up EVERY booking_id on this page up front (one query), not just
@@ -511,7 +538,8 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
       if (pageBookingIds.length > 0) {
         const { data: existingRowsPage } = await supabaseAdmin
           .from("shifts")
-          .select("booking_id, date, start_time, adults, teens, infants, rate_title")
+          .select("booking_id, date, start_time, adults, teens, infants, rate_title, meeting_point")
+
           .eq("source", "bokun")
           .in("booking_id", pageBookingIds);
         for (const r of existingRowsPage ?? []) {
@@ -690,7 +718,16 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             ...(!existingRow?.rate_title && r!.rate_title
               ? { rate_title: r!.rate_title }
               : {}),
+            // Same deal for meeting_point: "TBD" is our placeholder for "we
+            // never got a start point", so treat it as missing and fill it,
+            // but leave any real value (imported or admin-edited) alone.
+            ...((!existingRow?.meeting_point || existingRow.meeting_point === "TBD") &&
+            r!.meeting_point &&
+            r!.meeting_point !== "TBD"
+              ? { meeting_point: r!.meeting_point }
+              : {}),
           };
+
 
           const { error: updateErr } = await supabaseAdmin
             .from("shifts")
@@ -992,31 +1029,36 @@ export async function backfillMissingExternalBookingRefs(limit = 40) {
 }
 
 /**
- * One-off/recurring recovery pass for `rate_title` (Bokun's booked pricing
- * option -- "Public tour in English", "Regular Bike 2-hour" -- NOT the price).
+ * One-off/recurring recovery pass for the two detail-only fields:
+ *  - `rate_title` -- Bokun's booked pricing option ("Public tour in English",
+ *    "Regular Bike 2-hour"), NOT the price.
+ *  - `meeting_point` -- the booked start point ("Bicycl-e Lungotevere Bike
+ *    Point — Lungotevere delle Armi 44"), stored as "TBD" when unknown.
  *
- * Rows created by the Bokun webhook never had the rate mapped at all, and a
- * later resync only patches customer-controlled fields, so those rows stay
- * NULL forever even though Bokun has the value. This re-fetches the booking
- * detail for rows still missing it and fills it in. Fill-only: never
- * overwrites a value an admin set manually.
+ * Rows created by the Bokun webhook / summary search never had either mapped,
+ * and a later resync only patches customer-controlled fields, so those rows
+ * stay empty forever even though Bokun has the values. This re-fetches the
+ * booking detail and fills them in. Fill-only: never overwrites a real value
+ * an admin set manually.
  */
 export async function backfillMissingRateTitles(limit = 40) {
   const todayIso = new Date().toISOString().slice(0, 10);
   const { data: rows, error } = await supabaseAdmin
     .from("shifts")
-    .select("id, booking_id, external_booking_ref, date")
+    .select("id, booking_id, external_booking_ref, date, rate_title, meeting_point")
     .eq("source", "bokun")
-    .is("rate_title", null)
+    .or("rate_title.is.null,meeting_point.eq.TBD")
     .not("external_booking_ref", "is", null)
     .gte("date", todayIso)
     .order("date", { ascending: true })
     .limit(limit);
-  if (error) throw new Error(`Could not load rows missing rate_title: ${error.message}`);
+  if (error) throw new Error(`Could not load rows missing booking detail: ${error.message}`);
 
   let checked = 0;
   let backfilled = 0;
   let notFound = 0;
+  let rateTitles = 0;
+  let meetingPoints = 0;
   const errors: string[] = [];
   const rentalPointIdByName = await getRentalPointNameMap();
 
@@ -1029,29 +1071,39 @@ export async function backfillMissingRateTitles(limit = 40) {
         `/booking.json/booking/${row.external_booking_ref}`,
       )) as BokunBookingFull;
       const mapped = mapToShiftRow(detail, rentalPointIdByName);
-      const rateTitle = mapped?.rate_title ?? null;
-      if (!rateTitle) {
+      const patch: { rate_title?: string; meeting_point?: string } = {};
+      if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
+      if (
+        (!row.meeting_point || row.meeting_point === "TBD") &&
+        mapped?.meeting_point &&
+        mapped.meeting_point !== "TBD"
+      ) {
+        patch.meeting_point = mapped.meeting_point;
+      }
+      if (Object.keys(patch).length === 0) {
         notFound++;
         continue;
       }
       const { error: updErr } = await supabaseAdmin
         .from("shifts")
-        .update({ rate_title: rateTitle })
-        .eq("id", row.id)
-        .is("rate_title", null);
+        .update(patch)
+        .eq("id", row.id);
       if (updErr) {
         errors.push(`${row.booking_id}: ${updErr.message}`);
         continue;
       }
       backfilled++;
+      if (patch.rate_title) rateTitles++;
+      if (patch.meeting_point) meetingPoints++;
     } catch (e) {
       errors.push(`${row.booking_id}: ${(e as Error).message}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  return { checked, backfilled, notFound, errors };
+  return { checked, backfilled, rateTitles, meetingPoints, notFound, errors };
 }
+
 
 export async function assertAdmin(accessToken: string) {
 

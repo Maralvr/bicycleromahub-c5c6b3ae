@@ -53,8 +53,8 @@ interface FullBookingPayload extends BokunEventPayload {
   startDateTime: string;
   endDateTime?: string;
   durationMinutes?: number;
-  pickupPlace?: { title?: string; address?: string };
-  startPoint?: { title?: string; address?: string };
+  pickupPlace?: BokunPlace;
+  startPoint?: BokunPlace;
   customer: {
     firstName?: string;
     lastName?: string;
@@ -72,6 +72,56 @@ interface FullBookingPayload extends BokunEventPayload {
   // "Regular Bike (City or Mtb) 2-hour" -- distinct from `totalPrice`.
   rateTitle?: string;
   status?: "CONFIRMED" | "CANCELLED" | "PENDING";
+}
+
+interface BokunPlace {
+  title?: string;
+  address?: string | {
+    addressLine1?: string;
+    addressLine2?: string | null;
+    city?: string;
+    postalCode?: string;
+  };
+}
+
+function addressText(address: BokunPlace["address"]): string | undefined {
+  if (!address) return undefined;
+  if (typeof address === "string") return address.trim() || undefined;
+  return (
+    [address.addressLine1, address.addressLine2, address.city]
+      .filter((part) => Boolean(part && String(part).trim()))
+      .join(", ") || undefined
+  );
+}
+
+function placeText(place?: BokunPlace | null): string | undefined {
+  if (!place) return undefined;
+  return [place.title, addressText(place.address)].filter(Boolean).join(" \u2014 ") || undefined;
+}
+
+/**
+ * The booked meeting point lives on the activity booking's product as
+ * `activity.startPoints[]` (verified on parent bookings 99421117 / 99186399 /
+ * 98600858 / 99224013), selected by the booking's `startPointId`. Top-level
+ * `pickupPlace` / `startPoint` are usually absent, which is why webhook rows
+ * used to land on "TBD". Keep in sync with mapToShiftRow in
+ * src/lib/bokun-import.server.ts.
+ */
+// deno-lint-ignore no-explicit-any
+function extractStartPoint(raw: any): BokunPlace | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const direct = raw.startPoint ?? a0?.startPoint;
+  if (direct) return direct as BokunPlace;
+  const points = raw.activity?.startPoints ?? a0?.activity?.startPoints ?? raw.product?.startPoints ?? [];
+  if (points.length === 0) return undefined;
+  const wantedId = raw.startPointId ?? a0?.startPointId;
+  if (wantedId != null) {
+    // deno-lint-ignore no-explicit-any
+    const match = points.find((sp: any) => String(sp?.id ?? "") === String(wantedId));
+    if (match) return match as BokunPlace;
+  }
+  return points[0] as BokunPlace;
 }
 
 /**
@@ -149,7 +199,7 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
     endDateTime: raw.endDateTime ? toIsoDateTime(raw.endDateTime) : undefined,
     durationMinutes: raw.durationMinutes ?? raw.product?.durationMinutes,
     pickupPlace: raw.pickupPlace,
-    startPoint: raw.startPoint ?? raw.product?.startPoints?.[0],
+    startPoint: extractStartPoint(raw),
     customer: {
       firstName: customer.firstName ?? fields.firstName,
       lastName: customer.lastName ?? fields.lastName,
@@ -251,7 +301,7 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
     endDateTime: raw.endDateTime ?? raw.activityBookings?.[0]?.endDateTime,
     durationMinutes: raw.durationMinutes ?? raw.activityBookings?.[0]?.activity?.durationMinutes,
     pickupPlace: raw.pickupPlace ?? raw.activityBookings?.[0]?.pickupPlace,
-    startPoint: raw.startPoint ?? raw.activityBookings?.[0]?.startPoint,
+    startPoint: extractStartPoint(raw),
     customer: raw.customer ?? {},
     pricingCategoryBookings: raw.pricingCategoryBookings ?? raw.activityBookings?.[0]?.pricingCategoryBookings,
     extraBookings: raw.extraBookings ?? raw.activityBookings?.[0]?.extraBookings,
@@ -273,7 +323,7 @@ function mapToShiftRow(p: FullBookingPayload) {
   for (const ex of p.extraBookings ?? []) {
     if (ex.extra.title.toLowerCase().includes("trailer")) participants.trailers += ex.quantity;
   }
-  const meeting = p.pickupPlace?.title || p.pickupPlace?.address || p.startPoint?.title || p.startPoint?.address || "TBD";
+  const meeting = placeText(p.pickupPlace) ?? placeText(p.startPoint) ?? "TBD";
   const customerName = p.customer.fullName || [p.customer.firstName, p.customer.lastName].filter(Boolean).join(" ") || "Unknown";
   return {
     source: "bokun" as const,
@@ -372,7 +422,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existing } = await supabase
     .from("shifts")
-    .select("id, adults, teens, infants, trailers, external_booking_ref, rate_title")
+    .select("id, adults, teens, infants, trailers, external_booking_ref, rate_title, meeting_point")
     .eq("source", "bokun")
     .in("booking_id", keys)
     .maybeSingle();
@@ -429,6 +479,17 @@ Deno.serve(async (req: Request) => {
     // payload happens not to carry the rate).
     if (updates.rate_title == null || existing.rate_title) {
       delete updates.rate_title;
+    }
+
+    // meeting_point is fill-only too. "TBD" is the placeholder for "no start
+    // point in the payload", so never write it over a stored value, and never
+    // overwrite a real meeting point an admin corrected by hand.
+    if (
+      updates.meeting_point == null ||
+      updates.meeting_point === "TBD" ||
+      (existing.meeting_point && existing.meeting_point !== "TBD")
+    ) {
+      delete updates.meeting_point;
     }
 
 
