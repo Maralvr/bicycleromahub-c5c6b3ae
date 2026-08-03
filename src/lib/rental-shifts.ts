@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Shift } from "./mock-data";
-import { isExcludedTourName } from "./excluded-bokun-products";
 
 type Row = {
   id: string;
@@ -163,7 +162,7 @@ export function useRentalShifts() {
   }, [fetchAll]);
 
   const shifts = useMemo<RentalShift[]>(
-    () => rows.filter((r) => !isExcludedTourName(r.tour_name)).map(rowToShift),
+    () => rows.map(rowToShift),
     [rows],
   );
 
