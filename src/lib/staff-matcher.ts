@@ -204,9 +204,10 @@ export function suggestStaffForShift(
   allStaff: Staff[],
   allShifts: Shift[],
   limit = 3,
+  busy: BusyMap = EMPTY_BUSY,
 ): StaffSuggestion[] {
   return allStaff
-    .map((s) => scoreStaff(s, shift, allShifts))
+    .map((s) => scoreStaff(s, shift, allShifts, busy))
     .filter((s): s is StaffSuggestion => s !== null)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
