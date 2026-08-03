@@ -169,8 +169,17 @@ function ShiftsPage() {
     }
   };
   const handleCalendarShiftClick = (s: CalendarShift) => {
-    setCardDialogShifts(s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s]);
+    const rows = s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s];
+    setCardDialogShifts(rows);
+    // Mirror the open dialog into `?shift=` so it survives any remount
+    // (tab refocus, Radix panel unmount, browser back) -- same reasoning as
+    // `?date=`/`?view=`.
+    navigate({
+      search: (prev: typeof search) => ({ ...prev, shift: rows[0].id }),
+      replace: true,
+    });
   };
+
   const handleUpdateDeparture = async (id: string, patch: { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null }) => {
     const { rate, ...rest } = patch;
     await updateShift(id, { ...rest, ...(rate !== undefined ? { rate: rate ?? undefined } : {}) });
