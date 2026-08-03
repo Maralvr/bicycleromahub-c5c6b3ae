@@ -132,7 +132,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // calendar's ?date=/?view=).
     if (!isAuthenticated && signedOut && !isPublic) {
       // Capture path AND query so any bounce restores exactly where we were.
-      void navigate({ to: "/auth", search: { redirect: location.pathname + location.search } });
+      void navigate({ to: "/auth", search: { redirect: location.pathname + location.searchStr } });
       return;
     }
     if (
@@ -145,7 +145,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     ) {
       void navigate({ to: "/shifts", replace: true });
     }
-  }, [loading, isAuthenticated, signedOut, rolesLoaded, isRentalStaff, isAdmin, isPublic, isRentalAllowed, location.pathname, location.search, navigate]);
+  }, [loading, isAuthenticated, signedOut, rolesLoaded, isRentalStaff, isAdmin, isPublic, isRentalAllowed, location.pathname, location.searchStr, navigate]);
 
   if (loading || (!isAuthenticated && !signedOut && !isPublic) || (isAuthenticated && !rolesLoaded && !isPublic)) {
     return (
