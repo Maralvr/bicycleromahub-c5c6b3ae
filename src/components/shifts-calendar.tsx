@@ -284,6 +284,11 @@ export function ShiftsCalendar({
   view?: View;
   onDateChange?: (iso: string) => void;
   onViewChange?: (view: View) => void;
+  // Optional controlled "open booking dialog" (see `?shift=`), same reasoning
+  // as date/view above. When omitted, internal state is used.
+  shiftId?: string;
+  onShiftIdChange?: (id: string | null) => void;
+
 }) {
 
   const [isNarrow, setIsNarrow] = useState(() =>
