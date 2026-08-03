@@ -343,13 +343,15 @@ export function ShiftsCalendar({
   // a remount (tab refocus, panel unmount) even though local state is gone.
   const liveSelectedShift = useMemo<CalendarShift | null>(() => {
     const byId = new Map(shifts.map((s) => [s.id, s]));
-    const base = selectedShift ?? (shiftId ? byId.get(shiftId) ?? null : null);
+    const base: CalendarShift | null =
+      selectedShift ?? (shiftId ? (byId.get(shiftId) as CalendarShift | undefined) ?? null : null);
     if (!base) return null;
     const fresh = byId.get(base.id);
     return {
       ...base,
       ...(fresh ?? {}),
       groupedShifts: base.groupedShifts?.map((g) => byId.get(g.id) ?? g),
+
     };
   }, [selectedShift, shiftId, shifts]);
 
