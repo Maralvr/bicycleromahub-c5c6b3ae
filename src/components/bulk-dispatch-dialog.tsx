@@ -9,6 +9,8 @@ import { Wand2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import type { Shift } from "@/lib/mock-data";
 import type { Staff } from "@/lib/mock-data";
 import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { conflictLabel, findGuideConflict } from "@/lib/guide-conflicts";
+
 import { isNoGuideTour } from "@/lib/partner-tours";
 
 type Row = {
