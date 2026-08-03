@@ -47,6 +47,7 @@ import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, Exte
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { parseCalendarSearch, type CalendarSearch } from "@/lib/calendar-search";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
 import { useEffect, useState } from "react";
@@ -56,7 +57,7 @@ type ShiftsTab = "calendar" | "all" | "bokun" | "manual" | "mine" | "past";
 type ShiftStatusFilter = "pending" | "unassigned" | "accepted" | "rejected";
 
 export const Route = createFileRoute("/shifts")({
-  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string; rental_day?: string } => {
+  validateSearch: (search: Record<string, unknown>): { tab?: ShiftsTab; status?: ShiftStatusFilter; shift?: string; rental_day?: string } & CalendarSearch => {
     const tab = search.tab as string | undefined;
     const status = search.status as string | undefined;
     const shift = search.shift as string | undefined;
@@ -72,7 +73,9 @@ export const Route = createFileRoute("/shifts")({
       // notify_rental_assignment / accept_rental_day / reject_rental_day
       // migrations) -- previously ignored entirely by RentalStaffShiftsView.
       rental_day: rentalDay && rentalDay.length > 0 ? rentalDay : undefined,
+      ...parseCalendarSearch(search),
     };
+
   },
   head: () => ({
     meta: [
@@ -656,6 +659,11 @@ function ShiftsPage() {
             onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             onShiftClick={handleCalendarShiftClick}
             onVisibleRangeChange={widenDateRange}
+            date={search.date}
+            view={search.view}
+            onDateChange={(date) => navigate({ search: (prev: typeof search) => ({ ...prev, date }), replace: true })}
+            onViewChange={(view) => navigate({ search: (prev: typeof search) => ({ ...prev, view }), replace: true })}
+
           />
         </TabsContent>
         {isAdmin && (

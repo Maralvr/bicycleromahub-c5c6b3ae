@@ -60,7 +60,7 @@ type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | 
 type DeparturePatch = { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null };
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
-type View = "day" | "week" | "month";
+export type View = "day" | "week" | "month";
 export type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 // Bokun sync stores the literal string "TBD" when no pickup/meeting-point
@@ -247,6 +247,10 @@ export function ShiftsCalendar({
   renderDayDialogSection,
   onVisibleRangeChange,
   onLoadShiftDetails,
+  date,
+  view: viewProp,
+  onDateChange,
+  onViewChange,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -269,7 +273,16 @@ export function ShiftsCalendar({
   // column-limited list query can lazily fetch the heavy detail columns
   // (participant list, ops notes) only for what's actually being viewed.
   onLoadShiftDetails?: (ids: string[]) => void;
+  // Optional controlled position. Parents that persist the browsed date in the
+  // URL (see /shifts, /calendar, /rental-points `?date=`/`?view=`) pass these
+  // so the calendar survives any remount -- tab switches, dialog close,
+  // browser back. When omitted, local state is used as before.
+  date?: string;
+  view?: View;
+  onDateChange?: (iso: string) => void;
+  onViewChange?: (view: View) => void;
 }) {
+
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
   );
@@ -280,11 +293,27 @@ export function ShiftsCalendar({
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
-  const [view, setView] = useState<View>(() => (
+  const [localView, setLocalView] = useState<View>(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
   ));
+  const view = viewProp ?? localView;
+  const setView = (v: View) => {
+    setLocalView(v);
+    onViewChange?.(v);
+  };
   // (Month view has a mobile-friendly variant below.)
-  const [cursor, setCursor] = useState(() => new Date());
+  const [localCursor, setLocalCursor] = useState(() => new Date());
+  const cursor = useMemo(() => {
+    if (!date) return localCursor;
+    const [y, m, d] = date.split("-").map(Number);
+    if (!y || !m || !d) return localCursor;
+    return new Date(y, m - 1, d);
+  }, [date, localCursor]);
+  const setCursor = (d: Date) => {
+    setLocalCursor(d);
+    onDateChange?.(toISO(d));
+  };
+
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const openShift = (s: CalendarShift) => {
