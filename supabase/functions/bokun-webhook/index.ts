@@ -422,7 +422,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: existing } = await supabase
     .from("shifts")
-    .select("id, adults, teens, infants, trailers, external_booking_ref, rate_title")
+    .select("id, adults, teens, infants, trailers, external_booking_ref, rate_title, meeting_point")
     .eq("source", "bokun")
     .in("booking_id", keys)
     .maybeSingle();
@@ -479,6 +479,17 @@ Deno.serve(async (req: Request) => {
     // payload happens not to carry the rate).
     if (updates.rate_title == null || existing.rate_title) {
       delete updates.rate_title;
+    }
+
+    // meeting_point is fill-only too. "TBD" is the placeholder for "no start
+    // point in the payload", so never write it over a stored value, and never
+    // overwrite a real meeting point an admin corrected by hand.
+    if (
+      updates.meeting_point == null ||
+      updates.meeting_point === "TBD" ||
+      (existing.meeting_point && existing.meeting_point !== "TBD")
+    ) {
+      delete updates.meeting_point;
     }
 
 
