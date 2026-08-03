@@ -48,6 +48,8 @@
   --color-success-foreground: var(--success-foreground);
   --color-manual: var(--manual);
   --color-manual-foreground: var(--manual-foreground);
+  --color-partner: var(--partner);
+  --color-partner-foreground: var(--partner-foreground);
   --color-primary-glow: var(--primary-glow);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -93,6 +95,10 @@
   --success-foreground: oklch(0.15 0.02 150);
   --manual: oklch(0.58 0.22 295);
   --manual-foreground: oklch(0.98 0.005 295);
+
+  /* Partner-operated tours (Livitaly, Le Meridien, Roma 'n Bike Card) */
+  --partner: oklch(0.60 0.15 215);
+  --partner-foreground: oklch(0.98 0.005 215);
   --border: oklch(0.90 0.01 145);
   --input: oklch(0.92 0.01 145);
   --ring: oklch(0.72 0.22 142);
@@ -137,6 +143,8 @@
   --destructive-foreground: oklch(0.984 0.003 247.858);
   --manual: oklch(0.68 0.20 295);
   --manual-foreground: oklch(0.15 0.02 295);
+  --partner: oklch(0.72 0.14 215);
+  --partner-foreground: oklch(0.15 0.02 215);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
