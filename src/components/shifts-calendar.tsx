@@ -247,6 +247,10 @@ export function ShiftsCalendar({
   renderDayDialogSection,
   onVisibleRangeChange,
   onLoadShiftDetails,
+  date,
+  view: viewProp,
+  onDateChange,
+  onViewChange,
 }: {
   shifts: Shift[];
   staff: Staff[];
@@ -269,7 +273,16 @@ export function ShiftsCalendar({
   // column-limited list query can lazily fetch the heavy detail columns
   // (participant list, ops notes) only for what's actually being viewed.
   onLoadShiftDetails?: (ids: string[]) => void;
+  // Optional controlled position. Parents that persist the browsed date in the
+  // URL (see /shifts, /calendar, /rental-points `?date=`/`?view=`) pass these
+  // so the calendar survives any remount -- tab switches, dialog close,
+  // browser back. When omitted, local state is used as before.
+  date?: string;
+  view?: View;
+  onDateChange?: (iso: string) => void;
+  onViewChange?: (view: View) => void;
 }) {
+
   const [isNarrow, setIsNarrow] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(max-width: 1023px)").matches : false,
   );
