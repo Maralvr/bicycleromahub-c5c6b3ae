@@ -50,11 +50,11 @@ export function BulkDispatchDialog({
     if (!open) return;
     // Mutable working copy so each row's suggestion accounts for prior picks (load balancing).
     let working = [...allShifts];
-    const seedRows: Row[] = unassignedShifts
-      .filter((sh) => !isNoGuideTour(sh.tourName))
+    const seedRows: Row[] = dispatchable
+      .slice()
       .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
       .map((sh) => {
-        const top = suggestStaffForShift(sh, staff, working, 1)[0];
+        const top = suggestStaffForShift(sh, staff, working, 1, busyByShift.get(sh.id) ?? EMPTY_BUSY)[0];
         if (top) {
           working = working.map((s) => (s.id === sh.id ? { ...s, assignedStaffId: top.staff.id, status: "pending" as const } : s));
         }
@@ -67,7 +67,7 @@ export function BulkDispatchDialog({
         };
       });
     setRows(seedRows);
-  }, [open, unassignedShifts, staff, allShifts]);
+  }, [open, dispatchable, staff, allShifts, busyByShift]);
 
   const selectedCount = rows.filter((r) => r.selected && r.chosenStaffId).length;
   const unmatchedCount = rows.filter((r) => !r.chosenStaffId).length;
