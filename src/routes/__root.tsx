@@ -138,7 +138,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         typeof window !== "undefined"
           ? window.location.pathname + window.location.search
           : location.pathname + location.searchStr;
-      console.log("[authgate] redirecting, here =", here);
       void navigate({ to: "/auth", search: { redirect: here } });
       return;
     }
