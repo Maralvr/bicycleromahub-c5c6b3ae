@@ -276,7 +276,32 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   const endDateTime = activity?.endDateTime ?? raw.endDateTime ?? a0?.endDateTime;
   const durationMinutes = raw.durationMinutes ?? activity?.activity?.durationMinutes ?? (activity?.activity?.durationHours ? activity.activity.durationHours * 60 : undefined) ?? a0?.activity?.durationMinutes;
   const pickup = activity?.pickup && typeof activity.pickup === "object" ? activity.pickup : null;
-  const meeting = placeText(raw.pickupPlace) ?? placeText(activity?.pickupPlace) ?? placeText(pickup) ?? placeText(raw.startPoint) ?? placeText(activity?.startPoint) ?? placeText(activity?.activity?.startPoints?.[0]) ?? "TBD";
+  // Meeting point. Booking detail payloads (verified on parents 99421117 /
+  // 99186399 / 98600858 / 99224013) carry it as
+  // activityBookings[].activity.startPoints[] -- an array, so prefer the entry
+  // the booking actually selected via startPointId instead of blindly taking
+  // [0]. Summary/search objects have none of this, which is why webhook- and
+  // search-created rows sat at "TBD".
+  const selectedStartPoint = (() => {
+    const points = activity?.activity?.startPoints ?? a0?.activity?.startPoints ?? [];
+    if (points.length === 0) return null;
+    const wantedId = activity?.startPointId ?? a0?.startPointId;
+    if (wantedId != null) {
+      const match = points.find((p) => String(p?.id ?? "") === String(wantedId));
+      if (match) return match;
+    }
+    return points[0] ?? null;
+  })();
+  const meeting =
+    placeText(raw.pickupPlace) ??
+    placeText(activity?.pickupPlace) ??
+    placeText(pickup) ??
+    placeText(raw.startPoint) ??
+    placeText(activity?.startPoint) ??
+    placeText(a0?.startPoint) ??
+    placeText(selectedStartPoint) ??
+    "TBD";
+
   const pcbs = raw.pricingCategoryBookings ?? activity?.pricingCategoryBookings ?? raw.fields?.priceCategoryBookings ?? [];
   const extras = raw.extraBookings ?? activity?.extraBookings ?? activity?.extras ?? raw.fields?.bookedExtras ?? [];
 
