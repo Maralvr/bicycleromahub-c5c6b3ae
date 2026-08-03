@@ -17,3 +17,27 @@ export function parseCalendarSearch(search: Record<string, unknown>): CalendarSe
     view: view === "day" || view === "week" || view === "month" ? view : undefined,
   };
 }
+
+/**
+ * Wires <ShiftsCalendar /> position to a route's ?date=/?view= params.
+ * `route` is any TanStack file route exposing useSearch/useNavigate whose
+ * search type includes CalendarSearch.
+ */
+export function useCalendarUrlState(route: {
+  useSearch: () => CalendarSearch;
+  useNavigate: () => (opts: {
+    search: (prev: CalendarSearch) => CalendarSearch;
+    replace?: boolean;
+  }) => unknown;
+}) {
+  const search = route.useSearch();
+  const navigate = route.useNavigate();
+  return {
+    date: search.date,
+    view: search.view,
+    onDateChange: (date: string) =>
+      navigate({ search: (prev) => ({ ...prev, date }), replace: true }),
+    onViewChange: (view: View) =>
+      navigate({ search: (prev) => ({ ...prev, view }), replace: true }),
+  };
+}
