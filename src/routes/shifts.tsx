@@ -26,6 +26,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { startBokunImportFn, processBokunImportChunkFn } from "@/lib/bokun-import.functions";
 
 import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { fetchBusyGuides } from "@/lib/guide-conflicts";
 import { AssignGuideCombobox } from "@/components/assign-guide-combobox";
 import { SmartAssignDialog } from "@/components/smart-assign-dialog";
 import { LeaveNoteDialog } from "@/components/leave-note-dialog";
