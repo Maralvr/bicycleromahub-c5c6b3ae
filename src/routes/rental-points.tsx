@@ -47,14 +47,16 @@ import type { Staff } from "@/lib/mock-data";
 type RentalTab = "calendar" | "list";
 
 export const Route = createFileRoute("/rental-points")({
-  validateSearch: (search: Record<string, unknown>): { point?: string; tab?: RentalTab } => {
+  validateSearch: (search: Record<string, unknown>): { point?: string; tab?: RentalTab } & CalendarSearch => {
     const tab = search.tab as string | undefined;
     const point = search.point as string | undefined;
     return {
       point: typeof point === "string" && point.length > 0 ? point : undefined,
       tab: tab === "calendar" || tab === "list" ? tab : undefined,
+      ...parseCalendarSearch(search),
     };
   },
+
   head: () => ({
     meta: [
       { title: "Rental points — Bicycle Roma" },
