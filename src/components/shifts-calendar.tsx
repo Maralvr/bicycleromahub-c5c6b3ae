@@ -1317,7 +1317,7 @@ function DayDetailsDialog({
                         <MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {guide ? (
+                        {guide && (
                           <>
                             <Avatar
                               name={guide.name}
@@ -1327,11 +1327,8 @@ function DayDetailsDialog({
                             />
                             <span className="font-medium">{guide.name}</span>
                           </>
-                        ) : (
-                          <span className="italic text-destructive flex items-center gap-1">
-                            <User className="h-3 w-3" /> Unassigned
-                          </span>
                         )}
+
                       </div>
                       {s.participants && (
                         <div className="flex items-center gap-1.5">
