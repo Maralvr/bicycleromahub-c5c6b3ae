@@ -274,6 +274,10 @@ export function categorizeForAssignment(
   allShifts: Shift[],
 ): TieredCandidate[] {
   const out: TieredCandidate[] = allStaff.map((s) => {
+    const overlap = findGuideConflict(s.id, shift, allShifts);
+    if (overlap) {
+      return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflictLabel(overlap) };
+    }
     const conflict = findUnavailabilityConflict(s, shift);
     if (conflict?.hard) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: conflict.reason };
@@ -282,6 +286,7 @@ export function categorizeForAssignment(
     if (!scored) {
       return { staff: s, tier: "blocked", score: 0, reasons: [], warnings: [], blockedReason: "Unavailable" };
     }
+
     const tier: AssignmentTier = scored.warnings.length === 0 ? "available" : "requestable";
     return { staff: s, tier, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
   });
