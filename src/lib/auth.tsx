@@ -23,9 +23,18 @@ type AuthContextValue = {
   isAdmin: boolean;
   isRentalStaff: boolean;
   isAuthenticated: boolean;
+  /**
+   * True only for a *settled* unauthenticated state: either we resolved the
+   * initial session and there was none, or Supabase emitted an explicit
+   * SIGNED_OUT. A momentary null session during token-refresh-on-focus does
+   * NOT set this — that transient blip used to bounce the user through /auth
+   * and wipe the current route's query string (e.g. the calendar's ?date=).
+   */
+  signedOut: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
+
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
