@@ -34,6 +34,8 @@ export function SmartAssignDialog({ shift, allShifts, open, onClose, onAssign, o
   const [note, setNote] = useState("");
   const [rate, setRate] = useState<string>("");
   const [rateTitle, setRateTitle] = useState<string>("");
+  // Database-backed busy map — primary shifts AND additional-guide commitments.
+  const busyGuides = useBusyGuides(shift);
 
   useEffect(() => {
     if (!open) {
