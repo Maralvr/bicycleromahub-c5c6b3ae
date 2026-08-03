@@ -1,4 +1,6 @@
 import type { Shift, Staff } from "./mock-data";
+import { conflictLabel, findGuideConflict } from "./guide-conflicts";
+
 
 export type StaffSuggestion = {
   staff: Staff;
