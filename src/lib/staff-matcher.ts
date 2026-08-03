@@ -105,21 +105,12 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[]): StaffSugges
   if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
   if (conflict) warnings.push(conflict.reason);
 
-  // Check for overlapping shifts already assigned — soft warning, admin may
-  // still override.
-  const overlapping = allShifts.find((other) => {
-    if (other.id === shift.id) return false;
-    if (other.assignedStaffId !== staff.id) return false;
-    if (other.date !== shift.date) return false;
-    if (other.status === "rejected") return false;
-    const oStart = toMinutes(other.startTime);
-    const oEnd = toMinutes(other.endTime);
-    return toMinutes(shift.startTime) < oEnd && toMinutes(shift.endTime) > oStart;
-  });
-  if (overlapping) {
-    warnings.push(`Overlaps with ${overlapping.startTime}–${overlapping.endTime} shift`);
-    score -= 30;
-  }
+  // Overlapping commitment on the same day — HARD block, mirrors the database
+  // trigger `shifts_block_guide_conflict_trg`. Same-departure rows (several
+  // bookings of one departure) are exempt, see @/lib/guide-conflicts.
+  const overlapping = findGuideConflict(staff.id, shift, allShifts);
+  if (overlapping) return null;
+
 
   // --- 4. Status preference ---
   if (staff.status === "available") {
