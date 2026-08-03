@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PartnerBadge, isPartnerTour } from "@/components/partner-tour-badge";
+import { isNoGuideTour } from "@/lib/partner-tours";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
@@ -463,7 +464,7 @@ function ShiftsPage() {
   };
 
   const autoAssignAll = async () => {
-    const unassigned = shifts.filter((s) => !s.assignedStaffId && !isPartnerTour(s.tourName));
+    const unassigned = shifts.filter((s) => !s.assignedStaffId && !isNoGuideTour(s.tourName));
     if (unassigned.length === 0) {
       toast.info("Nothing to assign", { description: "All shifts already have a guide." });
       return;

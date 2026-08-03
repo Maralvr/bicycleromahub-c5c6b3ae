@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sparkles, UserPlus, ChevronDown, Handshake } from "lucide-react";
-import { isPartnerTour } from "@/lib/partner-tours";
+import { isNoGuideTour } from "@/lib/partner-tours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -36,7 +36,7 @@ export function AssignGuideCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  if (isPartnerTour(shift.tourName) && !currentStaffId) {
+  if (isNoGuideTour(shift.tourName) && !currentStaffId) {
     return (
       <div className={`p-3 rounded-lg border border-partner/40 bg-partner/5 ${className}`}>
         <div className="flex items-center gap-1.5 flex-wrap">
