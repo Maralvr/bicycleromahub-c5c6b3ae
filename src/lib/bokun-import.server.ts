@@ -1029,31 +1029,36 @@ export async function backfillMissingExternalBookingRefs(limit = 40) {
 }
 
 /**
- * One-off/recurring recovery pass for `rate_title` (Bokun's booked pricing
- * option -- "Public tour in English", "Regular Bike 2-hour" -- NOT the price).
+ * One-off/recurring recovery pass for the two detail-only fields:
+ *  - `rate_title` -- Bokun's booked pricing option ("Public tour in English",
+ *    "Regular Bike 2-hour"), NOT the price.
+ *  - `meeting_point` -- the booked start point ("Bicycl-e Lungotevere Bike
+ *    Point — Lungotevere delle Armi 44"), stored as "TBD" when unknown.
  *
- * Rows created by the Bokun webhook never had the rate mapped at all, and a
- * later resync only patches customer-controlled fields, so those rows stay
- * NULL forever even though Bokun has the value. This re-fetches the booking
- * detail for rows still missing it and fills it in. Fill-only: never
- * overwrites a value an admin set manually.
+ * Rows created by the Bokun webhook / summary search never had either mapped,
+ * and a later resync only patches customer-controlled fields, so those rows
+ * stay empty forever even though Bokun has the values. This re-fetches the
+ * booking detail and fills them in. Fill-only: never overwrites a real value
+ * an admin set manually.
  */
 export async function backfillMissingRateTitles(limit = 40) {
   const todayIso = new Date().toISOString().slice(0, 10);
   const { data: rows, error } = await supabaseAdmin
     .from("shifts")
-    .select("id, booking_id, external_booking_ref, date")
+    .select("id, booking_id, external_booking_ref, date, rate_title, meeting_point")
     .eq("source", "bokun")
-    .is("rate_title", null)
+    .or("rate_title.is.null,meeting_point.eq.TBD")
     .not("external_booking_ref", "is", null)
     .gte("date", todayIso)
     .order("date", { ascending: true })
     .limit(limit);
-  if (error) throw new Error(`Could not load rows missing rate_title: ${error.message}`);
+  if (error) throw new Error(`Could not load rows missing booking detail: ${error.message}`);
 
   let checked = 0;
   let backfilled = 0;
   let notFound = 0;
+  let rateTitles = 0;
+  let meetingPoints = 0;
   const errors: string[] = [];
   const rentalPointIdByName = await getRentalPointNameMap();
 
@@ -1066,29 +1071,39 @@ export async function backfillMissingRateTitles(limit = 40) {
         `/booking.json/booking/${row.external_booking_ref}`,
       )) as BokunBookingFull;
       const mapped = mapToShiftRow(detail, rentalPointIdByName);
-      const rateTitle = mapped?.rate_title ?? null;
-      if (!rateTitle) {
+      const patch: { rate_title?: string; meeting_point?: string } = {};
+      if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
+      if (
+        (!row.meeting_point || row.meeting_point === "TBD") &&
+        mapped?.meeting_point &&
+        mapped.meeting_point !== "TBD"
+      ) {
+        patch.meeting_point = mapped.meeting_point;
+      }
+      if (Object.keys(patch).length === 0) {
         notFound++;
         continue;
       }
       const { error: updErr } = await supabaseAdmin
         .from("shifts")
-        .update({ rate_title: rateTitle })
-        .eq("id", row.id)
-        .is("rate_title", null);
+        .update(patch)
+        .eq("id", row.id);
       if (updErr) {
         errors.push(`${row.booking_id}: ${updErr.message}`);
         continue;
       }
       backfilled++;
+      if (patch.rate_title) rateTitles++;
+      if (patch.meeting_point) meetingPoints++;
     } catch (e) {
       errors.push(`${row.booking_id}: ${(e as Error).message}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  return { checked, backfilled, notFound, errors };
+  return { checked, backfilled, rateTitles, meetingPoints, notFound, errors };
 }
+
 
 export async function assertAdmin(accessToken: string) {
 
