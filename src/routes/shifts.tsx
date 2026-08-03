@@ -659,6 +659,11 @@ function ShiftsPage() {
             onUpdateDeparture={isAdmin ? handleUpdateDeparture : undefined}
             onShiftClick={handleCalendarShiftClick}
             onVisibleRangeChange={widenDateRange}
+            date={search.date}
+            view={search.view}
+            onDateChange={(date) => navigate({ search: (prev: typeof search) => ({ ...prev, date }), replace: true })}
+            onViewChange={(view) => navigate({ search: (prev: typeof search) => ({ ...prev, view }), replace: true })}
+
           />
         </TabsContent>
         {isAdmin && (
