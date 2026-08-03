@@ -463,7 +463,7 @@ function ShiftsPage() {
   };
 
   const autoAssignAll = async () => {
-    const unassigned = shifts.filter((s) => !s.assignedStaffId);
+    const unassigned = shifts.filter((s) => !s.assignedStaffId && !isPartnerTour(s.tourName));
     if (unassigned.length === 0) {
       toast.info("Nothing to assign", { description: "All shifts already have a guide." });
       return;
