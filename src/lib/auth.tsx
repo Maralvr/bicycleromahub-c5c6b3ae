@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
+        setSignedOut(false);
         if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "USER_UPDATED") {
           setLoading(true);
         }
@@ -98,6 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           void loadUserData(newSession.user.id);
         }, 0);
       } else {
+        // Only an explicit SIGNED_OUT (or the resolved initial no-session below)
+        // counts as a real sign-out. Any other event arriving with a null
+        // session is a transient blip (token refresh on tab focus) and must not
+        // trigger the /auth redirect.
+        if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") setSignedOut(true);
         setProfile(null);
         setRoles([]);
         setRolesLoaded(false);
@@ -108,12 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
+        setSignedOut(false);
         await loadUserData(data.session.user.id);
       } else {
+        setSignedOut(true);
         setRolesLoaded(false);
         setLoading(false);
       }
     });
+
 
     // Refresh roles/profile when the tab regains focus so DB-side role changes
     // (e.g. an admin promoted the user) take effect without a hard reload.
