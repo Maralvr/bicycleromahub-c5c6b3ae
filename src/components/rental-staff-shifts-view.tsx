@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cleanNoteText } from "@/lib/notes-format";
 import { setShiftNoShow } from "@/lib/no-show";
+import { AllRentalPointsView } from "@/components/all-rental-points-view";
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -102,7 +103,7 @@ export function RentalStaffShiftsView({
   // Which sub-tab (List/Calendar) is active -- needs to be controlled so a
   // deep link or a calendar-day click can force it to "list" to reveal the
   // day card being jumped to.
-  const [innerTab, setInnerTab] = useState<"list" | "calendar">("list");
+  const [innerTab, setInnerTab] = useState<"list" | "calendar" | "all">("list");
   // Briefly ring-highlight whichever day card was just jumped to, so it's
   // obvious which one the click/link was about.
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -245,10 +246,11 @@ export function RentalStaffShiftsView({
             </section>
           )}
 
-          <Tabs value={innerTab} onValueChange={(v) => setInnerTab(v as "list" | "calendar")}>
+          <Tabs value={innerTab} onValueChange={(v) => setInnerTab(v as "list" | "calendar" | "all")}>
             <TabsList>
               <TabsTrigger value="list">List</TabsTrigger>
               <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="all">All rental points</TabsTrigger>
             </TabsList>
             <TabsContent value="list" className="space-y-6 mt-4">
               <section>
@@ -323,6 +325,13 @@ export function RentalStaffShiftsView({
             </TabsContent>
             <TabsContent value="calendar" className="mt-4">
               <RentalCalendar days={days} onSelectDay={openDay} />
+            </TabsContent>
+            <TabsContent value="all" className="mt-4">
+              {/* Cross-point schedule + roster: every rental point, not just
+                  the caller's own days. Mounted lazily (only when the tab is
+                  active) so the default "My rental days" view doesn't pay for
+                  the business-wide fetch. */}
+              {innerTab === "all" && <AllRentalPointsView />}
             </TabsContent>
           </Tabs>
         </>

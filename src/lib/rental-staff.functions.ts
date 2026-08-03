@@ -431,3 +431,56 @@ export const rejectRentalDay = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// -------------------- Cross-point coverage (rental staff) --------------------
+
+/**
+ * Every rental-point day assignment in a window, across ALL points -- not
+ * scoped to the caller. Backed by the rpda_rental_staff_select_all /
+ * rstaff_rental_staff_select_all policies, so any signed-in rental staff
+ * member (and admins) can see the full coverage picture. Deliberately
+ * returns only roster/coverage data -- no booking or customer fields; the
+ * booking side of the "All rental points" view comes from useRentalShifts.
+ */
+export type RentalCoverageDay = {
+  assignmentId: string;
+  date: string;
+  status: "pending" | "accepted" | "rejected";
+  rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
+  staff: { id: string; name: string; avatar: string } | null;
+};
+
+export const getAllRentalDays = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from?: string; to?: string }) => input ?? {})
+  .handler(async ({ data, context }): Promise<{ days: RentalCoverageDay[] }> => {
+    const { supabase } = context;
+    const from = data.from ?? new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
+    const to = data.to ?? new Date(Date.now() + 90 * 86400_000).toISOString().slice(0, 10);
+
+    const { data: rows, error } = await supabase
+      .from("rental_point_day_assignments")
+      .select(
+        "id, date, status, rental_point_id, rental_staff_id, rental_points (id, name, address, phone), rental_staff (id, name, avatar)",
+      )
+      .gte("date", from)
+      .lte("date", to)
+      .order("date");
+    if (error) throw new Error(error.message);
+
+    const days: RentalCoverageDay[] = (rows ?? []).map((a: any) => ({
+      assignmentId: a.id,
+      date: a.date,
+      status: (a.status ?? "accepted") as "pending" | "accepted" | "rejected",
+      rentalPoint: {
+        id: a.rental_points?.id ?? a.rental_point_id,
+        name: a.rental_points?.name ?? "",
+        address: a.rental_points?.address ?? null,
+        phone: a.rental_points?.phone ?? null,
+      },
+      staff: a.rental_staff
+        ? { id: a.rental_staff.id, name: a.rental_staff.name, avatar: a.rental_staff.avatar }
+        : null,
+    }));
+    return { days };
+  });
