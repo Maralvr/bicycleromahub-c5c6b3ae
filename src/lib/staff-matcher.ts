@@ -234,11 +234,14 @@ export function rankAllCandidates(shift: Shift, allStaff: Staff[], allShifts: Sh
       if (scored) {
         return { staff: s, eligible: true, score: scored.score, reasons: scored.reasons, warnings: scored.warnings };
       }
-      // Only "all day off" remains as a hard block now
+      // Hard blocks: all-day off, or an overlapping commitment (DB-enforced)
       let reason = "Unavailable";
       const conflict = findUnavailabilityConflict(s, shift);
-      if (conflict?.hard) reason = conflict.reason;
+      const overlap = findGuideConflict(s.id, shift, allShifts);
+      if (overlap) reason = conflictLabel(overlap);
+      else if (conflict?.hard) reason = conflict.reason;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
+
     })
     .sort((a, b) => {
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
