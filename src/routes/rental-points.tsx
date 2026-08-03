@@ -535,7 +535,9 @@ function AdminRentalBookingsView({
                 showRates
                 renderDayOverlay={pointId ? renderDayOverlay : undefined}
                 renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
+                {...calendarUrlState}
             />
+
           )}
         </TabsContent>
 
