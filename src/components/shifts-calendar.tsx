@@ -1520,7 +1520,7 @@ function ShiftDetailsDialog({
                 <MapPin className="h-3 w-3 text-muted-foreground" /> {s.meetingPoint}
               </div>
               <div className="flex items-center gap-1.5">
-                {guide ? (
+                {guide && (
                   <>
                     <Avatar
                       name={guide.name}
@@ -1530,11 +1530,8 @@ function ShiftDetailsDialog({
                     />
                     <span className="font-medium">{guide.name}</span>
                   </>
-                ) : (
-                  <span className="italic text-destructive flex items-center gap-1">
-                    <User className="h-3 w-3" /> Unassigned
-                  </span>
                 )}
+
               </div>
               {pax > 0 && (
                 <div className="flex items-center gap-1.5">
