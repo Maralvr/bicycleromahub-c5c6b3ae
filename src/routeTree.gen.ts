@@ -13,7 +13,6 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
-import { Route as ResetPasswordPvcheckRouteImport } from './routes/reset-password-pvcheck'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -54,11 +53,6 @@ const StaffRoute = StaffRouteImport.update({
 const ShiftsRoute = ShiftsRouteImport.update({
   id: '/shifts',
   path: '/shifts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordPvcheckRoute = ResetPasswordPvcheckRouteImport.update({
-  id: '/reset-password-pvcheck',
-  path: '/reset-password-pvcheck',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -188,7 +182,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/reset-password-pvcheck': typeof ResetPasswordPvcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -216,7 +209,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/reset-password-pvcheck': typeof ResetPasswordPvcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -245,7 +237,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/reset-password-pvcheck': typeof ResetPasswordPvcheckRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
@@ -275,7 +266,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
-    | '/reset-password-pvcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -303,7 +293,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
-    | '/reset-password-pvcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -331,7 +320,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-points'
     | '/reset-password'
-    | '/reset-password-pvcheck'
     | '/shifts'
     | '/staff'
     | '/tasks'
@@ -360,7 +348,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RentalPointsRoute: typeof RentalPointsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ResetPasswordPvcheckRoute: typeof ResetPasswordPvcheckRoute
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
@@ -404,13 +391,6 @@ declare module '@tanstack/react-router' {
       path: '/shifts'
       fullPath: '/shifts'
       preLoaderRoute: typeof ShiftsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password-pvcheck': {
-      id: '/reset-password-pvcheck'
-      path: '/reset-password-pvcheck'
-      fullPath: '/reset-password-pvcheck'
-      preLoaderRoute: typeof ResetPasswordPvcheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -576,7 +556,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RentalPointsRoute: RentalPointsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ResetPasswordPvcheckRoute: ResetPasswordPvcheckRoute,
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
