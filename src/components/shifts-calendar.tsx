@@ -60,7 +60,7 @@ type AssignFn = (shiftId: string, staffId: string, staffName: string) => void | 
 type DeparturePatch = { date?: string; startTime?: string; endTime?: string; meetingPoint?: string; rate?: number | null; rateTitle?: string | null };
 type UpdateDepartureFn = (shiftId: string, patch: DeparturePatch) => void | Promise<void>;
 
-type View = "day" | "week" | "month";
+export type View = "day" | "week" | "month";
 export type CalendarShift = Shift & { groupedShifts?: Shift[] };
 
 // Bokun sync stores the literal string "TBD" when no pickup/meeting-point
