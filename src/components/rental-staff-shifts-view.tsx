@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cleanNoteText } from "@/lib/notes-format";
 import { setShiftNoShow } from "@/lib/no-show";
+import { AllRentalPointsView } from "@/components/all-rental-points-view";
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
