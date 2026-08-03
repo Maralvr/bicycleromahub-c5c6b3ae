@@ -36,7 +36,7 @@ import { useRequireAdminOrRental } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
-import { parseCalendarSearch, type CalendarSearch } from "@/lib/calendar-search";
+import { parseCalendarSearch, useCalendarUrlState, type CalendarSearch } from "@/lib/calendar-search";
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -443,6 +443,7 @@ function AdminRentalBookingsView({
   onTabChange: (t: RentalTab) => void;
 }) {
   const { shifts, loading, updateShift, assignShift, deleteShift, refresh } = useRentalShifts();
+  const calendarUrlState = useCalendarUrlState(Route);
   const { staff } = useStaffStore();
 
   const scoped = useMemo(
@@ -608,6 +609,7 @@ function RentalReadOnlyBookingsView({
   onTabChange: (t: RentalTab) => void;
 }) {
   const { shifts, loading, refresh } = useRentalShifts();
+  const calendarUrlState = useCalendarUrlState(Route);
   const scoped = useMemo(
     () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
     [shifts, pointId],
@@ -643,7 +645,7 @@ function RentalReadOnlyBookingsView({
               No rental bookings.
             </Card>
           ) : (
-            <ShiftsCalendar shifts={scoped} staff={staff} showRates={false} />
+            <ShiftsCalendar shifts={scoped} staff={staff} showRates={false} {...calendarUrlState} />
           )}
         </TabsContent>
 
