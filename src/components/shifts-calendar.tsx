@@ -293,11 +293,27 @@ export function ShiftsCalendar({
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
-  const [view, setView] = useState<View>(() => (
+  const [localView, setLocalView] = useState<View>(() => (
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches ? "day" : "week"
   ));
+  const view = viewProp ?? localView;
+  const setView = (v: View) => {
+    setLocalView(v);
+    onViewChange?.(v);
+  };
   // (Month view has a mobile-friendly variant below.)
-  const [cursor, setCursor] = useState(() => new Date());
+  const [localCursor, setLocalCursor] = useState(() => new Date());
+  const cursor = useMemo(() => {
+    if (!date) return localCursor;
+    const [y, m, d] = date.split("-").map(Number);
+    if (!y || !m || !d) return localCursor;
+    return new Date(y, m - 1, d);
+  }, [date, localCursor]);
+  const setCursor = (d: Date) => {
+    setLocalCursor(d);
+    onDateChange?.(toISO(d));
+  };
+
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<CalendarShift | null>(null);
   const openShift = (s: CalendarShift) => {
