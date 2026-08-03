@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Sparkles, UserPlus, ChevronDown } from "lucide-react";
+import { Sparkles, UserPlus, ChevronDown, Handshake } from "lucide-react";
+import { isPartnerTour } from "@/lib/partner-tours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
