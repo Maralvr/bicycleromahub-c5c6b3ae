@@ -1645,6 +1645,7 @@ function ShiftDetailsDialog({
                 value={rateTitle}
                 onChange={setRateTitle}
                 className="h-9 text-xs"
+                bokunProductId={shift.bokunProductId ?? null}
               />
             </div>
           </div>

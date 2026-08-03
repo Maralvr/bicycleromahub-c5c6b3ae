@@ -71,6 +71,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bokun_product_rates: {
+        Row: {
+          bokun_product_id: string
+          created_at: string
+          default_rate_id: string | null
+          fetched_at: string
+          rates: Json
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          bokun_product_id: string
+          created_at?: string
+          default_rate_id?: string | null
+          fetched_at?: string
+          rates?: Json
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bokun_product_id?: string
+          created_at?: string
+          default_rate_id?: string | null
+          fetched_at?: string
+          rates?: Json
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       booking_notes: {
         Row: {
           attachments: Json
