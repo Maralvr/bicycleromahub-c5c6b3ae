@@ -237,13 +237,15 @@ interface BokunBookingFull {
     parentBookingId?: number | string;
     confirmationCode?: string;
     productConfirmationCode?: string;
-    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ title?: string; address?: string | BokunAddress }>; defaultRateId?: number | string; rates?: Array<{ id?: number | string; title?: string; rateCode?: string }> };
+    activity?: { title?: string; durationMinutes?: number; durationHours?: number; startPoints?: Array<{ id?: number | string; title?: string; address?: string | BokunAddress }>; defaultRateId?: number | string; rates?: Array<{ id?: number | string; title?: string; rateCode?: string }> };
     product?: { title?: string; tags?: string[]; id?: number | string };
     title?: string;
     startDateTime?: BokunDateValue;
     endDateTime?: BokunDateValue;
     pickupPlace?: { title?: string; address?: string | BokunAddress };
     startPoint?: { title?: string; address?: string | BokunAddress };
+    startPointId?: number | string;
+
     pickup?: false | { title?: string; address?: string | BokunAddress };
     rateTitle?: string;
     rateId?: number | string;
