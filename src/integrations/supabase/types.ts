@@ -1452,6 +1452,7 @@ export type Database = {
         Args: { _profile_id: string; _shift_id: string }
         Returns: boolean
       }
+      is_rental_staff: { Args: { _user_id: string }; Returns: boolean }
       is_staff_assigned_to_rental_shift: {
         Args: { _staff_id: string }
         Returns: boolean
