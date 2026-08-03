@@ -35,6 +35,21 @@ export function AssignGuideCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  if (isPartnerTour(shift.tourName) && !currentStaffId) {
+    return (
+      <div className={`p-3 rounded-lg border border-partner/40 bg-partner/5 ${className}`}>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Handshake className="h-3.5 w-3.5 text-partner" />
+          <span className="text-[10px] uppercase tracking-wider font-bold text-partner">
+            Partner-operated
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            — no Bicycle Roma guide needed for this booking
+          </span>
+        </div>
+      </div>
+    );
+  }
   const ranked = suggestStaffForShift(shift, allStaff, allShifts, allStaff.length);
   const byId = new Map(ranked.map((r) => [r.staff.id, r]));
   const top = ranked[0];
