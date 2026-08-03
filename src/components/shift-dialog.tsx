@@ -15,6 +15,7 @@ import { useLiveStaff } from "@/lib/live-staff";
 import { useStaffStore } from "@/lib/staff-store";
 import { useShiftsStore } from "@/lib/shifts-store";
 import { categorizeForAssignment } from "@/lib/staff-matcher";
+import { useBusyGuides } from "@/lib/guide-conflicts";
 import type { Shift } from "@/lib/mock-data";
 import type { LiveShift, LiveShiftInput } from "@/lib/live-shifts";
 import { Package, MapPin, Users, User, FileText, Sparkles, Ban, CheckCircle2, AlertTriangle } from "lucide-react";
