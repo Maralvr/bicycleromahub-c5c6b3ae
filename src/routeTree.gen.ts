@@ -26,6 +26,7 @@ import { Route as BokunRunsRouteImport } from './routes/bokun-runs'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
+import { Route as ApiPublicHooksSyncBokunProductRatesRouteImport } from './routes/api/public/hooks/sync-bokun-product-rates'
 import { Route as ApiPublicHooksSyncBokunRouteImport } from './routes/api/public/hooks/sync-bokun'
 import { Route as ApiPublicHooksSendShiftRemindersRouteImport } from './routes/api/public/hooks/send-shift-reminders'
 import { Route as ApiPublicHooksHealBokunZerosRouteImport } from './routes/api/public/hooks/heal-bokun-zeros'
@@ -120,6 +121,12 @@ const ApiPublicWaiverForeverWebhookRoute =
     path: '/api/public/waiver-forever-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncBokunProductRatesRoute =
+  ApiPublicHooksSyncBokunProductRatesRouteImport.update({
+    id: '/api/public/hooks/sync-bokun-product-rates',
+    path: '/api/public/hooks/sync-bokun-product-rates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncBokunRoute = ApiPublicHooksSyncBokunRouteImport.update({
   id: '/api/public/hooks/sync-bokun',
   path: '/api/public/hooks/sync-bokun',
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
+  '/api/public/hooks/sync-bokun-product-rates': typeof ApiPublicHooksSyncBokunProductRatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -213,6 +221,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
+  '/api/public/hooks/sync-bokun-product-rates': typeof ApiPublicHooksSyncBokunProductRatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -240,6 +249,7 @@ export interface FileRoutesById {
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
   '/api/public/hooks/send-shift-reminders': typeof ApiPublicHooksSendShiftRemindersRoute
   '/api/public/hooks/sync-bokun': typeof ApiPublicHooksSyncBokunRoute
+  '/api/public/hooks/sync-bokun-product-rates': typeof ApiPublicHooksSyncBokunProductRatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
+    | '/api/public/hooks/sync-bokun-product-rates'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
+    | '/api/public/hooks/sync-bokun-product-rates'
   id:
     | '__root__'
     | '/'
@@ -320,6 +332,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/heal-bokun-zeros'
     | '/api/public/hooks/send-shift-reminders'
     | '/api/public/hooks/sync-bokun'
+    | '/api/public/hooks/sync-bokun-product-rates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -347,6 +360,7 @@ export interface RootRouteChildren {
   ApiPublicHooksHealBokunZerosRoute: typeof ApiPublicHooksHealBokunZerosRoute
   ApiPublicHooksSendShiftRemindersRoute: typeof ApiPublicHooksSendShiftRemindersRoute
   ApiPublicHooksSyncBokunRoute: typeof ApiPublicHooksSyncBokunRoute
+  ApiPublicHooksSyncBokunProductRatesRoute: typeof ApiPublicHooksSyncBokunProductRatesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -470,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWaiverForeverWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-bokun-product-rates': {
+      id: '/api/public/hooks/sync-bokun-product-rates'
+      path: '/api/public/hooks/sync-bokun-product-rates'
+      fullPath: '/api/public/hooks/sync-bokun-product-rates'
+      preLoaderRoute: typeof ApiPublicHooksSyncBokunProductRatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-bokun': {
       id: '/api/public/hooks/sync-bokun'
       path: '/api/public/hooks/sync-bokun'
@@ -549,6 +570,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksHealBokunZerosRoute: ApiPublicHooksHealBokunZerosRoute,
   ApiPublicHooksSendShiftRemindersRoute: ApiPublicHooksSendShiftRemindersRoute,
   ApiPublicHooksSyncBokunRoute: ApiPublicHooksSyncBokunRoute,
+  ApiPublicHooksSyncBokunProductRatesRoute:
+    ApiPublicHooksSyncBokunProductRatesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
