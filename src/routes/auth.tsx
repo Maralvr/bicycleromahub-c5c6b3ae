@@ -38,9 +38,12 @@ function AuthPage() {
     if (!loading && isAuthenticated && rolesLoaded) {
       const requested = search.redirect ?? "/";
       const destination = isRentalStaff && !isAdmin && requested === "/" ? "/shifts" : requested;
-      void navigate({ to: destination });
+      // `redirect` can carry a query string (e.g. /shifts?tab=calendar&date=…),
+      // so navigate by href rather than by route path.
+      void navigate({ href: destination });
     }
   }, [loading, isAuthenticated, rolesLoaded, isRentalStaff, isAdmin, navigate, search.redirect]);
+
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
