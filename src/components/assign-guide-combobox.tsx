@@ -38,6 +38,8 @@ export function AssignGuideCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Database-backed: covers primary shifts AND additional-guide commitments.
+  const busy = useBusyGuides(shift);
   if (isNoGuideTour(shift.tourName) && !currentStaffId) {
     return (
       <div className={`p-3 rounded-lg border border-partner/40 bg-partner/5 ${className}`}>
