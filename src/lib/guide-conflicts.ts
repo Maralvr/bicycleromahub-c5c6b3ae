@@ -44,7 +44,7 @@ export async function fetchBusyGuides(shift: ShiftWindow): Promise<BusyMap> {
     _date: shift.date,
     _start: shift.startTime,
     _end: shift.endTime,
-    _exclude_shift_id: shift.id ?? null,
+    _exclude_shift_id: shift.id ?? undefined,
   });
   if (error) throw error;
   const out: BusyMap = new Map();
