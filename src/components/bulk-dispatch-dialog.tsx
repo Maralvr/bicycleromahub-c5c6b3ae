@@ -177,11 +177,16 @@ export function BulkDispatchDialog({
                             <SelectItem value="__none">— Skip this shift —</SelectItem>
                             {staff
                               .filter((s) => s.role === "guide" && s.active !== false)
-                              .map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
+                              .map((s) => {
+                                const conflict = findGuideConflict(s.id, sh, allShifts);
+                                return (
+                                  <SelectItem key={s.id} value={s.id} disabled={!!conflict}>
+                                    {s.name}
+                                    {conflict ? ` — ${conflictLabel(conflict)}` : ""}
+                                  </SelectItem>
+                                );
+                              })}
+
                           </SelectContent>
                         </Select>
                         {r.suggestionScore != null && r.chosenStaffId && (
