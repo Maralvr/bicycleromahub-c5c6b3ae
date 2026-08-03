@@ -21,3 +21,8 @@ export function isPublicTour(rateTitle: string | null | undefined): boolean {
   if (!v) return true;
   return !/private/i.test(v);
 }
+
+/** Single source of truth for "this booking is a private/exclusive tour". */
+export function isPrivateTour(rateTitle: string | null | undefined): boolean {
+  return !isPublicTour(rateTitle);
+}
