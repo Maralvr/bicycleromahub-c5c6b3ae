@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PartnerTag, isPartnerTour } from "@/components/partner-tour-badge";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
@@ -716,6 +717,7 @@ function RentalBookingsList({
           <div className="col-span-8 sm:col-span-5 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="truncate text-foreground">{s.tourName}</div>
+              {isPartnerTour(s.tourName) && <PartnerTag className="shrink-0" />}
               {s.noShow && (
                 <Badge
                   variant="outline"

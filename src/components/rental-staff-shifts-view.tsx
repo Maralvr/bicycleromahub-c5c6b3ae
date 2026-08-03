@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PartnerBadge, isPartnerTour } from "@/components/partner-tour-badge";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -537,6 +538,7 @@ function RentalDayCard({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <div className="text-sm font-semibold text-foreground">{b.tourName}</div>
+                    {isPartnerTour(b.tourName) && <PartnerBadge />}
                     {b.noShow && (
                       <Badge
                         variant="outline"

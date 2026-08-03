@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { PartnerTag, isPartnerTour } from "@/components/partner-tour-badge";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -236,6 +237,7 @@ export function AllRentalPointsView() {
                               <Clock className="h-3 w-3 shrink-0" />
                               <span className="font-medium text-foreground">{b.startTime}</span>
                               <span className="truncate">{b.tourName}</span>
+                              {isPartnerTour(b.tourName) && <PartnerTag className="shrink-0" />}
                             </span>
                             <span className="shrink-0">{b.pax} pax</span>
                           </div>

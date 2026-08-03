@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isExcludedTourName } from "./excluded-bokun-products";
 
 export type Participant = { name: string; category: string };
 
@@ -108,7 +107,6 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     else {
       const all = (data ?? []) as unknown as LiveShift[];
       const rows = all.filter((r) => {
-        if (isExcludedTourName(r.tour_name)) return false;
         // Hide rental bookings from the regular shifts view unless this hook
         // is explicitly scoped to a rental point.
         if (!opts?.rentalPointId && r.rental_point_id) return false;
@@ -166,7 +164,7 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
         const include = opts?.rentalPointId
           ? row.rental_point_id === opts.rentalPointId
           : !row.rental_point_id;
-        if (include && !isExcludedTourName(row.tour_name)) {
+        if (include) {
           setShifts((prev) =>
             prev.some((s) => s.id === row.id) ? prev : [...prev, row],
           );

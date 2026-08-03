@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PartnerBadge, isPartnerTour } from "@/components/partner-tour-badge";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, StatusPill } from "@/components/page-header";
 import { Avatar } from "@/components/avatar";
@@ -914,7 +915,10 @@ function ShiftList({ shifts, allShifts, onAssign, onOpenAssignDialog, onAccept, 
               <div className="flex-1 min-w-0 p-5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-foreground text-[15px] leading-tight">{s.tourName}</h3>
+                    <h3 className="font-semibold text-foreground text-[15px] leading-tight flex items-center gap-2 flex-wrap">
+                      {s.tourName}
+                      {isPartnerTour(s.tourName) && <PartnerBadge />}
+                    </h3>
                     {s.rateTitle && (
                       <div className="mt-1 inline-flex items-center rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                         {s.rateTitle}
