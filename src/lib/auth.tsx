@@ -170,6 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: roles.includes("admin"),
     isRentalStaff: roles.includes("rental_staff") && !roles.includes("admin"),
     isAuthenticated: !!session,
+    signedOut: !session && signedOut,
+
     signOut: async () => {
       await supabase.auth.signOut();
     },
