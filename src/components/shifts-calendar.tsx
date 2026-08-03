@@ -311,34 +311,12 @@ export function ShiftsCalendar({
   };
   // (Month view has a mobile-friendly variant below.)
   const [localCursor, setLocalCursor] = useState(() => new Date());
-  console.log("[calendar-debug][ShiftsCalendar:render]", new Date().toISOString(), {
-    dateProp: date,
-    viewProp,
-    localCursor: toISO(localCursor),
-    href: typeof window !== "undefined" ? window.location.href : "ssr",
-  });
   const cursor = useMemo(() => {
-    if (!date) {
-      console.log("[calendar-debug][ShiftsCalendar:cursor-fallback]", new Date().toISOString(), {
-        reason: "missing-date-prop",
-        dateProp: date,
-        viewProp,
-        localCursor: toISO(localCursor),
-      });
-      return localCursor;
-    }
+    if (!date) return localCursor;
     const [y, m, d] = date.split("-").map(Number);
-    if (!y || !m || !d) {
-      console.log("[calendar-debug][ShiftsCalendar:cursor-fallback]", new Date().toISOString(), {
-        reason: "invalid-date-prop",
-        dateProp: date,
-        viewProp,
-        localCursor: toISO(localCursor),
-      });
-      return localCursor;
-    }
+    if (!y || !m || !d) return localCursor;
     return new Date(y, m - 1, d);
-  }, [date, localCursor, viewProp]);
+  }, [date, localCursor]);
   const setCursor = (d: Date) => {
     setLocalCursor(d);
     onDateChange?.(toISO(d));
@@ -350,20 +328,31 @@ export function ShiftsCalendar({
     const rows = s.groupedShifts && s.groupedShifts.length > 0 ? s.groupedShifts : [s];
     onLoadShiftDetails?.(rows.map((r) => r.id));
     if (onShiftClick) onShiftClick(s);
-    else setSelectedShift(s);
+    else {
+      setSelectedShift(s);
+      onShiftIdChange?.(rows[0].id);
+    }
+  };
+  const closeShift = () => {
+    setSelectedShift(null);
+    if (shiftId) onShiftIdChange?.(null);
   };
   // Re-read the selected booking from the latest `shifts` prop so lazily loaded
-  // detail columns show up once they arrive.
+  // detail columns show up once they arrive. When the parent persists the open
+  // booking in the URL (`?shift=`), fall back to that id so the dialog survives
+  // a remount (tab refocus, panel unmount) even though local state is gone.
   const liveSelectedShift = useMemo<CalendarShift | null>(() => {
-    if (!selectedShift) return null;
     const byId = new Map(shifts.map((s) => [s.id, s]));
-    const fresh = byId.get(selectedShift.id);
+    const base = selectedShift ?? (shiftId ? byId.get(shiftId) ?? null : null);
+    if (!base) return null;
+    const fresh = byId.get(base.id);
     return {
-      ...selectedShift,
+      ...base,
       ...(fresh ?? {}),
-      groupedShifts: selectedShift.groupedShifts?.map((g) => byId.get(g.id) ?? g),
+      groupedShifts: base.groupedShifts?.map((g) => byId.get(g.id) ?? g),
     };
-  }, [selectedShift, shifts]);
+  }, [selectedShift, shiftId, shifts]);
+
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
