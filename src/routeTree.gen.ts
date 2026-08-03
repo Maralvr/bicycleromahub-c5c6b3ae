@@ -23,6 +23,7 @@ import { Route as LiveShiftsRouteImport } from './routes/live-shifts'
 import { Route as DispatchLogRouteImport } from './routes/dispatch-log'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as BokunRunsRouteImport } from './routes/bokun-runs'
+import { Route as AuthQcCheckRouteImport } from './routes/auth-qc-check'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicWaiverForeverWebhookRouteImport } from './routes/api/public/waiver-forever-webhook'
@@ -105,6 +106,11 @@ const BokunRunsRoute = BokunRunsRouteImport.update({
   path: '/bokun-runs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthQcCheckRoute = AuthQcCheckRouteImport.update({
+  id: '/auth-qc-check',
+  path: '/auth-qc-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -172,6 +178,7 @@ const ApiPublicHooksBackfillBokunRefsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-qc-check': typeof AuthQcCheckRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/dispatch-log': typeof DispatchLogRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-qc-check': typeof AuthQcCheckRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/dispatch-log': typeof DispatchLogRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/auth-qc-check': typeof AuthQcCheckRoute
   '/bokun-runs': typeof BokunRunsRoute
   '/calendar': typeof CalendarRoute
   '/dispatch-log': typeof DispatchLogRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/auth-qc-check'
     | '/bokun-runs'
     | '/calendar'
     | '/dispatch-log'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/auth-qc-check'
     | '/bokun-runs'
     | '/calendar'
     | '/dispatch-log'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/auth-qc-check'
     | '/bokun-runs'
     | '/calendar'
     | '/dispatch-log'
@@ -338,6 +350,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  AuthQcCheckRoute: typeof AuthQcCheckRoute
   BokunRunsRoute: typeof BokunRunsRoute
   CalendarRoute: typeof CalendarRoute
   DispatchLogRoute: typeof DispatchLogRoute
@@ -463,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BokunRunsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth-qc-check': {
+      id: '/auth-qc-check'
+      path: '/auth-qc-check'
+      fullPath: '/auth-qc-check'
+      preLoaderRoute: typeof AuthQcCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -546,6 +566,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  AuthQcCheckRoute: AuthQcCheckRoute,
   BokunRunsRoute: BokunRunsRoute,
   CalendarRoute: CalendarRoute,
   DispatchLogRoute: DispatchLogRoute,
@@ -576,3 +597,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
