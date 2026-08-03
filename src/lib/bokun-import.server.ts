@@ -972,13 +972,17 @@ export async function backfillMissingExternalBookingRefs(limit = 40) {
     .from("shifts")
     .select("id, booking_id, external_booking_ref, date")
     .eq("source", "bokun")
-    .eq("adults", 0)
-    .eq("teens", 0)
-    .eq("infants", 0)
+    // Any row that needs a detail fetch but has no parent ref to fetch with.
+    // Originally this was scoped to zero-participant rows (adults/teens/infants
+    // all 0), which meant rows with real participants but a missing rate_title
+    // or a "TBD" meeting_point never got a ref -- and without a ref
+    // backfillMissingRateTitles skips them forever. Not rental-point scoped.
+    .or("and(adults.eq.0,teens.eq.0,infants.eq.0),rate_title.is.null,meeting_point.eq.TBD")
     .is("external_booking_ref", null)
     .gte("date", todayIso)
     .order("date", { ascending: true })
     .limit(limit);
+
   if (error) throw new Error(`Could not load rows missing external_booking_ref: ${error.message}`);
 
   let checked = 0;
