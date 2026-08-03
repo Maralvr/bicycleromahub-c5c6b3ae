@@ -1429,6 +1429,7 @@ export type Database = {
         Returns: undefined
       }
       accept_shift: { Args: { _shift_id: string }; Returns: undefined }
+      can_read_attachment: { Args: { _path: string }; Returns: boolean }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined

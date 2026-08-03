@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isExcludedBokunProductId, isExcludedTourName } from "./excluded-bokun-products";
-import { rentalLocationForProductId } from "./rental-products";
+import { rentalLocationForBooking } from "./rental-products";
 import { cleanNoteText } from "./notes-format";
 
 const PRICING_MAP: Record<string, "adults" | "teens" | "infants"> = {
@@ -260,7 +260,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   const productTitle = activity?.product?.title ?? activity?.activity?.title ?? activity?.title ?? raw.product?.title ?? raw.productTitle ?? raw.title ?? "Bokun booking";
   const productId = activity?.product?.id ?? raw.product?.id;
   if (isExcludedBokunProductId(productId) || isExcludedTourName(productTitle)) return null;
-  const rentalLocation = rentalLocationForProductId(productId);
+  const rentalLocation = rentalLocationForBooking(productId, productTitle);
   const rentalPointId = rentalLocation ? rentalPointIdByName.get(rentalLocation.toLowerCase()) ?? null : null;
   const startDateTime = activity?.startDateTime ?? raw.startDateTime ?? raw.startDate ?? a0?.startDateTime;
   if (!startDateTime) return null;
