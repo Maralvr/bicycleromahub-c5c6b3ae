@@ -833,6 +833,7 @@ function DayView({
                   </>
                 )}
 
+
               </div>
               {isPartnerTour(s.tourName) && <PartnerBadge />}
               {isPrivateTour(s.rateTitle) && <PrivateBadge />}
