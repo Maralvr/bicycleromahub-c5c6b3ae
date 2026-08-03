@@ -107,11 +107,10 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[], busy: BusyMa
   if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
   if (conflict) warnings.push(conflict.reason);
 
-  // Overlapping commitment on the same day — HARD block, mirrors the database
-  // trigger `shifts_block_guide_conflict_trg`. Same-departure rows (several
-  // bookings of one departure) are exempt, see @/lib/guide-conflicts.
-  const overlapping = findGuideConflict(staff.id, shift, allShifts);
-  if (overlapping) return null;
+  // Overlapping commitment — HARD block. `busy` comes straight from the
+  // database helper `busy_guides`, the same function the write triggers use,
+  // so it covers primary shifts AND additional-guide assignments.
+  if (busy.get(staff.id)) return null;
 
 
   // --- 4. Status preference ---
