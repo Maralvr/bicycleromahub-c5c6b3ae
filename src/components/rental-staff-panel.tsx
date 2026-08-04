@@ -59,7 +59,14 @@ type Assignment = {
  *   - renderDayDialogSection(iso): assignment toggles for the day-details dialog
  *   - ManageRosterButton: button + dialog to edit the staff roster
  */
-export function useRentalStaffBridge(pointId: string | null, enabled = true) {
+export function useRentalStaffBridge(
+  pointId: string | null,
+  enabled = true,
+  /** Dates (yyyy-mm-dd) that have bookings at this point. Days with no
+   *  bookings need no coverage, so the calendar dot is hidden for them. */
+  bookingDates?: Set<string>,
+) {
+
   const list = useServerFn(listRentalStaff);
   const listA = useServerFn(listAssignmentsForPoint);
   const assign = useServerFn(assignRentalStaff);
