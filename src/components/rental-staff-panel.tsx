@@ -199,61 +199,50 @@ export function useRentalStaffBridge(pointId: string | null, enabled = true) {
     }
   };
 
+  /**
+   * Calendar-grid coverage indicator (one dot per day cell). Deliberately
+   * minimal: the full per-person roster stays in the day dialog. Colors match
+   * the app's status language (success/warning/destructive).
+   *   green  = bookings + at least one accepted assignment
+   *   amber  = bookings + assignments, none accepted yet
+   *   red    = bookings + nobody assigned (real coverage gap)
+   *   none   = no bookings that day at this point -> nothing to cover
+   */
   const renderDayOverlay = useCallback(
     (iso: string) => {
       if (!pointId || !enabled) return null;
-      const assigned = byDate.get(iso) ?? [];
-      if (assigned.length === 0) {
-        return (
-          <div className="flex items-center gap-1 text-[9px] text-muted-foreground/70 italic">
-            <Users2 className="h-2.5 w-2.5" /> No staff
-          </div>
-        );
-      }
+      const hasBookings = bookingDates ? bookingDates.has(iso) : true;
+      if (!hasBookings) return null;
+
+      const assigned = (byDate.get(iso) ?? []).filter((a) => a.status !== "rejected");
+      const nameOf = (id: string) => staff.find((x) => x.id === id)?.name ?? "Unknown";
+      const accepted = assigned.filter((a) => a.status === "accepted");
+      const pending = assigned.filter((a) => a.status !== "accepted");
+
+      const state =
+        accepted.length > 0 ? "covered" : assigned.length > 0 ? "pending" : "uncovered";
+      const dot =
+        state === "covered" ? "bg-success" : state === "pending" ? "bg-warning" : "bg-destructive";
+      const label =
+        state === "covered"
+          ? `Covered — accepted: ${accepted.map((a) => nameOf(a.rental_staff_id)).join(", ")}${
+              pending.length
+                ? ` · awaiting: ${pending.map((a) => nameOf(a.rental_staff_id)).join(", ")}`
+                : ""
+            }`
+          : state === "pending"
+            ? `Awaiting response — ${pending.map((a) => nameOf(a.rental_staff_id)).join(", ")}`
+            : "Uncovered — no rental staff assigned";
+
       return (
-        <div className="flex items-center gap-1">
-          <div className="flex -space-x-1">
-            {assigned.slice(0, 3).map((a) => {
-              const s = staff.find((x) => x.id === a.rental_staff_id);
-              if (!s) return null;
-              const ring =
-                a.status === "accepted"
-                  ? "ring-success"
-                  : a.status === "rejected"
-                    ? "ring-destructive"
-                    : "ring-warning"; // pending (default)
-              const statusLabel =
-                a.status === "accepted"
-                  ? "accepted"
-                  : a.status === "rejected"
-                    ? `rejected${a.rejection_reason ? ` — ${a.rejection_reason}` : ""}`
-                    : "awaiting response";
-              return (
-                <span
-                  key={a.id}
-                  className={cn("inline-block rounded-full ring-2", ring)}
-                  title={`${s.name} — ${statusLabel}`}
-                >
-                  <Avatar
-                    name={s.name}
-                    initials={s.avatar}
-                    size="sm"
-                    className="!h-4 !w-4 text-[7px]"
-                  />
-                </span>
-              );
-            })}
-            {assigned.length > 3 && (
-              <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-primary/20 text-primary text-[7px] font-bold ring-1 ring-background">
-                +{assigned.length - 3}
-              </span>
-            )}
-          </div>
+        <div className="flex items-center" title={label} aria-label={label}>
+          <span className={cn("h-2 w-2 rounded-full", dot)} />
         </div>
       );
     },
-    [byDate, staff, pointId, enabled],
+    [byDate, staff, pointId, enabled, bookingDates],
   );
+
 
   const renderDayDialogSection = useCallback(
     (iso: string) => {
