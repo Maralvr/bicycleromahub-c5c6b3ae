@@ -1144,6 +1144,15 @@ export async function backfillMissingRateTitles(limit = 40) {
         `/booking.json/booking/${row.external_booking_ref}`,
       )) as BokunBookingFull;
       const mapped = mapToShiftRow(detail, rentalPointIdByName);
+      if (mapped) await canonicalizeRateTitles([mapped]);
+      // Bokun-owned and never admin-edited: store the locale-stable rate id
+      // unconditionally so the dropdown can resolve the real option later.
+      if (mapped?.bokun_rate_id) {
+        await supabaseAdmin
+          .from("shifts")
+          .update({ bokun_rate_id: mapped.bokun_rate_id })
+          .eq("id", row.id);
+      }
       const patch: { rate_title?: string; meeting_point?: string } = {};
       if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
       if (
@@ -1157,6 +1166,7 @@ export async function backfillMissingRateTitles(limit = 40) {
         notFound++;
         continue;
       }
+
 
       // Write each field with its own guard IN the UPDATE's WHERE clause, so
       // the fill-only condition is re-checked atomically at write time rather
