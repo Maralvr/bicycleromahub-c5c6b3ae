@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 const CUSTOM = "__custom__";
+const SHOW_ALL = "__show_all__";
 
 type Props = {
   id?: string;
