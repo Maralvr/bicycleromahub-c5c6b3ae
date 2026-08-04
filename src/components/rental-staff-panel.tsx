@@ -427,12 +427,6 @@ export function useRentalStaffBridge(
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
-                  const alreadyToday = (byDate.get(iso) ?? []).filter(
-                    (a) =>
-                      a.rental_staff_id === s.id &&
-                      a.status !== "rejected" &&
-                      a.status !== "cancelled",
-                  ).length;
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
