@@ -19,12 +19,12 @@ export const Route = createFileRoute("/rental-staff-rates")({
       {
         name: "description",
         content:
-          "Set what each rental-point staff member is paid: flat per-shift amounts, double-shift season rates, or per-time-range rates.",
+          "Set what each rental-point staff member is paid per shift time range, plus the double-shift day rate and its season window.",
       },
       { property: "og:title", content: "Rental Staff Pay Rates — Bicycle Roma" },
       {
         property: "og:description",
-        content: "Flat per-shift, double-shift season and per-time-range pay rates for rental staff.",
+        content: "Per-time-range and double-shift day pay rates for rental staff.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -38,7 +38,6 @@ type StaffRow = {
   name: string;
   avatar: string;
   active: boolean;
-  default_shift_rate: number | null;
   double_shift_rate: number | null;
   double_shift_season_start: string | null;
   double_shift_season_end: string | null;
@@ -67,7 +66,7 @@ function RentalStaffRatesPage() {
       supabase
         .from("rental_staff" as never)
         .select(
-          "id, name, avatar, active, default_shift_rate, double_shift_rate, double_shift_season_start, double_shift_season_end",
+          "id, name, avatar, active, double_shift_rate, double_shift_season_start, double_shift_season_end",
         )
         .order("name"),
       supabase
@@ -93,7 +92,7 @@ function RentalStaffRatesPage() {
     <AppShell>
       <PageHeader
         title="Rental Staff Pay Rates"
-        subtitle="Two pay models are supported. Add time-range rates for staff paid by shift length; leave those empty and set a flat per-shift amount instead. The double-shift amount replaces 2x the flat amount only on days inside the season window."
+        subtitle="Everyone is paid by shift time range. Add the ranges each person can work with their amount. The double-shift day amount replaces the summed ranges when someone works two shifts on a day inside the season window."
         actions={
           <Button variant="outline" onClick={() => void navigate({ to: "/payouts" })}>
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Payouts
@@ -130,7 +129,6 @@ function StaffRateCard({
   rates: ShiftRate[];
   onChanged: () => Promise<void>;
 }) {
-  const [flat, setFlat] = useState(staff.default_shift_rate?.toString() ?? "");
   const [dbl, setDbl] = useState(staff.double_shift_rate?.toString() ?? "");
   const [seasonStart, setSeasonStart] = useState(staff.double_shift_season_start ?? "");
   const [seasonEnd, setSeasonEnd] = useState(staff.double_shift_season_end ?? "");
@@ -143,9 +141,8 @@ function StaffRateCard({
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
   const saveFlat = async () => {
-    const f = num(flat);
     const d = num(dbl);
-    if ((f != null && !Number.isFinite(f)) || (d != null && !Number.isFinite(d))) {
+    if (d != null && !Number.isFinite(d)) {
       toast.error("Enter valid amounts");
       return;
     }
@@ -158,7 +155,6 @@ function StaffRateCard({
     const { error } = await supabase
       .from("rental_staff" as never)
       .update({
-        default_shift_rate: f,
         double_shift_rate: d,
         double_shift_season_start: seasonStart || null,
         double_shift_season_end: seasonEnd || null,
@@ -216,16 +212,13 @@ function StaffRateCard({
           <div className="text-xs text-muted-foreground">
             {rates.length > 0
               ? `Paid by time range (${rates.length} option${rates.length === 1 ? "" : "s"})`
-              : "Paid a flat amount per shift"}
+              : "No time ranges set yet"}
           </div>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
-          <Field label="Flat per shift">
-            <MoneyInput value={flat} onChange={setFlat} />
-          </Field>
           <Field label="Double-shift day">
             <MoneyInput value={dbl} onChange={setDbl} />
           </Field>
@@ -256,7 +249,7 @@ function StaffRateCard({
           </div>
           {rates.length === 0 ? (
             <div className="text-xs text-muted-foreground">
-              None — this person is paid the flat amount above.
+              None yet — add the shift time ranges this person can work.
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">

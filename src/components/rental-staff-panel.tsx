@@ -61,20 +61,15 @@ type ShiftRate = {
   amount: number;
 };
 
-/** Flat-rate pay config (staff without per-time-range rates). */
+/** Double-shift day pay config (applies to every rental staff member). */
 type FlatRate = {
   id: string;
-  default_shift_rate: number | null;
   double_shift_rate: number | null;
   double_shift_season_start: string | null;
   double_shift_season_end: string | null;
 };
 
-/** Default shift windows offered to flat-rate staff (morning / afternoon). */
-const FLAT_SHIFTS = [
-  { label: "Morning", start: "09:00", end: "13:00" },
-  { label: "Afternoon", start: "14:00", end: "19:00" },
-] as const;
+
 
 /** Season bounds are MM-DD text compared month/day only, so they recur yearly. */
 const inSeason = (iso: string, start: string | null, end: string | null) => {
@@ -159,17 +154,17 @@ export function useRentalStaffBridge(
           .gte("date", from)
           .lte("date", to),
         // Per-staff paid time ranges: staff who have these get quick-pick
-        // shift times (their pay depends on the range); flat-rate staff
+        // shift times (their pay depends on the range); staff with no
         // don't need a time range at all.
         supabase
           .from("rental_staff_shift_rates" as never)
           .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
-        // Flat-rate pay config: flat-rate staff still get morning/afternoon
+        // Double-shift day pay config (applies to everyone).
         // quick-picks so a double-shift day can actually be recorded.
         supabase
           .from("rental_staff" as never)
           .select(
-            "id, default_shift_rate, double_shift_rate, double_shift_season_start, double_shift_season_end",
+            "id, double_shift_rate, double_shift_season_start, double_shift_season_end",
           ),
       ]);
       setStaff(s.staff as RentalStaff[]);
@@ -265,7 +260,7 @@ export function useRentalStaffBridge(
     return map;
   }, [unavailable]);
 
-  /** Paid time ranges configured for a staff member (empty = flat-rate). */
+  /** Paid time ranges configured for a staff member. */
   const ratesFor = useCallback(
     (staffId: string) =>
       shiftRates
@@ -274,7 +269,7 @@ export function useRentalStaffBridge(
     [shiftRates],
   );
 
-  /** Flat-rate pay config for a staff member (null when not configured). */
+  /** Double-shift day pay config for a staff member (null when not set). */
   const flatFor = useCallback(
     (staffId: string) => flatRates.find((f) => f.id === staffId) ?? null,
     [flatRates],
@@ -464,34 +459,27 @@ export function useRentalStaffBridge(
                 </div>
               )}
 
-              {/* Add someone. Staff paid by time range get quick-pick shift
-                  options; flat-rate staff are assigned with no time range. */}
+              {/* Add someone. Everyone gets the shift time-range quick-picks. */}
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
                   const flat = flatFor(s.id);
-                  const flatConfigured = rates.length === 0 && flat?.default_shift_rate != null;
                   const alreadyToday = (byDate.get(iso) ?? []).filter(
                     (a) =>
                       a.rental_staff_id === s.id &&
                       a.status !== "rejected" &&
                       a.status !== "cancelled",
                   ).length;
-                  // Flat-rate pay: 1 shift = flat amount; a 2nd shift in the
-                  // same day pays the double-shift amount inside the season,
-                  // otherwise it's just another flat shift.
+                  // Double-shift day: a 2nd shift inside the season window pays
+                  // the double-shift amount instead of the summed ranges.
                   const seasonal =
                     flat != null &&
                     inSeason(iso, flat.double_shift_season_start, flat.double_shift_season_end) &&
                     flat.double_shift_rate != null;
-                  const flatAmount =
-                    alreadyToday >= 1 && seasonal
-                      ? Number(flat!.double_shift_rate)
-                      : Number(flat?.default_shift_rate ?? 0);
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
-                  const hasPicker = rates.length > 0 || flatConfigured;
+                  const hasPicker = rates.length > 0;
                   return (
                     <div key={s.id} className="flex flex-wrap items-center gap-1.5">
                       <button
@@ -559,23 +547,7 @@ export function useRentalStaffBridge(
                             )}
                           </button>
                         ))}
-                      {open &&
-                        flatConfigured &&
-                        FLAT_SHIFTS.map((sh) => (
-                          <button
-                            key={sh.label}
-                            type="button"
-                            onClick={() => void addAssignment(iso, s.id, sh.start, sh.end)}
-                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
-                          >
-                            <span className="font-medium">{sh.label}</span>
-                            <span className="opacity-70">
-                              {sh.start}–{sh.end}
-                            </span>
-                            <span className="opacity-70">€{flatAmount}</span>
-                          </button>
-                        ))}
-                      {open && flatConfigured && alreadyToday >= 1 && seasonal && (
+                      {open && alreadyToday >= 1 && seasonal && (
                         <span className="text-[10px] text-muted-foreground">
                           Double-shift day → €{Number(flat!.double_shift_rate)} total
                         </span>
