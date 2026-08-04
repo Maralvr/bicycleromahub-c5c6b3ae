@@ -32,7 +32,7 @@ type Rate = {
 
 function PayoutRatesPage() {
   const { role } = useCurrentUser();
-  const { isRentalStaff } = useAuth();
+  const { isRentalStaff, rolesLoaded } = useAuth();
   const navigate = useNavigate();
   const [rates, setRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +50,7 @@ function PayoutRatesPage() {
       });
   }, []);
 
+  if (!rolesLoaded) return null;
   if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const q = search.trim().toLowerCase();

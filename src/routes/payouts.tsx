@@ -107,7 +107,7 @@ const paxOf = (s: { adults: number | null; teens: number | null; infants: number
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
-  const { isRentalStaff } = useAuth();
+  const { isRentalStaff, rolesLoaded } = useAuth();
   const { staff } = useStaffStore();
   const navigate = useNavigate();
 
@@ -441,6 +441,7 @@ function PayoutsPage() {
     toast.success(paid ? `Marked ${lines.length} as paid` : `Reopened ${lines.length}`);
   };
 
+  if (!rolesLoaded) return null;
   if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const grandTotal = grouped.reduce((a, g) => a + g.total, 0);
