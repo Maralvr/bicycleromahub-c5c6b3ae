@@ -45,11 +45,14 @@ export async function fetchProductRates(productId: string) {
   })) as BokunActivity;
 
   const rates: ProductRate[] = (activity.rates ?? [])
-    .filter((r) => r?.title)
+    .filter((r) => r?.title && String(r.title).trim().length > 0)
     .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
     .map((r) => ({
-      id: String(r.id ?? r.title),
-      title: String(r.title),
+      // Some Bokun products have stray leading/trailing spaces in rate titles
+      // (e.g. product 703565 " Private tour in English"); normalise them here
+      // so the cached list and the dropdown never show ragged labels.
+      id: String(r.id ?? String(r.title).trim()),
+      title: String(r.title).trim(),
       rateCode: r.rateCode ?? null,
     }));
 
