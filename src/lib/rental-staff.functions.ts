@@ -97,7 +97,7 @@ export const listAssignmentsForPoint = createServerFn({ method: "GET" })
     await assertRentalManager(supabase, userId);
     const { data: rows, error } = await supabase
       .from("rental_point_day_assignments")
-      .select("id, rental_point_id, rental_staff_id, date, notes, status, pending_expires_at, rejection_reason, accepted_at, created_at, cancelled_at, cancelled_reason")
+      .select("id, rental_point_id, rental_staff_id, date, shift_start_time, shift_end_time, notes, status, pending_expires_at, rejection_reason, accepted_at, created_at, cancelled_at, cancelled_reason")
       .eq("rental_point_id", data.pointId)
       .gte("date", data.from)
       .lte("date", data.to)
