@@ -593,6 +593,8 @@ export type Database = {
           reminder_2h_sent_at: string | null
           rental_point_id: string
           rental_staff_id: string
+          shift_end_time: string | null
+          shift_start_time: string | null
           status: string
           updated_at: string
         }
@@ -612,6 +614,8 @@ export type Database = {
           reminder_2h_sent_at?: string | null
           rental_point_id: string
           rental_staff_id: string
+          shift_end_time?: string | null
+          shift_start_time?: string | null
           status?: string
           updated_at?: string
         }
@@ -631,6 +635,8 @@ export type Database = {
           reminder_2h_sent_at?: string | null
           rental_point_id?: string
           rental_staff_id?: string
+          shift_end_time?: string | null
+          shift_start_time?: string | null
           status?: string
           updated_at?: string
         }
@@ -695,6 +701,10 @@ export type Database = {
           active: boolean
           avatar: string
           created_at: string
+          default_shift_rate: number | null
+          double_shift_rate: number | null
+          double_shift_season_end: string | null
+          double_shift_season_start: string | null
           email: string | null
           id: string
           name: string
@@ -706,6 +716,10 @@ export type Database = {
           active?: boolean
           avatar?: string
           created_at?: string
+          default_shift_rate?: number | null
+          double_shift_rate?: number | null
+          double_shift_season_end?: string | null
+          double_shift_season_start?: string | null
           email?: string | null
           id?: string
           name: string
@@ -717,6 +731,10 @@ export type Database = {
           active?: boolean
           avatar?: string
           created_at?: string
+          default_shift_rate?: number | null
+          double_shift_rate?: number | null
+          double_shift_season_end?: string | null
+          double_shift_season_start?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -725,6 +743,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rental_staff_day_payouts: {
+        Row: {
+          amount: number | null
+          created_at: string
+          date: string
+          id: string
+          paid: boolean
+          paid_at: string | null
+          paid_by: string | null
+          rental_staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          date: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          paid_by?: string | null
+          rental_staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          date?: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          paid_by?: string | null
+          rental_staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_day_payouts_rental_staff_id_fkey"
+            columns: ["rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rental_staff_notifications: {
         Row: {
@@ -776,6 +838,44 @@ export type Database = {
           },
           {
             foreignKeyName: "rental_staff_notifications_rental_staff_id_fkey"
+            columns: ["rental_staff_id"]
+            isOneToOne: false
+            referencedRelation: "rental_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_staff_shift_rates: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          rental_staff_id: string
+          shift_end_time: string
+          shift_start_time: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          rental_staff_id: string
+          shift_end_time: string
+          shift_start_time: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          rental_staff_id?: string
+          shift_end_time?: string
+          shift_start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_staff_shift_rates_rental_staff_id_fkey"
             columns: ["rental_staff_id"]
             isOneToOne: false
             referencedRelation: "rental_staff"
@@ -1757,6 +1857,18 @@ export type Database = {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
       }
+      rental_staff_day_amounts: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          amount: number
+          date: string
+          frozen_amount: number
+          paid: boolean
+          paid_at: string
+          rental_staff_id: string
+          shift_count: number
+        }[]
+      }
       send_rental_point_reminders: { Args: never; Returns: number }
       send_shift_reminders: { Args: never; Returns: number }
       set_additional_guide_payout: {
@@ -1765,6 +1877,15 @@ export type Database = {
           _paid?: boolean
           _row_id: string
           _tier?: number
+        }
+        Returns: undefined
+      }
+      set_rental_staff_day_payout: {
+        Args: {
+          _amount?: number
+          _date: string
+          _paid: boolean
+          _rental_staff_id: string
         }
         Returns: undefined
       }
