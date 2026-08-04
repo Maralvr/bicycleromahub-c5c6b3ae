@@ -174,6 +174,13 @@ export function AllRentalPointsView() {
         startTime: s.startTime,
         pax: (p?.adults ?? 0) + (p?.teens ?? 0) + (p?.infants ?? 0),
         isTour: !s.rentalPointId,
+        guide: s.assignedStaffId
+          ? (() => {
+              const g = guides.get(s.assignedStaffId);
+              return g ? { name: g.name, avatar: g.avatar } : null;
+            })()
+          : null,
+
       });
     }
 
