@@ -336,76 +336,153 @@ export function useRentalStaffBridge(
               .
             </div>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {active.map((s) => {
-                const a = assigned.find((x) => x.rental_staff_id === s.id);
-                const on = !!a;
-                const status = a?.status ?? null;
-                const reason = a?.rejection_reason ?? null;
-                const conflict = unavailableByKey.get(`${s.id}|${iso}`);
-                const isUnavailable = !!conflict;
-                const tone =
-                  status === "accepted"
-                    ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
-                    : status === "rejected"
-                      ? "bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/20"
-                      : on
-                        ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
-                        : isUnavailable
-                          ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
-                          : "bg-card border-border hover:bg-accent";
-                const conflictDetail = conflict
-                  ? conflict.allDay
-                    ? `${s.name} marked the whole day off`
-                    : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
-                  : undefined;
-                const title =
-                  status === "rejected"
-                    ? `Rejected${reason ? `: ${reason}` : ""} — click to clear`
-                    : conflictDetail;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => void handleToggle(iso, s.id)}
-                    title={title}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
-                      tone,
-                    )}
-                  >
-                    <Avatar
-                      name={s.name}
-                      initials={s.avatar}
-                      size="sm"
-                      className="!h-4 !w-4 text-[8px]"
-                    />
-                    <span className="truncate max-w-32">{s.name}</span>
-                    {on && status === "accepted" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
-                    )}
-                    {on && status === "pending" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
-                    )}
-                    {on && status === "rejected" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">rejected</span>
-                    )}
-                    {/* Shown whenever the staff marked themselves unavailable
-                        that day, even if they're already assigned -- e.g.
-                        they went unavailable after being assigned, and the
-                        admin should notice and reconsider. */}
-                    {isUnavailable && (
-                      <AlertTriangle
-                        className="h-3 w-3 text-destructive shrink-0"
-                        aria-label="Marked unavailable this day"
-                      />
-                    )}
-                    {!on && <Plus className="h-3 w-3 opacity-60" />}
-                  </button>
-                );
-              })}
+            <div className="space-y-2">
+              {/* Existing assignments — one chip per assignment, so the same
+                  person can hold two shifts on one day (different ranges). */}
+              {assigned.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {assigned.map((a) => {
+                    const s = staff.find((x) => x.id === a.rental_staff_id);
+                    const status = a.status ?? null;
+                    const reason = a.rejection_reason ?? null;
+                    const conflict = unavailableByKey.get(`${a.rental_staff_id}|${iso}`);
+                    const tone =
+                      status === "accepted"
+                        ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
+                        : status === "rejected" || status === "cancelled"
+                          ? "bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/20"
+                          : "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20";
+                    const range = rangeLabel(a);
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => void removeAssignment(a.id)}
+                        title={
+                          status === "rejected"
+                            ? `Rejected${reason ? `: ${reason}` : ""} — click to clear`
+                            : "Click to unassign"
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+                          tone,
+                        )}
+                      >
+                        <Avatar
+                          name={s?.name ?? "?"}
+                          initials={s?.avatar ?? "?"}
+                          size="sm"
+                          className="!h-4 !w-4 text-[8px]"
+                        />
+                        <span className="truncate max-w-32">{s?.name ?? "Unknown"}</span>
+                        {range && (
+                          <span className="text-[10px] font-medium tabular-nums opacity-80">
+                            {range}
+                          </span>
+                        )}
+                        {status === "accepted" && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
+                        )}
+                        {status && status !== "accepted" && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider">
+                            {status}
+                          </span>
+                        )}
+                        {!!conflict && (
+                          <AlertTriangle
+                            className="h-3 w-3 text-destructive shrink-0"
+                            aria-label="Marked unavailable this day"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add someone. Staff paid by time range get quick-pick shift
+                  options; flat-rate staff are assigned with no time range. */}
+              <div className="flex flex-wrap gap-1.5">
+                {active.map((s) => {
+                  const rates = ratesFor(s.id);
+                  const key = `${s.id}|${iso}`;
+                  const open = picking === key;
+                  const conflict = unavailableByKey.get(key);
+                  return (
+                    <div key={s.id} className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (rates.length > 0) setPicking(open ? null : key);
+                          else void addAssignment(iso, s.id, null, null);
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+                          conflict
+                            ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
+                            : "bg-card border-border hover:bg-accent",
+                          open && "ring-1 ring-primary",
+                        )}
+                        title={
+                          conflict
+                            ? conflict.allDay
+                              ? `${s.name} marked the whole day off`
+                              : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
+                            : rates.length > 0
+                              ? "Pick a shift time"
+                              : "Assign this day"
+                        }
+                      >
+                        <Avatar
+                          name={s.name}
+                          initials={s.avatar}
+                          size="sm"
+                          className="!h-4 !w-4 text-[8px]"
+                        />
+                        <span className="truncate max-w-32">{s.name}</span>
+                        {!!conflict && (
+                          <AlertTriangle
+                            className="h-3 w-3 text-destructive shrink-0"
+                            aria-label="Marked unavailable this day"
+                          />
+                        )}
+                        <Plus className="h-3 w-3 opacity-60" />
+                      </button>
+                      {open &&
+                        rates.map((r) => (
+                          <button
+                            key={`${r.shift_start_time}-${r.shift_end_time}`}
+                            type="button"
+                            onClick={() =>
+                              void addAssignment(
+                                iso,
+                                s.id,
+                                hhmm(r.shift_start_time),
+                                hhmm(r.shift_end_time),
+                              )
+                            }
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
+                          >
+                            {hhmm(r.shift_start_time)}–{hhmm(r.shift_end_time)}
+                            <span className="opacity-70">€{Number(r.amount)}</span>
+                          </button>
+                        ))}
+                      {open && (
+                        <button
+                          type="button"
+                          onClick={() => void addAssignment(iso, s.id, null, null)}
+                          className="rounded-full border border-border bg-card px-2 py-1 text-[11px] hover:bg-accent"
+                        >
+                          No time
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
+
         </div>
       );
     },
