@@ -467,8 +467,10 @@ function AdminRentalBookingsView({
   // delete, departure overrides, no-show) live on the Shifts page only.
 
 
+  const bookingDates = useMemo(() => new Set(scoped.map((s) => s.date)), [scoped]);
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
-    useRentalStaffBridge(pointId, true);
+    useRentalStaffBridge(pointId, true, bookingDates);
+
 
   return (
     <div className="mt-8">

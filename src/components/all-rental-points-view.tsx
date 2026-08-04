@@ -26,6 +26,43 @@ function fmtDate(iso: string) {
 const PAGE_SIZE = 7;
 
 /**
+ * Same at-a-glance coverage language as the rental-point calendar grid:
+ * green = someone accepted, amber = assigned but unanswered, red = bookings
+ * with nobody assigned, nothing = no bookings to cover.
+ */
+function CoverageDot({
+  bookings,
+  staff,
+}: {
+  bookings: number;
+  staff: { name: string; status: string }[];
+}) {
+  if (bookings === 0) return null;
+  const active = staff.filter((s) => s.status !== "rejected");
+  const accepted = active.filter((s) => s.status === "accepted");
+  const pending = active.filter((s) => s.status !== "accepted");
+  const state = accepted.length > 0 ? "covered" : active.length > 0 ? "pending" : "uncovered";
+  const dot =
+    state === "covered" ? "bg-success" : state === "pending" ? "bg-warning" : "bg-destructive";
+  const label =
+    state === "covered"
+      ? `Covered — accepted: ${accepted.map((s) => s.name).join(", ")}${
+          pending.length ? ` · awaiting: ${pending.map((s) => s.name).join(", ")}` : ""
+        }`
+      : state === "pending"
+        ? `Awaiting response — ${pending.map((s) => s.name).join(", ")}`
+        : "Uncovered — no rental staff assigned";
+  return (
+    <span
+      className={cn("h-2 w-2 rounded-full shrink-0", dot)}
+      title={label}
+      aria-label={label}
+    />
+  );
+}
+
+
+/**
  * Cross-point view for rental staff: every rental point's coverage (who's on
  * duty) plus the bookings scheduled there, for all points -- not just the
  * caller's own days.
@@ -180,7 +217,14 @@ export function AllRentalPointsView() {
                   <Card key={p.pointId} className="p-3 border-border/60">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0">
-                        <div className="font-semibold text-foreground">{p.pointName}</div>
+                        <div className="font-semibold text-foreground flex items-center gap-1.5">
+                          <CoverageDot
+                            bookings={p.bookings.length}
+                            staff={p.staff}
+                          />
+                          {p.pointName}
+                        </div>
+
                         {p.address && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                             <MapPin className="h-3 w-3" /> {p.address}
