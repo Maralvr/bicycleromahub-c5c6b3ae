@@ -567,17 +567,20 @@ function RentalDayCard({
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={noShowBusyId === b.id}
-                  onClick={() => handleToggleNoShow(b.id, !b.noShow)}
-                  className={cn("h-7 px-2 text-[11px]", !b.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
-                >
-                  <Ban className="h-3 w-3 mr-1" /> {b.noShow ? "Undo" : "No-show"}
-                </Button>
-              </div>
+              {(b.noShow || hasStarted(day.date, b.startTime)) && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={noShowBusyId === b.id}
+                    onClick={() => handleToggleNoShow(b.id, !b.noShow)}
+                    className={cn("h-7 px-2 text-[11px]", !b.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
+                  >
+                    <Ban className="h-3 w-3 mr-1" /> {b.noShow ? "Undo" : "No-show"}
+                  </Button>
+                </div>
+              )}
+
 
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-foreground/85 pl-1">
                 <div className="flex items-center gap-1.5">
