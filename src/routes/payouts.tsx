@@ -20,7 +20,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/lib/current-user";
 import { supabase } from "@/integrations/supabase/client";
-import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -41,6 +40,12 @@ type Rate = {
   tier1: number;
   tier2: number;
   private_rate: number | null;
+};
+
+type Guide = {
+  id: string;
+  name: string;
+  avatar: string;
 };
 
 type PayoutShift = {
@@ -108,9 +113,9 @@ const paxOf = (s: { adults: number | null; teens: number | null; infants: number
 function PayoutsPage() {
   const { role } = useCurrentUser();
   const { isRentalStaff, rolesLoaded } = useAuth();
-  const { staff } = useStaffStore();
   const navigate = useNavigate();
 
+  const [staff, setStaff] = useState<Guide[]>([]);
   const [from, setFrom] = useState<Date>(startOfMonth(new Date()));
   const [to, setTo] = useState<Date>(endOfMonth(new Date()));
   const [rates, setRates] = useState<Rate[]>([]);
@@ -122,10 +127,15 @@ function PayoutsPage() {
 
   // Load rates once
   useEffect(() => {
-    void supabase
-      .from("guide_payout_rates")
-      .select("product_id, title, tier1, tier2, private_rate")
-      .then(({ data }) => setRates((data ?? []) as Rate[]));
+    void Promise.all([
+      supabase.from("guide_payout_rates").select("product_id, title, tier1, tier2, private_rate"),
+      supabase.from("staff").select("id, name, avatar").order("name", { ascending: true }),
+    ]).then(([ratesResult, staffResult]) => {
+      if (ratesResult.error) toast.error(ratesResult.error.message);
+      if (staffResult.error) toast.error(staffResult.error.message);
+      setRates((ratesResult.data ?? []) as Rate[]);
+      setStaff((staffResult.data ?? []) as Guide[]);
+    });
   }, []);
 
   // Load shifts in range (primary-guide payouts)
