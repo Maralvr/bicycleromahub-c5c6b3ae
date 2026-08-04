@@ -932,7 +932,11 @@ export async function continueBokunImport(
  * call it repeatedly (like the main sync) if there's a large backlog.
  */
 export async function healStuckZeroParticipantBookings(limit = 50) {
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // 60-day lookback rather than today-onwards. Rows created broken by a
+  // webhook (0 participants, no parent ref) used to be abandoned the moment
+  // their departure date passed, freezing them permanently at 0/TBD. Bokun
+  // still has the real detail, so keep healing recent history too.
+  const lookbackIso = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
   const { data: stuckRows, error } = await supabaseAdmin
     .from("shifts")
     .select("id, booking_id, external_booking_ref, date, start_time")
@@ -940,7 +944,7 @@ export async function healStuckZeroParticipantBookings(limit = 50) {
     .eq("adults", 0)
     .eq("teens", 0)
     .eq("infants", 0)
-    .gte("date", todayIso)
+    .gte("date", lookbackIso)
     .order("date", { ascending: true })
     .limit(limit);
   if (error) throw new Error(`Could not load stuck rows: ${error.message}`);
@@ -1033,7 +1037,6 @@ export async function healStuckZeroParticipantBookings(limit = 50) {
  * delay between requests to stay well under Bokun's rate limit.
  */
 export async function backfillMissingExternalBookingRefs(limit = 40) {
-  const todayIso = new Date().toISOString().slice(0, 10);
   const { data: rows, error } = await supabaseAdmin
     .from("shifts")
     .select("id, booking_id, external_booking_ref, date")
@@ -1045,8 +1048,10 @@ export async function backfillMissingExternalBookingRefs(limit = 40) {
     // backfillMissingRateTitles skips them forever. Not rental-point scoped.
     .or("and(adults.eq.0,teens.eq.0,infants.eq.0),rate_title.is.null,meeting_point.eq.TBD")
     .is("external_booking_ref", null)
-    .gte("date", todayIso)
-    .order("date", { ascending: true })
+    // No date floor: ref-less rows from before this fix are mostly in the past
+    // now, and without a ref they can never be healed. Newest first so
+    // upcoming/recent departures are resolved before old history.
+    .order("date", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(`Could not load rows missing external_booking_ref: ${error.message}`);
