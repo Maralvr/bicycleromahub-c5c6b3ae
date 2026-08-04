@@ -188,9 +188,17 @@ export function RentalStaffShiftsView({
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => void reloadRef.current(), 600);
     };
+    // Booking changes arrive as a column-less { id, event_type } broadcast
+    // (trigger public.broadcast_shift_change) rather than postgres_changes,
+    // which would put the customer-paid `rate` on a rental-staff WebSocket.
+    // Broadcast is topic-based, so it needs its own channel named after the
+    // topic; day assignments keep using postgres_changes (no pricing there).
+    const shiftsChannel = supabase
+      .channel("shifts-changes")
+      .on("broadcast", { event: "shift_change" }, schedule)
+      .subscribe();
     const channel = supabase
       .channel(`rental-staff-view-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, schedule)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rental_point_day_assignments" },
@@ -199,6 +207,7 @@ export function RentalStaffShiftsView({
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
+      void supabase.removeChannel(shiftsChannel);
       void supabase.removeChannel(channel);
     };
   }, []);
