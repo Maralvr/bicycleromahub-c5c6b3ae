@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrentUser } from "@/lib/current-user";
+import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ type Rate = {
 
 function PayoutRatesPage() {
   const { role } = useCurrentUser();
+  const { isRentalStaff } = useAuth();
   const navigate = useNavigate();
   const [rates, setRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ function PayoutRatesPage() {
       });
   }, []);
 
-  if (role !== "admin") return <Navigate to="/" />;
+  if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const q = search.trim().toLowerCase();
   const filtered = q === "" ? rates : rates.filter((r) => r.title.toLowerCase().includes(q));

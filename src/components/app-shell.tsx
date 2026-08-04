@@ -253,6 +253,8 @@ function RentalAppShell({ children }: { children: ReactNode }) {
     { to: "/tasks", label: t.nav.tasks, icon: ListChecks },
     { to: "/notifications", label: t.nav.notifications, icon: Bell },
     { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
+    { to: "/payouts", label: t.nav.payouts, icon: Euro },
+    { to: "/payout-rates", label: "Payout rates", icon: Euro },
     { to: "/profile", label: "Profile", icon: UserCog },
   ];
 

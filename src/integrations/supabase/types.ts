@@ -1747,8 +1747,26 @@ export type Database = {
       }
       send_rental_point_reminders: { Args: never; Returns: number }
       send_shift_reminders: { Args: never; Returns: number }
+      set_additional_guide_payout: {
+        Args: {
+          _amount?: number
+          _paid?: boolean
+          _row_id: string
+          _tier?: number
+        }
+        Returns: undefined
+      }
       set_shift_no_show: {
         Args: { _no_show: boolean; _notes?: string; _shift_id: string }
+        Returns: undefined
+      }
+      set_shift_payout: {
+        Args: {
+          _amount?: number
+          _paid?: boolean
+          _shift_id: string
+          _tier?: number
+        }
         Returns: undefined
       }
     }

@@ -107,7 +107,7 @@ const paxOf = (s: { adults: number | null; teens: number | null; infants: number
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
-  const { user } = useAuth();
+  const { isRentalStaff } = useAuth();
   const { staff } = useStaffStore();
   const navigate = useNavigate();
 
@@ -279,14 +279,18 @@ function PayoutsPage() {
       .sort((a, b) => (a.guide?.name ?? "").localeCompare(b.guide?.name ?? ""));
   }, [allLines, staff, paidFilter, ratesByProduct, ratesByTitle]);
 
+  // Payout writes go through the payout-only RPCs (set_shift_payout /
+  // set_additional_guide_payout) rather than raw table updates: rental staff
+  // have payout parity with admins, but must not be able to touch any other
+  // column on shifts (customer data, dates, assignment, rate).
   const setTier = async (line: { id: string; kind: "primary" | "additional" }, tier: 1 | 2 | 3) => {
     if (line.kind === "primary") {
       const prev = shifts;
       setShifts((s) => s.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)));
-      const { error } = await supabase
-        .from("shifts")
-        .update({ payout_tier: tier })
-        .eq("id", line.id);
+      const { error } = await supabase.rpc("set_shift_payout" as never, {
+        _shift_id: line.id,
+        _tier: tier,
+      } as never);
       if (error) {
         setShifts(prev);
         toast.error(error.message);
@@ -296,10 +300,10 @@ function PayoutsPage() {
       setAdditionalRows((rows) =>
         rows.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)),
       );
-      const { error } = await supabase
-        .from("shift_additional_guides" as never)
-        .update({ payout_tier: tier } as never)
-        .eq("id", line.id);
+      const { error } = await supabase.rpc("set_additional_guide_payout" as never, {
+        _row_id: line.id,
+        _tier: tier,
+      } as never);
       if (error) {
         setAdditionalRows(prev);
         toast.error(error.message);
@@ -338,15 +342,11 @@ function PayoutsPage() {
         );
         const results = await Promise.all(
           primaryLines.map((l) =>
-            supabase
-              .from("shifts")
-              .update({
-                payout_paid: true,
-                payout_paid_at: nowIso,
-                payout_paid_by: user?.id ?? null,
-                payout_amount: amounts.get(l.id),
-              })
-              .eq("id", l.id),
+            supabase.rpc("set_shift_payout" as never, {
+              _shift_id: l.id,
+              _paid: true,
+              _amount: amounts.get(l.id) ?? null,
+            } as never),
           ),
         );
         const failed = results.find((r) => r.error);
@@ -364,18 +364,18 @@ function PayoutsPage() {
               : x,
           ),
         );
-        const { error } = await supabase
-          .from("shifts")
-          .update({
-            payout_paid: false,
-            payout_paid_at: null,
-            payout_paid_by: null,
-            payout_amount: null,
-          })
-          .in("id", ids);
-        if (error) {
+        const unpaidResults = await Promise.all(
+          ids.map((id) =>
+            supabase.rpc("set_shift_payout" as never, {
+              _shift_id: id,
+              _paid: false,
+            } as never),
+          ),
+        );
+        const unpaidFailed = unpaidResults.find((r) => r.error);
+        if (unpaidFailed?.error) {
           setShifts(prev);
-          toast.error(error.message);
+          toast.error(unpaidFailed.error.message);
           return;
         }
       }
@@ -399,14 +399,11 @@ function PayoutsPage() {
         );
         const results = await Promise.all(
           additionalLines.map((l) =>
-            supabase
-              .from("shift_additional_guides" as never)
-              .update({
-                payout_paid: true,
-                payout_paid_at: nowIso,
-                payout_amount: amounts.get(l.id),
-              } as never)
-              .eq("id", l.id),
+            supabase.rpc("set_additional_guide_payout" as never, {
+              _row_id: l.id,
+              _paid: true,
+              _amount: amounts.get(l.id) ?? null,
+            } as never),
           ),
         );
         const failed = results.find((r) => r.error);
@@ -424,13 +421,18 @@ function PayoutsPage() {
               : x,
           ),
         );
-        const { error } = await supabase
-          .from("shift_additional_guides" as never)
-          .update({ payout_paid: false, payout_paid_at: null, payout_amount: null } as never)
-          .in("id", ids);
-        if (error) {
+        const unpaidResults = await Promise.all(
+          ids.map((id) =>
+            supabase.rpc("set_additional_guide_payout" as never, {
+              _row_id: id,
+              _paid: false,
+            } as never),
+          ),
+        );
+        const unpaidFailed = unpaidResults.find((r) => r.error);
+        if (unpaidFailed?.error) {
           setAdditionalRows(prev);
-          toast.error(error.message);
+          toast.error(unpaidFailed.error.message);
           return;
         }
       }
@@ -439,7 +441,7 @@ function PayoutsPage() {
     toast.success(paid ? `Marked ${lines.length} as paid` : `Reopened ${lines.length}`);
   };
 
-  if (role !== "admin") return <Navigate to="/" />;
+  if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const grandTotal = grouped.reduce((a, g) => a + g.total, 0);
 
