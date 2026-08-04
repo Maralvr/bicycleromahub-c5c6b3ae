@@ -61,23 +61,6 @@ type ShiftRate = {
   amount: number;
 };
 
-/** Double-shift day pay config (applies to every rental staff member). */
-type FlatRate = {
-  id: string;
-  double_shift_rate: number | null;
-  double_shift_season_start: string | null;
-  double_shift_season_end: string | null;
-};
-
-
-
-/** Season bounds are MM-DD text compared month/day only, so they recur yearly. */
-const inSeason = (iso: string, start: string | null, end: string | null) => {
-  if (!start || !end) return false;
-  const md = iso.slice(5, 10);
-  return start <= end ? md >= start && md <= end : md >= start || md <= end;
-};
-
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
 const rangeLabel = (a: { shift_start_time: string | null; shift_end_time: string | null }) =>
   a.shift_start_time || a.shift_end_time
@@ -114,7 +97,6 @@ export function useRentalStaffBridge(
   >([]);
   const [showRoster, setShowRoster] = useState(false);
   const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
-  const [flatRates, setFlatRates] = useState<FlatRate[]>([]);
 
   /**
    * False until the per-staff time-range rates have actually been read.
@@ -142,7 +124,7 @@ export function useRentalStaffBridge(
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a, u, r, f] = await Promise.all([
+      const [s, a, u, r] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
         // Any unavailability entry (all-day or partial) is worth surfacing
@@ -159,22 +141,9 @@ export function useRentalStaffBridge(
         supabase
           .from("rental_staff_shift_rates" as never)
           .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
-        // Double-shift day pay config (applies to everyone).
-        // quick-picks so a double-shift day can actually be recorded.
-        supabase
-          .from("rental_staff" as never)
-          .select(
-            "id, double_shift_rate, double_shift_season_start, double_shift_season_end",
-          ),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
-      if (f.error) {
-        toast.error(`Couldn't load flat pay rates: ${f.error.message}`);
-        setFlatRates([]);
-      } else {
-        setFlatRates((f.data ?? []) as unknown as FlatRate[]);
-      }
       if (r.error) {
         // Never assume "no rates" on a failed read -- that silently assigns
         // time-range-paid staff with no shift time, which computes as EUR 0
@@ -269,11 +238,6 @@ export function useRentalStaffBridge(
     [shiftRates],
   );
 
-  /** Double-shift day pay config for a staff member (null when not set). */
-  const flatFor = useCallback(
-    (staffId: string) => flatRates.find((f) => f.id === staffId) ?? null,
-    [flatRates],
-  );
 
 
   const addAssignment = async (
@@ -463,19 +427,12 @@ export function useRentalStaffBridge(
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
-                  const flat = flatFor(s.id);
                   const alreadyToday = (byDate.get(iso) ?? []).filter(
                     (a) =>
                       a.rental_staff_id === s.id &&
                       a.status !== "rejected" &&
                       a.status !== "cancelled",
                   ).length;
-                  // Double-shift day: a 2nd shift inside the season window pays
-                  // the double-shift amount instead of the summed ranges.
-                  const seasonal =
-                    flat != null &&
-                    inSeason(iso, flat.double_shift_season_start, flat.double_shift_season_end) &&
-                    flat.double_shift_rate != null;
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
@@ -547,11 +504,6 @@ export function useRentalStaffBridge(
                             )}
                           </button>
                         ))}
-                      {open && alreadyToday >= 1 && seasonal && (
-                        <span className="text-[10px] text-muted-foreground">
-                          Double-shift day → €{Number(flat!.double_shift_rate)} total
-                        </span>
-                      )}
                       {open && (
                         <button
                           type="button"
@@ -573,7 +525,7 @@ export function useRentalStaffBridge(
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, flatFor, ratesReady, picking],
+    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, ratesReady, picking],
   );
 
   const ManageRosterButton = (
