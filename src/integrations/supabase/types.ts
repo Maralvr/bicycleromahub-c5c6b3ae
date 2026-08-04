@@ -1683,6 +1683,10 @@ export type Database = {
         }
         Returns: string[]
       }
+      can_manage_rental_assignments: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       can_read_attachment: { Args: { _path: string }; Returns: boolean }
       cancel_rental_day: {
         Args: { _assignment_id: string; _reason?: string }

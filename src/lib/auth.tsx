@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "staff" | "rental_staff";
 
+/** Non-admin accounts allowed to manage rental-point day assignments. */
+const RENTAL_MANAGER_EMAILS = ["magnorobz@gmail.com"];
+
 type Profile = {
   id: string;
   display_name: string;
@@ -22,6 +25,12 @@ type AuthContextValue = {
   rolesLoaded: boolean;
   isAdmin: boolean;
   isRentalStaff: boolean;
+  /**
+   * Admins plus explicitly designated rental managers may assign rental staff
+   * to rental points (any number per point/day). Server-side truth lives in
+   * public.can_manage_rental_assignments().
+   */
+  canManageRentalAssignments: boolean;
   isAuthenticated: boolean;
   /**
    * True only for a *settled* unauthenticated state: either we resolved the
@@ -170,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rolesLoaded,
     isAdmin: roles.includes("admin"),
     isRentalStaff: roles.includes("rental_staff") && !roles.includes("admin"),
+    canManageRentalAssignments:
+      roles.includes("admin") ||
+      RENTAL_MANAGER_EMAILS.includes((session?.user?.email ?? "").toLowerCase()),
     isAuthenticated: !!session,
     signedOut: !session && signedOut,
 

@@ -1,10 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", {
+/**
+ * Rental-point roster + day assignments are managed by admins AND by
+ * designated rental managers (see can_manage_rental_assignments in the DB).
+ * There is deliberately no cap on how many staff can be assigned to a point
+ * on a given day.
+ */
+async function assertRentalManager(supabase: any, userId: string) {
+  const { data, error } = await supabase.rpc("can_manage_rental_assignments", {
     _user_id: userId,
-    _role: "admin",
   });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
@@ -16,7 +21,7 @@ export const listRentalStaff = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     const { data, error } = await supabase
       .from("rental_staff")
       .select("id, profile_id, name, email, phone, avatar, active, created_at")
@@ -42,7 +47,7 @@ export const upsertRentalStaff = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     const row = {
       name: data.name.trim(),
       email: data.email?.trim() || null,
@@ -72,7 +77,7 @@ export const deleteRentalStaff = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     const { error } = await supabase.from("rental_staff").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -88,7 +93,7 @@ export const listAssignmentsForPoint = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     const { data: rows, error } = await supabase
       .from("rental_point_day_assignments")
       .select("id, rental_point_id, rental_staff_id, date, notes, status, pending_expires_at, rejection_reason, accepted_at, created_at, cancelled_at, cancelled_reason")
@@ -110,7 +115,7 @@ export const assignRentalStaff = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     const { data: ins, error } = await supabase
       .from("rental_point_day_assignments")
       .insert({
@@ -169,7 +174,7 @@ export const unassignRentalStaff = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await assertAdmin(supabase, userId);
+    await assertRentalManager(supabase, userId);
     // Soft-cancel instead of hard delete so the rental staff member sees a
     // visible "Cancelled" record (and gets a notification) rather than the
     // day silently disappearing from their list.
