@@ -342,15 +342,11 @@ function PayoutsPage() {
         );
         const results = await Promise.all(
           primaryLines.map((l) =>
-            supabase
-              .from("shifts")
-              .update({
-                payout_paid: true,
-                payout_paid_at: nowIso,
-                payout_paid_by: user?.id ?? null,
-                payout_amount: amounts.get(l.id),
-              })
-              .eq("id", l.id),
+            supabase.rpc("set_shift_payout" as never, {
+              _shift_id: l.id,
+              _paid: true,
+              _amount: amounts.get(l.id) ?? null,
+            } as never),
           ),
         );
         const failed = results.find((r) => r.error);
