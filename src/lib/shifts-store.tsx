@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { onShiftChange } from "./shifts-broadcast";
 import { toast } from "sonner";
 import { guideConflictMessage } from "./guide-conflicts";
 import type { Shift } from "./mock-data";
@@ -331,22 +332,16 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const channel = supabase
-      .channel("shifts-changes")
-      .on("broadcast", { event: "shift_change" }, (msg) => {
-        const payload = (msg as { payload?: { id?: string; event_type?: string } }).payload;
-        const id = payload?.id;
-        if (!id) return;
-        if (payload?.event_type === "delete") {
-          setRows((prev) => prev.filter((r) => r.id !== id));
-          return;
-        }
-        void applyRow(id);
-      })
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return onShiftChange((payload) => {
+      const id = payload?.id;
+      if (!id) return;
+      if (payload?.event_type === "delete") {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      void applyRow(id);
+    });
+
   }, [isWithinRange]);
 
 
