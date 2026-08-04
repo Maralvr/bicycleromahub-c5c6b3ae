@@ -642,11 +642,8 @@ function RentalDayCard({
                 )}
               </div>
 
-              {cleanNoteText(b.notes) && (
-                <div className="text-xs italic text-muted-foreground bg-muted/40 rounded p-2 border border-border/30">
-                  📝 {cleanNoteText(b.notes)}
-                </div>
-              )}
+              <BookingNotes notes={b.notes} />
+
             </div>
           ))
         )}
