@@ -53,12 +53,13 @@ type ShiftRow = {
   no_show_reported_at: string | null;
   no_show_reported_by: string | null;
   no_show_notes?: string | null;
+  cancelled_at?: string | null;
 };
 
 // Columns loaded for every shift in the visible date range. Deliberately excludes
 // the heavy detail columns below to keep egress low on the calendar/list views.
 const SHIFT_LIST_COLUMNS =
-  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, cancelled_at";
 
 // Fetched lazily when a single shift is opened.
 const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
