@@ -119,6 +119,8 @@ export function useRentalStaffBridge(
   >([]);
   const [showRoster, setShowRoster] = useState(false);
   const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  const [flatRates, setFlatRates] = useState<FlatRate[]>([]);
+
   /**
    * False until the per-staff time-range rates have actually been read.
    * Guards the assign click: if we can't prove whether someone is paid by
