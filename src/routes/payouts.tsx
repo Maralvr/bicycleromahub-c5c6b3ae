@@ -45,6 +45,7 @@ type Rate = {
 type Guide = {
   id: string;
   name: string;
+  avatar: string;
 };
 
 type PayoutShift = {
@@ -128,7 +129,7 @@ function PayoutsPage() {
   useEffect(() => {
     void Promise.all([
       supabase.from("guide_payout_rates").select("product_id, title, tier1, tier2, private_rate"),
-      supabase.from("staff").select("id, name").order("name", { ascending: true }),
+      supabase.from("staff").select("id, name, avatar").order("name", { ascending: true }),
     ]).then(([ratesResult, staffResult]) => {
       if (ratesResult.error) toast.error(ratesResult.error.message);
       if (staffResult.error) toast.error(staffResult.error.message);
