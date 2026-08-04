@@ -45,7 +45,6 @@ import { parseCalendarSearch, useCalendarUrlState, type CalendarSearch } from "@
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { setShiftNoShow } from "@/lib/no-show";
 import { cn } from "@/lib/utils";
 import type { Staff } from "@/lib/mock-data";
 
@@ -447,7 +446,7 @@ function AdminRentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, refresh } = useRentalShifts();
+  const { shifts, loading } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
   const { staff } = useStaffStore();
 
@@ -513,7 +512,7 @@ function AdminRentalBookingsView({
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
           {!pointId && <UnmatchedMeetingPointsCard shifts={shifts} points={points} />}
         </TabsContent>
       </Tabs>
@@ -643,7 +642,7 @@ function RentalReadOnlyBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, refresh } = useRentalShifts();
+  const { shifts, loading } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
   const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const scoped = useMemo(
@@ -689,7 +688,7 @@ function RentalReadOnlyBookingsView({
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -701,13 +700,11 @@ function RentalBookingsList({
   points,
   loading,
   pointId,
-  onNoShowChanged,
 }: {
   rows: RentalShift[];
   points: RentalPoint[];
   loading: boolean;
   pointId: string | null;
-  onNoShowChanged?: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = useMemo(() => rows.filter((r) => r.date >= today), [rows, today]);
