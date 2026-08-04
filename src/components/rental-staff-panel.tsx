@@ -208,13 +208,24 @@ export function useRentalStaffBridge(
     return map;
   }, [unavailable]);
 
-  const handleToggle = async (date: string, staffId: string) => {
+  /** Paid time ranges configured for a staff member (empty = flat-rate). */
+  const ratesFor = useCallback(
+    (staffId: string) =>
+      shiftRates
+        .filter((r) => r.rental_staff_id === staffId)
+        .sort((a, b) => a.shift_end_time.localeCompare(b.shift_end_time)),
+    [shiftRates],
+  );
+
+  const addAssignment = async (
+    date: string,
+    staffId: string,
+    startTime?: string | null,
+    endTime?: string | null,
+  ) => {
     if (!pointId) return;
-    const existing = (byDate.get(date) ?? []).find(
-      (a) => a.rental_staff_id === staffId,
-    );
     const conflict = unavailableByKey.get(`${staffId}|${date}`);
-    if (!existing && conflict) {
+    if (conflict) {
       const name = staff.find((s) => s.id === staffId)?.name ?? "This person";
       const detail = conflict.allDay
         ? "marked the whole day off"
@@ -222,16 +233,23 @@ export function useRentalStaffBridge(
       if (!confirm(`${name} ${detail} on ${date}. Assign anyway?`)) return;
     }
     try {
-      if (existing) {
-        await unassign({ data: { id: existing.id } });
-      } else {
-        await assign({ data: { pointId, staffId, date } });
-      }
+      await assign({ data: { pointId, staffId, date, startTime, endTime } });
+      setPicking(null);
       await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update");
     }
   };
+
+  const removeAssignment = async (id: string) => {
+    try {
+      await unassign({ data: { id } });
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
+
 
   /**
    * Calendar-grid coverage indicator (one dot per day cell). Deliberately
