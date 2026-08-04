@@ -43,6 +43,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cleanNoteText } from "@/lib/notes-format";
+import { parseBokunNotes } from "@/lib/bokun-notes-format";
+import { rentalLocationForTitle } from "@/lib/rental-products";
+
 import { setShiftNoShow } from "@/lib/no-show";
 import { AllRentalPointsView } from "@/components/all-rental-points-view";
 
