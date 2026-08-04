@@ -53,7 +53,7 @@ export function RentalStaffPayouts({
     ]);
     if (r.error) toast.error(r.error.message);
     if (s.error) toast.error(s.error.message);
-    setRows(((r.data ?? []) as unknown as DayRow[]) ?? []);
+    setRows((r.data ?? []) as unknown as DayRow[]);
     setStaff((s.data ?? []) as unknown as StaffRow[]);
     setLoading(false);
   }, [from, to]);
