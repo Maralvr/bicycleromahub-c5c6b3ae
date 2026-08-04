@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { buildRentalPointIndex, effectiveRentalPointId } from "@/lib/rental-point-match";
 
 /**
  * Rental-point roster + day assignments are managed by admins AND by
@@ -251,8 +252,17 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     if (aErr) throw new Error(aErr.message);
     if (!assigns?.length) return { days: [] };
 
-    const pointIds = Array.from(new Set(assigns.map((a) => a.rental_point_id)));
     const dates = Array.from(new Set(assigns.map((a) => a.date)));
+
+    // Guided tours never carry a rental_point_id (that column is bike-rentals
+    // only) -- they belong to a point via meeting-point matching. Build the
+    // full point index so matching (and ambiguity detection) works the same
+    // way it does on /rental-points.
+    const { data: allPoints, error: pErr } = await supabase
+      .from("rental_points")
+      .select("id, name, address");
+    if (pErr) throw new Error(pErr.message);
+    const pointIndex = buildRentalPointIndex(allPoints ?? []);
 
     type RentalDayShiftRow = {
       id: string;
@@ -289,7 +299,6 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
       .select(
         "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id, no_show, no_show_notes, cancelled_at, cancelled_reason",
       )
-      .in("rental_point_id", pointIds)
       .in("date", dates);
     if (shErr) throw new Error(shErr.message);
     const shifts = shiftsData as unknown as RentalDayShiftRow[] | null;
@@ -299,7 +308,12 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     );
     let guidesById = new Map<string, { id: string; name: string; avatar: string; phone: string | null }>();
     if (guideIds.length) {
-      const { data: guides, error: gErr } = await supabase
+      // staff_select is admin/own-row only, so the caller's RLS-scoped client
+      // returns nothing here. guideIds is already narrowed to guides assigned
+      // to bookings this caller may see, so the service-role client reads just
+      // those rows -- no broader exposure than the day card already shows.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: guides, error: gErr } = await supabaseAdmin
         .from("staff")
         .select("id, name, avatar, phone")
         .in("id", guideIds);
@@ -325,7 +339,12 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
 
     const days: MyRentalDay[] = assigns.map((a: any) => {
       const ds = (shifts ?? []).filter(
-        (s) => s.rental_point_id === a.rental_point_id && s.date === a.date,
+        (s) =>
+          s.date === a.date &&
+          effectiveRentalPointId(
+            { rentalPointId: s.rental_point_id, meetingPoint: s.meeting_point },
+            pointIndex,
+          ) === a.rental_point_id,
       );
       return {
         assignmentId: a.id,
