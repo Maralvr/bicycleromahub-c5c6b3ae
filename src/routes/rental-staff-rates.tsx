@@ -19,12 +19,12 @@ export const Route = createFileRoute("/rental-staff-rates")({
       {
         name: "description",
         content:
-          "Set what each rental-point staff member is paid per shift time range, plus the double-shift day rate and its season window.",
+          "Set what each rental-point staff member is paid per shift time range.",
       },
       { property: "og:title", content: "Rental Staff Pay Rates — Bicycle Roma" },
       {
         property: "og:description",
-        content: "Per-time-range and double-shift day pay rates for rental staff.",
+        content: "Per-time-range pay rates for rental staff.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -38,9 +38,6 @@ type StaffRow = {
   name: string;
   avatar: string;
   active: boolean;
-  double_shift_rate: number | null;
-  double_shift_season_start: string | null;
-  double_shift_season_end: string | null;
 };
 
 type ShiftRate = {
@@ -65,9 +62,7 @@ function RentalStaffRatesPage() {
     const [s, r] = await Promise.all([
       supabase
         .from("rental_staff" as never)
-        .select(
-          "id, name, avatar, active, double_shift_rate, double_shift_season_start, double_shift_season_end",
-        )
+        .select("id, name, avatar, active")
         .order("name"),
       supabase
         .from("rental_staff_shift_rates" as never)
@@ -92,7 +87,7 @@ function RentalStaffRatesPage() {
     <AppShell>
       <PageHeader
         title="Rental Staff Pay Rates"
-        subtitle="Everyone is paid by shift time range. Add the ranges each person can work with their amount. The double-shift day amount replaces the summed ranges when someone works two shifts on a day inside the season window."
+        subtitle="Everyone is paid by shift time range. Add the ranges each person can work with their amount."
         actions={
           <Button variant="outline" onClick={() => void navigate({ to: "/payouts" })}>
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Payouts
@@ -129,45 +124,10 @@ function StaffRateCard({
   rates: ShiftRate[];
   onChanged: () => Promise<void>;
 }) {
-  const [dbl, setDbl] = useState(staff.double_shift_rate?.toString() ?? "");
-  const [seasonStart, setSeasonStart] = useState(staff.double_shift_season_start ?? "");
-  const [seasonEnd, setSeasonEnd] = useState(staff.double_shift_season_end ?? "");
-  const [saving, setSaving] = useState(false);
 
   const [newStart, setNewStart] = useState("09:00");
   const [newEnd, setNewEnd] = useState("17:00");
   const [newAmount, setNewAmount] = useState("");
-
-  const num = (v: string) => (v.trim() === "" ? null : Number(v));
-
-  const saveFlat = async () => {
-    const d = num(dbl);
-    if (d != null && !Number.isFinite(d)) {
-      toast.error("Enter valid amounts");
-      return;
-    }
-    const validSeason = (v: string) => v === "" || /^\d{2}-\d{2}$/.test(v);
-    if (!validSeason(seasonStart) || !validSeason(seasonEnd)) {
-      toast.error("Season dates must be MM-DD, e.g. 06-15");
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase
-      .from("rental_staff" as never)
-      .update({
-        double_shift_rate: d,
-        double_shift_season_start: seasonStart || null,
-        double_shift_season_end: seasonEnd || null,
-      } as never)
-      .eq("id", staff.id);
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(`Updated ${staff.name}`);
-    await onChanged();
-  };
 
   const addRate = async () => {
     const a = Number(newAmount);
@@ -218,30 +178,7 @@ function StaffRateCard({
       </div>
 
       <div className="p-4 space-y-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Double-shift day">
-            <MoneyInput value={dbl} onChange={setDbl} />
-          </Field>
-          <Field label="Season from (MM-DD)">
-            <Input
-              className="h-8 w-28"
-              value={seasonStart}
-              onChange={(e) => setSeasonStart(e.target.value)}
-              placeholder="06-15"
-            />
-          </Field>
-          <Field label="Season to (MM-DD)">
-            <Input
-              className="h-8 w-28"
-              value={seasonEnd}
-              onChange={(e) => setSeasonEnd(e.target.value)}
-              placeholder="08-31"
-            />
-          </Field>
-          <Button size="sm" disabled={saving} onClick={() => void saveFlat()}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
+
 
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
