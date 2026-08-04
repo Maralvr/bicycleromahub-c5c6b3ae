@@ -96,8 +96,15 @@ export function useRentalStaffBridge(
   >([]);
   const [showRoster, setShowRoster] = useState(false);
   const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  /**
+   * False until the per-staff time-range rates have actually been read.
+   * Guards the assign click: if we can't prove whether someone is paid by
+   * time range, we must NOT quietly assign them with no time recorded.
+   */
+  const [ratesReady, setRatesReady] = useState(false);
   /** "<staffId>|<iso>" — which staff pill has its time quick-picker open. */
   const [picking, setPicking] = useState<string | null>(null);
+
 
 
   const reload = useCallback(async () => {
