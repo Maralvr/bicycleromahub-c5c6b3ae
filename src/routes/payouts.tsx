@@ -364,18 +364,18 @@ function PayoutsPage() {
               : x,
           ),
         );
-        const { error } = await supabase
-          .from("shifts")
-          .update({
-            payout_paid: false,
-            payout_paid_at: null,
-            payout_paid_by: null,
-            payout_amount: null,
-          })
-          .in("id", ids);
-        if (error) {
+        const unpaidResults = await Promise.all(
+          ids.map((id) =>
+            supabase.rpc("set_shift_payout" as never, {
+              _shift_id: id,
+              _paid: false,
+            } as never),
+          ),
+        );
+        const unpaidFailed = unpaidResults.find((r) => r.error);
+        if (unpaidFailed?.error) {
           setShifts(prev);
-          toast.error(error.message);
+          toast.error(unpaidFailed.error.message);
           return;
         }
       }
