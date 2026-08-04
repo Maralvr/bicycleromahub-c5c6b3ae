@@ -47,6 +47,8 @@ import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useGuideNames } from "@/lib/guide-names";
+
 import type { Staff } from "@/lib/mock-data";
 
 type RentalTab = "calendar" | "list";
