@@ -218,30 +218,7 @@ function StaffRateCard({
       </div>
 
       <div className="p-4 space-y-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Double-shift day">
-            <MoneyInput value={dbl} onChange={setDbl} />
-          </Field>
-          <Field label="Season from (MM-DD)">
-            <Input
-              className="h-8 w-28"
-              value={seasonStart}
-              onChange={(e) => setSeasonStart(e.target.value)}
-              placeholder="06-15"
-            />
-          </Field>
-          <Field label="Season to (MM-DD)">
-            <Input
-              className="h-8 w-28"
-              value={seasonEnd}
-              onChange={(e) => setSeasonEnd(e.target.value)}
-              placeholder="08-31"
-            />
-          </Field>
-          <Button size="sm" disabled={saving} onClick={() => void saveFlat()}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
+
 
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
