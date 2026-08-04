@@ -1,15 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("has_role", {
-    _user_id: userId,
-    _role: "admin",
-  });
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
-
 /**
  * Rental-point roster + day assignments are managed by admins AND by
  * designated rental managers (see can_manage_rental_assignments in the DB).
