@@ -464,34 +464,27 @@ export function useRentalStaffBridge(
                 </div>
               )}
 
-              {/* Add someone. Staff paid by time range get quick-pick shift
-                  options; flat-rate staff are assigned with no time range. */}
+              {/* Add someone. Everyone gets the shift time-range quick-picks. */}
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
                   const flat = flatFor(s.id);
-                  const flatConfigured = rates.length === 0 && flat?.default_shift_rate != null;
                   const alreadyToday = (byDate.get(iso) ?? []).filter(
                     (a) =>
                       a.rental_staff_id === s.id &&
                       a.status !== "rejected" &&
                       a.status !== "cancelled",
                   ).length;
-                  // Flat-rate pay: 1 shift = flat amount; a 2nd shift in the
-                  // same day pays the double-shift amount inside the season,
-                  // otherwise it's just another flat shift.
+                  // Double-shift day: a 2nd shift inside the season window pays
+                  // the double-shift amount instead of the summed ranges.
                   const seasonal =
                     flat != null &&
                     inSeason(iso, flat.double_shift_season_start, flat.double_shift_season_end) &&
                     flat.double_shift_rate != null;
-                  const flatAmount =
-                    alreadyToday >= 1 && seasonal
-                      ? Number(flat!.double_shift_rate)
-                      : Number(flat?.default_shift_rate ?? 0);
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
-                  const hasPicker = rates.length > 0 || flatConfigured;
+                  const hasPicker = rates.length > 0;
                   return (
                     <div key={s.id} className="flex flex-wrap items-center gap-1.5">
                       <button
