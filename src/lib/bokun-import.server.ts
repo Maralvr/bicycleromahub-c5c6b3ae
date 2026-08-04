@@ -344,11 +344,14 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   // maps into activity.rates[] for the human rate code, e.g.
   // "APPIA NAVETTA PUBLIC"). Also mirrored under the invoice product.
   // Verified against parent bookings 98672696 / 99370402.
+  const bokunRateId = (() => {
+    const rid = activity?.rateId ?? a0?.rateId;
+    return rid != null ? String(rid) : null;
+  })();
   const rateFromRates = (() => {
-    const rateId = activity?.rateId ?? a0?.rateId;
-    if (rateId == null) return null;
+    if (bokunRateId == null) return null;
     const rates = activity?.activity?.rates ?? a0?.activity?.rates ?? [];
-    return rates.find((r) => String(r.id) === String(rateId))?.title ?? null;
+    return rates.find((r) => String(r.id) === bokunRateId)?.title ?? null;
   })();
   const rateTitle =
     activity?.rateTitle ||
@@ -363,6 +366,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     raw.invoice?.productInvoices?.[0]?.product?.rateTitle ||
     rateFromRates ||
     null;
+
 
   const seller = activity?.seller?.title || raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
@@ -391,6 +395,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     participants: participantList,
     rate: raw.totalPriceAmount ?? moneyAmount(activity?.totalPrice) ?? activity?.totalPriceAmount ?? moneyAmount(raw.totalPrice) ?? moneyAmount(raw.totalPaid) ?? raw.totalAsMoney?.amount ?? raw.paidAmountAsMoney?.amount ?? null,
     rate_title: rateTitle,
+    bokun_rate_id: bokunRateId,
     seller,
     booking_channel: channel,
     bokun_created_at: created,
@@ -400,6 +405,51 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
+
+/**
+ * Bokun returns a booking's `rateTitle` in the language the booking was made
+ * in ("Mtb elettrica 2 ore"), while the rate dropdown works off the canonical
+ * English list cached in `public.bokun_product_rates` ("Mtb Electric 2-hour").
+ * The numeric `rateId` is locale-stable, so whenever we have one and the
+ * product is in the cache we rewrite `rate_title` to the cached English label.
+ * Rows with no rate id, or an id the cache doesn't know, keep Bokun's own
+ * title untouched.
+ */
+export async function canonicalizeRateTitles<
+  T extends { bokun_product_id?: string | null; bokun_rate_id?: string | null; rate_title?: string | null },
+>(rows: T[]): Promise<T[]> {
+  const productIds = Array.from(
+    new Set(rows.filter((r) => r.bokun_rate_id && r.bokun_product_id).map((r) => String(r.bokun_product_id))),
+  );
+  if (productIds.length === 0) return rows;
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("bokun_product_rates")
+    .select("bokun_product_id, rates")
+    .in("bokun_product_id", productIds);
+
+  const titleByKey = new Map<string, string>();
+  for (const row of data ?? []) {
+    const rates = Array.isArray(row.rates) ? row.rates : [];
+    for (const r of rates as Array<Record<string, unknown>>) {
+      const rid = r?.["id"];
+      const title = r?.["title"];
+      if (rid != null && typeof title === "string" && title.trim()) {
+        titleByKey.set(`${row.bokun_product_id}:${String(rid)}`, title);
+      }
+    }
+  }
+  if (titleByKey.size === 0) return rows;
+
+  for (const row of rows) {
+    if (!row.bokun_rate_id || !row.bokun_product_id) continue;
+    const canonical = titleByKey.get(`${row.bokun_product_id}:${row.bokun_rate_id}`);
+    if (canonical) row.rate_title = canonical;
+  }
+  return rows;
+}
+
 
 type BokunSearchResponse = {
   results?: BokunBookingFull[];
@@ -689,7 +739,12 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         rows.push(row);
       }
 
+      // Rewrite locale-specific rate titles to the canonical English label
+      // using the locale-stable rate id + the nightly product-rate cache.
+      await canonicalizeRateTitles(rows.filter((r): r is NonNullable<typeof r> => !!r));
+
       if (rows.length > 0) {
+
         // newRows: booking_id we've never stored before → insert fresh.
         // updateRows: already existed (we only got here because the summary
         // looked changed) → update ONLY the customer-controlled fields
@@ -717,6 +772,9 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             customer_name: r!.customer_name,
             customer_phone: r!.customer_phone,
             customer_email: r!.customer_email,
+            // Bokun-owned identifier, never admin-edited -- safe to always
+            // refresh so the rate dropdown can resolve the real option.
+            ...(r!.bokun_rate_id ? { bokun_rate_id: r!.bokun_rate_id } : {}),
             // Fill-only, never overwrite: rows created by the Bokun webhook
             // (which historically didn't map the rate at all) sit here with
             // rate_title = NULL forever, since resyncs only patch
@@ -725,6 +783,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             ...(!existingRow?.rate_title && r!.rate_title
               ? { rate_title: r!.rate_title }
               : {}),
+
             // Same deal for meeting_point: "TBD" is our placeholder for "we
             // never got a start point", so treat it as missing and fill it,
             // but leave any real value (imported or admin-edited) alone.
@@ -1085,6 +1144,15 @@ export async function backfillMissingRateTitles(limit = 40) {
         `/booking.json/booking/${row.external_booking_ref}`,
       )) as BokunBookingFull;
       const mapped = mapToShiftRow(detail, rentalPointIdByName);
+      if (mapped) await canonicalizeRateTitles([mapped]);
+      // Bokun-owned and never admin-edited: store the locale-stable rate id
+      // unconditionally so the dropdown can resolve the real option later.
+      if (mapped?.bokun_rate_id) {
+        await supabaseAdmin
+          .from("shifts")
+          .update({ bokun_rate_id: mapped.bokun_rate_id })
+          .eq("id", row.id);
+      }
       const patch: { rate_title?: string; meeting_point?: string } = {};
       if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
       if (
@@ -1098,6 +1166,7 @@ export async function backfillMissingRateTitles(limit = 40) {
         notFound++;
         continue;
       }
+
 
       // Write each field with its own guard IN the UPDATE's WHERE clause, so
       // the fill-only condition is re-checked atomically at write time rather

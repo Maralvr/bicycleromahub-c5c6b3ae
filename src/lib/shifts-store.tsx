@@ -36,6 +36,7 @@ type ShiftRow = {
   participants?: { name: string; category: string }[] | null;
   rate: number | string | null;
   rate_title: string | null;
+  bokun_rate_id?: string | null;
   seller: string | null;
   booking_channel: string | null;
   bokun_product_id?: string | null;
@@ -57,7 +58,7 @@ type ShiftRow = {
 // Columns loaded for every shift in the visible date range. Deliberately excludes
 // the heavy detail columns below to keep egress low on the calendar/list views.
 const SHIFT_LIST_COLUMNS =
-  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
 
 // Fetched lazily when a single shift is opened.
 const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
@@ -124,6 +125,7 @@ function rowToShift(r: ShiftRow): Shift {
     rate: r.rate != null ? Number(r.rate) : undefined,
     rateTitle: r.rate_title,
     bokunProductId: r.bokun_product_id ?? null,
+    bokunRateId: r.bokun_rate_id ?? null,
     seller: r.seller,
     bookingChannel: r.booking_channel,
     notes: r.notes ?? undefined,

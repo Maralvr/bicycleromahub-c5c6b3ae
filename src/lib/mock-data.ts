@@ -45,6 +45,8 @@ export type Shift = {
   rate?: number;
   rateTitle?: string | null;
   bokunProductId?: string | null;
+  /** Bokun rate id of the booked pricing option (locale-stable). */
+  bokunRateId?: string | null;
   seller?: string | null;
   bookingChannel?: string | null;
   notes?: string;

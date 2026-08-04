@@ -1010,6 +1010,7 @@ export type Database = {
           assigned_staff_id: string | null
           bokun_created_at: string | null
           bokun_product_id: string | null
+          bokun_rate_id: string | null
           booking_channel: string | null
           booking_id: string | null
           channel_booking_ref: string | null
@@ -1060,6 +1061,7 @@ export type Database = {
           assigned_staff_id?: string | null
           bokun_created_at?: string | null
           bokun_product_id?: string | null
+          bokun_rate_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
           channel_booking_ref?: string | null
@@ -1110,6 +1112,7 @@ export type Database = {
           assigned_staff_id?: string | null
           bokun_created_at?: string | null
           bokun_product_id?: string | null
+          bokun_rate_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
           channel_booking_ref?: string | null

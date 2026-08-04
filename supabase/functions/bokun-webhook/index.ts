@@ -71,8 +71,13 @@ interface FullBookingPayload extends BokunEventPayload {
   // Bokun's booked *rate* (pricing option) -- "Public tour in English",
   // "Regular Bike (City or Mtb) 2-hour" -- distinct from `totalPrice`.
   rateTitle?: string;
+  // Locale-stable id of that rate, plus the product it belongs to: together
+  // they resolve the canonical English title from bokun_product_rates.
+  rateId?: string;
+  bokunProductId?: string;
   status?: "CONFIRMED" | "CANCELLED" | "PENDING";
 }
+
 
 interface BokunPlace {
   title?: string;
@@ -157,6 +162,51 @@ function extractRateTitle(raw: any): string | undefined {
   );
 }
 
+/** Locale-stable rate id of the booked pricing option, when Bokun sends one. */
+// deno-lint-ignore no-explicit-any
+function extractRateId(raw: any): string | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const rateId = raw.rateId ?? a0?.rateId;
+  return rateId != null ? String(rateId) : undefined;
+}
+
+/** Bokun product id, needed to look the rate id up in bokun_product_rates. */
+// deno-lint-ignore no-explicit-any
+function extractProductId(raw: any): string | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const id = a0?.product?.id ?? a0?.activity?.id ?? raw.product?.id ?? raw.productId;
+  return id != null ? String(id) : undefined;
+}
+
+/**
+ * Bokun's booking payload localises `rateTitle` to the language the booking
+ * was made in ("Mtb elettrica 2 ore"). The rate dropdown works off the
+ * canonical English list cached nightly in `bokun_product_rates`, so when we
+ * have a locale-stable rate id we swap in the cached English label.
+ */
+async function canonicalRateTitle(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  productId: string | undefined,
+  rateId: string | undefined,
+): Promise<string | undefined> {
+  if (!productId || !rateId) return undefined;
+  const { data } = await supabase
+    .from("bokun_product_rates")
+    .select("rates")
+    .eq("bokun_product_id", productId)
+    .maybeSingle();
+  const rates = Array.isArray(data?.rates) ? data.rates : [];
+  // deno-lint-ignore no-explicit-any
+  const hit = rates.find((r: any) => String(r?.id) === rateId);
+  const title = hit?.title;
+  return typeof title === "string" && title.trim() ? title : undefined;
+}
+
+
+
 
 function validate(input: unknown): { ok: true; data: BokunEventPayload } | { ok: false; error: string } {
   if (!input || typeof input !== "object") return { ok: false, error: "Body must be an object" };
@@ -214,6 +264,8 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
     notes: raw.notes ?? customer.notes,
     productTags: raw.productTags ?? raw.product?.tags,
     rateTitle: extractRateTitle(raw),
+    rateId: extractRateId(raw),
+    bokunProductId: extractProductId(raw),
     status: raw.status,
   };
 }
@@ -310,6 +362,8 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
     notes: raw.notes ?? raw.customer?.notes,
     productTags: raw.productTags ?? raw.product?.tags,
     rateTitle: extractRateTitle(raw),
+    rateId: extractRateId(raw),
+    bokunProductId: extractProductId(raw),
     status: raw.status,
   } as FullBookingPayload;
 }
@@ -344,6 +398,9 @@ function mapToShiftRow(p: FullBookingPayload) {
     trailers: participants.trailers,
     rate: p.totalPrice ?? null,
     rate_title: p.rateTitle ?? null,
+    bokun_rate_id: p.rateId ?? null,
+    bokun_product_id: p.bokunProductId ?? null,
+
     notes: p.notes ?? null,
     required_tags: inferTags(p.productTitle, p.productTags),
     status: "unassigned" as const,
@@ -466,8 +523,17 @@ Deno.serve(async (req: Request) => {
 
   const row = mapToShiftRow(fullPayload);
 
+  // Prefer the canonical English rate label over Bokun's booking-language one.
+  const canonical = await canonicalRateTitle(supabase, fullPayload.bokunProductId, fullPayload.rateId);
+  if (canonical) row.rate_title = canonical;
+
   if (existing) {
     const updates: Record<string, unknown> = { ...row };
+
+    // Bokun-owned identifiers, never admin-edited -- but don't blank them.
+    if (updates.bokun_rate_id == null) delete updates.bokun_rate_id;
+    if (updates.bokun_product_id == null) delete updates.bokun_product_id;
+
 
     // Never null out a parent ref that was already resolved.
     if (updates.external_booking_ref == null && existing.external_booking_ref) {
