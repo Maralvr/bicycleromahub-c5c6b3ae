@@ -34,6 +34,7 @@ type Row = {
   no_show: boolean | null;
   no_show_reported_at: string | null;
   no_show_notes: string | null;
+  cancelled_at?: string | null;
 };
 
 function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
