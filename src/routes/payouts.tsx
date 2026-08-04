@@ -156,13 +156,19 @@ function PayoutsPage() {
     const { data: addlData, error: addlErr } = await supabase
       .from("shift_additional_guides" as never)
       .select(
-        "id, staff_id, payout_tier, payout_paid, payout_paid_at, payout_amount, shifts!inner(tour_name, date, start_time, bokun_product_id, adults, teens, infants, rental_point_id)" as never,
+        "id, staff_id, payout_tier, payout_paid, payout_paid_at, payout_amount, shifts!inner(tour_name, date, start_time, bokun_product_id, adults, teens, infants, rental_point_id, cancelled_at)" as never,
       )
       .gte("shifts.date" as never, fromStr)
       .lte("shifts.date" as never, toStr)
       .is("shifts.rental_point_id" as never, null);
     if (addlErr) toast.error(addlErr.message);
-    setAdditionalRows((addlData ?? []) as unknown as AdditionalPayoutRow[]);
+    // Cancelled bookings drop out of payouts unless the line was already paid
+    // (same rule as the primary-guide query above).
+    setAdditionalRows(
+      ((addlData ?? []) as unknown as AdditionalPayoutRow[]).filter(
+        (r) => !(r.shifts as { cancelled_at?: string | null } | null)?.cancelled_at || r.payout_paid,
+      ),
+    );
 
     setLoading(false);
   };
