@@ -8,7 +8,7 @@ Rental staff are paid per DAY worked at a rental point (not per assignment).
 Resolved in `public.rental_staff_day_amounts(_from,_to)` (SECURITY DEFINER, gated to admin OR is_rental_staff), in this precedence:
 1. **Double-shift day**: 2+ accepted shifts that day AND `double_shift_rate` set AND (no season window OR date's MM-DD inside `[double_shift_season_start, double_shift_season_end]`) → `double_shift_rate`. Applies to BOTH pay models.
 2. **Per-time-range**: staff has rows in `rental_staff_shift_rates` → each assignment's `(shift_start_time, shift_end_time)` is looked up there and summed.
-3. **Flat**: `shift_count × default_shift_rate`.
+3. **Flat** (legacy fallback only, no UI): `shift_count × default_shift_rate`. Every staff member has time ranges, so this never applies; the flat per-shift field was removed from the settings UI and the assignment picker.
 
 Season bounds are MM-DD text, month/day only, so they recur yearly.
 
