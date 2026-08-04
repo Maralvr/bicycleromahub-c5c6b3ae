@@ -739,7 +739,12 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
         rows.push(row);
       }
 
+      // Rewrite locale-specific rate titles to the canonical English label
+      // using the locale-stable rate id + the nightly product-rate cache.
+      await canonicalizeRateTitles(rows.filter((r): r is NonNullable<typeof r> => !!r));
+
       if (rows.length > 0) {
+
         // newRows: booking_id we've never stored before → insert fresh.
         // updateRows: already existed (we only got here because the summary
         // looked changed) → update ONLY the customer-controlled fields
