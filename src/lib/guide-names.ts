@@ -22,18 +22,19 @@ let inflight: Promise<GuideName[]> | null = null;
 function loadGuideNames(): Promise<GuideName[]> {
   if (cache) return Promise.resolve(cache);
   if (!inflight) {
-    inflight = supabase
-      .rpc("guide_names" as never)
-      .then(({ data }) => {
+    inflight = (async () => {
+      try {
+        const { data } = await supabase.rpc("guide_names" as never);
         cache = (data ?? []) as unknown as GuideName[];
         return cache;
-      })
-      .finally(() => {
+      } finally {
         inflight = null;
-      });
+      }
+    })();
   }
   return inflight;
 }
+
 
 export function useGuideNames(): { guides: Map<string, GuideName>; loading: boolean } {
   const [rows, setRows] = useState<GuideName[]>(cache ?? []);

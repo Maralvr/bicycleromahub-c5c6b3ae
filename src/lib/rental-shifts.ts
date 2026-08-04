@@ -221,6 +221,8 @@ export function useRentalShifts() {
     };
   }, [fetchAll]);
 
+  const shifts = useMemo<RentalShift[]>(() => rows.map(rowToShift), [rows]);
+
 
   const updateShift = useCallback(
     async (
