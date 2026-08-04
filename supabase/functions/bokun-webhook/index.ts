@@ -398,6 +398,9 @@ function mapToShiftRow(p: FullBookingPayload) {
     trailers: participants.trailers,
     rate: p.totalPrice ?? null,
     rate_title: p.rateTitle ?? null,
+    bokun_rate_id: p.rateId ?? null,
+    bokun_product_id: p.bokunProductId ?? null,
+
     notes: p.notes ?? null,
     required_tags: inferTags(p.productTitle, p.productTags),
     status: "unassigned" as const,
