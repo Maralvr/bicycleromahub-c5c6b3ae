@@ -148,39 +148,30 @@ export function useRentalShifts() {
     setLoading(false);
   }, []);
 
+  // Live updates go through a "Broadcast from Database" channel, NOT
+  // postgres_changes. postgres_changes streams the whole row from the
+  // replication stream: RLS decides *whether* a change is delivered, never
+  // which columns ride along. That meant every live INSERT/UPDATE handed
+  // rental staff the real `rate` (what the customer paid) in their WebSocket
+  // payload and merged it into local state, bypassing shifts_rental_view's
+  // masking that fetchAll() relies on. The trigger public.broadcast_shift_change
+  // instead sends only { id, event_type } -- no row columns at all -- and we
+  // re-read through the masked view. Nothing sensitive is ever on the wire.
+  const fetchAllRef = useRef(fetchAll);
+  fetchAllRef.current = fetchAll;
   useEffect(() => {
     void fetchAll();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void fetchAllRef.current(), 400);
+    };
     const channel = supabase
-      .channel(`rental-shifts-realtime-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
-        const newRow = payload.new as Row | null;
-        const oldRow = payload.old as { id?: string } | null;
-        setRows((prev) => {
-          if (payload.eventType === "INSERT" && newRow) {
-            if (newRow.cancelled_at && !isRecentCancellation(newRow.cancelled_at)) return prev;
-            if (prev.some((r) => r.id === newRow.id)) return prev;
-            return [...prev, newRow];
-          }
-          if (payload.eventType === "UPDATE" && newRow) {
-            // Rows are no longer dropped for a null rental_point_id -- guided
-            // tours belong here too and are matched by meeting point.
-            const exists = prev.some((r) => r.id === newRow.id);
-            // Long-cancelled bookings drop out; recent ones stay visible
-            // (rendered greyed with a "Cancelled" badge).
-            if (newRow.cancelled_at && !isRecentCancellation(newRow.cancelled_at)) {
-              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
-            }
-            if (!exists) return [...prev, newRow];
-            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
-          }
-          if (payload.eventType === "DELETE" && oldRow?.id) {
-            return prev.filter((r) => r.id !== oldRow.id);
-          }
-          return prev;
-        });
-      })
+      .channel("shifts-changes")
+      .on("broadcast", { event: "shift_change" }, schedule)
       .subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
   }, [fetchAll]);
