@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PartnerBadge, PartnerTag, isPartnerTour } from "@/components/partner-tour-badge";
 import { PrivateBadge, PrivateTag, isPrivateTour } from "@/components/private-tour-badge";
+import { CancelledBadge, CancelledTag } from "@/components/cancelled-badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -776,7 +777,7 @@ function ShiftChip({
     <button
       onClick={onClick}
       title={`${s.startTime} ${s.tourName} — ${guide?.name || "Unassigned"}`}
-      className={`group relative w-full text-left rounded-md border overflow-hidden ${meta.chip} transition focus:outline-none focus:ring-2 ${meta.ring}`}
+      className={`group relative w-full text-left rounded-md border overflow-hidden ${meta.chip} transition focus:outline-none focus:ring-2 ${meta.ring} ${s.cancelledAt ? "opacity-60" : ""}`}
     >
       <span className={`absolute left-0 top-0 bottom-0 w-1 ${meta.bar}`} />
       <div className={`pl-2 ${dense ? "py-1 pr-1.5" : "py-1.5 pr-2"}`}>
@@ -792,6 +793,7 @@ function ShiftChip({
         </div>
         {isPartnerTour(s.tourName) && <PartnerTag className="mt-0.5 mr-1" />}
         {isPrivateTour(s.rateTitle) && <PrivateTag className="mt-0.5 mr-1" />}
+        {s.cancelledAt && <CancelledTag className="mt-0.5 mr-1" />}
         {s.rateTitle && (
           <div className="mt-0.5 inline-flex items-center rounded-sm bg-primary/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary">
             {s.rateTitle}
@@ -894,6 +896,7 @@ function DayView({
               </div>
               {isPartnerTour(s.tourName) && <PartnerBadge />}
               {isPrivateTour(s.rateTitle) && <PrivateBadge />}
+              {s.cancelledAt && <CancelledBadge reason={s.cancelledReason} />}
               <Badge
                 variant="outline"
                 className={`shrink-0 capitalize text-[10px] gap-1 ${meta.text} border-current/30`}
@@ -1251,7 +1254,7 @@ function MonthView({
                         e.stopPropagation();
                         onOpenShift(s);
                       }}
-                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${isPartnerTour(s.tourName) ? "border-partner bg-partner/10" : isPrivateTour(s.rateTitle) ? "border-private bg-private/10" : `${meta.bar.replace("bg-", "border-")} bg-card`} text-foreground font-medium hover:bg-muted transition`}
+                      className={`block w-full text-left text-[9px] truncate px-1.5 py-0.5 rounded border-l-2 ${isPartnerTour(s.tourName) ? "border-partner bg-partner/10" : isPrivateTour(s.rateTitle) ? "border-private bg-private/10" : `${meta.bar.replace("bg-", "border-")} bg-card`} text-foreground font-medium hover:bg-muted transition ${s.cancelledAt ? "opacity-60 line-through decoration-destructive" : ""}`}
                     >
                       <span className="tabular-nums">{s.startTime}</span> {s.tourName}
                     </button>
@@ -1366,6 +1369,7 @@ function DayDetailsDialog({
                       <div className="flex items-center gap-1.5 shrink-0">
                       {isPartnerTour(s.tourName) && <PartnerBadge />}
                       {isPrivateTour(s.rateTitle) && <PrivateBadge />}
+              {s.cancelledAt && <CancelledBadge reason={s.cancelledReason} />}
                       <Badge
                         variant="outline"
                         className={`capitalize text-[10px] shrink-0 gap-1 ${meta.text} border-current/30`}
@@ -1549,6 +1553,7 @@ function ShiftDetailsDialog({
             <span>{s.tourName}</span>
             {isPartnerTour(s.tourName) && <PartnerBadge />}
             {isPrivateTour(s.rateTitle) && <PrivateBadge />}
+              {s.cancelledAt && <CancelledBadge reason={s.cancelledReason} />}
             {s.rateTitle && (
               <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
                 {s.rateTitle}
