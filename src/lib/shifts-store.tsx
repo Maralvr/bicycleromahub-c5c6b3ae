@@ -306,12 +306,13 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         const newRow = payload.new as ShiftRow | null;
         const oldRow = payload.old as { id?: string } | null;
         if (payload.eventType === "INSERT" && newRow) {
-          if (!isWithinRange(newRow.date)) return;
+          if (!isWithinRange(newRow.date) || newRow.cancelled_at) return;
           setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
         } else if (payload.eventType === "UPDATE" && newRow) {
           setRows((prev) => {
             const exists = prev.some((r) => r.id === newRow.id);
-            if (!isWithinRange(newRow.date)) {
+            // Cancelled bookings (soft-deleted) drop out of the main calendar.
+            if (!isWithinRange(newRow.date) || newRow.cancelled_at) {
               return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
             }
             if (!exists) return [...prev, newRow];
