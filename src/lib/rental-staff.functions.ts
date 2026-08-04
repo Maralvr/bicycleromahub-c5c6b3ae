@@ -337,6 +337,12 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
           phone: a.rental_points?.phone ?? null,
         },
         bookings: ds
+          .filter((s) => {
+            // Cancelled bookings stay visible for a short while so staff
+            // notice the change, then fall out of the list.
+            if (!s.cancelled_at) return true;
+            return Date.now() - new Date(s.cancelled_at).getTime() < 14 * 86400_000;
+          })
           .sort((x, y) => (x.start_time ?? "").localeCompare(y.start_time ?? ""))
           .map((s) => {
             const parts = paxParts(s);
@@ -360,6 +366,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
               guide: s.assigned_staff_id ? guidesById.get(s.assigned_staff_id) ?? null : null,
               noShow: !!s.no_show,
               noShowNotes: s.no_show_notes ?? null,
+              cancelledAt: s.cancelled_at ?? null,
+              cancelledReason: s.cancelled_reason ?? null,
             };
           }),
       };
