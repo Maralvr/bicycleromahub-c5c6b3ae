@@ -14,6 +14,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RentalStaffRatesRouteImport } from './routes/rental-staff-rates'
 import { Route as RentalPointsRouteImport } from './routes/rental-points'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PayoutsRouteImport } from './routes/payouts'
@@ -58,6 +59,11 @@ const ShiftsRoute = ShiftsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentalStaffRatesRoute = RentalStaffRatesRouteImport.update({
+  id: '/rental-staff-rates',
+  path: '/rental-staff-rates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalPointsRoute = RentalPointsRouteImport.update({
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
+  '/rental-staff-rates': typeof RentalStaffRatesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
+  '/rental-staff-rates': typeof RentalStaffRatesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
   '/rental-points': typeof RentalPointsRoute
+  '/rental-staff-rates': typeof RentalStaffRatesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/profile'
     | '/rental-points'
+    | '/rental-staff-rates'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/profile'
     | '/rental-points'
+    | '/rental-staff-rates'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/payouts'
     | '/profile'
     | '/rental-points'
+    | '/rental-staff-rates'
     | '/reset-password'
     | '/shifts'
     | '/staff'
@@ -347,6 +359,7 @@ export interface RootRouteChildren {
   PayoutsRoute: typeof PayoutsRoute
   ProfileRoute: typeof ProfileRoute
   RentalPointsRoute: typeof RentalPointsRoute
+  RentalStaffRatesRoute: typeof RentalStaffRatesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rental-staff-rates': {
+      id: '/rental-staff-rates'
+      path: '/rental-staff-rates'
+      fullPath: '/rental-staff-rates'
+      preLoaderRoute: typeof RentalStaffRatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rental-points': {
@@ -555,6 +575,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayoutsRoute: PayoutsRoute,
   ProfileRoute: ProfileRoute,
   RentalPointsRoute: RentalPointsRoute,
+  RentalStaffRatesRoute: RentalStaffRatesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,

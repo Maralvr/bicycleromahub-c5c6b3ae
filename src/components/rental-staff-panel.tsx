@@ -46,11 +46,27 @@ type Assignment = {
   rental_point_id: string;
   rental_staff_id: string;
   date: string;
+  shift_start_time: string | null;
+  shift_end_time: string | null;
   notes: string | null;
   status: "pending" | "accepted" | "rejected" | "cancelled" | null;
   pending_expires_at: string | null;
   rejection_reason: string | null;
 };
+
+type ShiftRate = {
+  rental_staff_id: string;
+  shift_start_time: string;
+  shift_end_time: string;
+  amount: number;
+};
+
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
+const rangeLabel = (a: { shift_start_time: string | null; shift_end_time: string | null }) =>
+  a.shift_start_time || a.shift_end_time
+    ? `${hhmm(a.shift_start_time) ?? "?"}–${hhmm(a.shift_end_time) ?? "?"}`
+    : null;
+
 
 /**
  * Hook for integrating rental-point staff assignment into the existing
@@ -79,6 +95,10 @@ export function useRentalStaffBridge(
     { rental_staff_id: string; date: string; all_day: boolean; from_time: string | null; to_time: string | null }[]
   >([]);
   const [showRoster, setShowRoster] = useState(false);
+  const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  /** "<staffId>|<iso>" — which staff pill has its time quick-picker open. */
+  const [picking, setPicking] = useState<string | null>(null);
+
 
   const reload = useCallback(async () => {
     if (!pointId || !enabled) {
@@ -95,21 +115,28 @@ export function useRentalStaffBridge(
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a, u] = await Promise.all([
+      const [s, a, u, r] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
         // Any unavailability entry (all-day or partial) is worth surfacing
-        // to the admin -- rental-point day assignments aren't time-sliced,
-        // so a partial-day busy window still overlaps whatever hours the
-        // rental point needs covering that day.
+        // to the admin -- a partial-day busy window still overlaps whatever
+        // hours the rental point needs covering that day.
         supabase
           .from("rental_staff_unavailability" as never)
           .select("rental_staff_id, date, all_day, from_time, to_time")
           .gte("date", from)
           .lte("date", to),
+        // Per-staff paid time ranges: staff who have these get quick-pick
+        // shift times (their pay depends on the range); flat-rate staff
+        // don't need a time range at all.
+        supabase
+          .from("rental_staff_shift_rates" as never)
+          .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
+      setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
+
       if (u.error) {
         // Don't fail the whole roster load over this -- staff/assignments
         // still loaded fine -- but do surface it, since a silent failure
@@ -181,13 +208,24 @@ export function useRentalStaffBridge(
     return map;
   }, [unavailable]);
 
-  const handleToggle = async (date: string, staffId: string) => {
+  /** Paid time ranges configured for a staff member (empty = flat-rate). */
+  const ratesFor = useCallback(
+    (staffId: string) =>
+      shiftRates
+        .filter((r) => r.rental_staff_id === staffId)
+        .sort((a, b) => a.shift_end_time.localeCompare(b.shift_end_time)),
+    [shiftRates],
+  );
+
+  const addAssignment = async (
+    date: string,
+    staffId: string,
+    startTime?: string | null,
+    endTime?: string | null,
+  ) => {
     if (!pointId) return;
-    const existing = (byDate.get(date) ?? []).find(
-      (a) => a.rental_staff_id === staffId,
-    );
     const conflict = unavailableByKey.get(`${staffId}|${date}`);
-    if (!existing && conflict) {
+    if (conflict) {
       const name = staff.find((s) => s.id === staffId)?.name ?? "This person";
       const detail = conflict.allDay
         ? "marked the whole day off"
@@ -195,16 +233,23 @@ export function useRentalStaffBridge(
       if (!confirm(`${name} ${detail} on ${date}. Assign anyway?`)) return;
     }
     try {
-      if (existing) {
-        await unassign({ data: { id: existing.id } });
-      } else {
-        await assign({ data: { pointId, staffId, date } });
-      }
+      await assign({ data: { pointId, staffId, date, startTime, endTime } });
+      setPicking(null);
       await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update");
     }
   };
+
+  const removeAssignment = async (id: string) => {
+    try {
+      await unassign({ data: { id } });
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
+
 
   /**
    * Calendar-grid coverage indicator (one dot per day cell). Deliberately
@@ -291,81 +336,158 @@ export function useRentalStaffBridge(
               .
             </div>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {active.map((s) => {
-                const a = assigned.find((x) => x.rental_staff_id === s.id);
-                const on = !!a;
-                const status = a?.status ?? null;
-                const reason = a?.rejection_reason ?? null;
-                const conflict = unavailableByKey.get(`${s.id}|${iso}`);
-                const isUnavailable = !!conflict;
-                const tone =
-                  status === "accepted"
-                    ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
-                    : status === "rejected"
-                      ? "bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/20"
-                      : on
-                        ? "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20"
-                        : isUnavailable
-                          ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
-                          : "bg-card border-border hover:bg-accent";
-                const conflictDetail = conflict
-                  ? conflict.allDay
-                    ? `${s.name} marked the whole day off`
-                    : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
-                  : undefined;
-                const title =
-                  status === "rejected"
-                    ? `Rejected${reason ? `: ${reason}` : ""} — click to clear`
-                    : conflictDetail;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => void handleToggle(iso, s.id)}
-                    title={title}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
-                      tone,
-                    )}
-                  >
-                    <Avatar
-                      name={s.name}
-                      initials={s.avatar}
-                      size="sm"
-                      className="!h-4 !w-4 text-[8px]"
-                    />
-                    <span className="truncate max-w-32">{s.name}</span>
-                    {on && status === "accepted" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
-                    )}
-                    {on && status === "pending" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">pending</span>
-                    )}
-                    {on && status === "rejected" && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider">rejected</span>
-                    )}
-                    {/* Shown whenever the staff marked themselves unavailable
-                        that day, even if they're already assigned -- e.g.
-                        they went unavailable after being assigned, and the
-                        admin should notice and reconsider. */}
-                    {isUnavailable && (
-                      <AlertTriangle
-                        className="h-3 w-3 text-destructive shrink-0"
-                        aria-label="Marked unavailable this day"
-                      />
-                    )}
-                    {!on && <Plus className="h-3 w-3 opacity-60" />}
-                  </button>
-                );
-              })}
+            <div className="space-y-2">
+              {/* Existing assignments — one chip per assignment, so the same
+                  person can hold two shifts on one day (different ranges). */}
+              {assigned.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {assigned.map((a) => {
+                    const s = staff.find((x) => x.id === a.rental_staff_id);
+                    const status = a.status ?? null;
+                    const reason = a.rejection_reason ?? null;
+                    const conflict = unavailableByKey.get(`${a.rental_staff_id}|${iso}`);
+                    const tone =
+                      status === "accepted"
+                        ? "bg-success/15 border-success/40 text-success-foreground hover:bg-success/20"
+                        : status === "rejected" || status === "cancelled"
+                          ? "bg-destructive/15 border-destructive/40 text-destructive hover:bg-destructive/20"
+                          : "bg-warning/15 border-warning/40 text-warning-foreground hover:bg-warning/20";
+                    const range = rangeLabel(a);
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => void removeAssignment(a.id)}
+                        title={
+                          status === "rejected"
+                            ? `Rejected${reason ? `: ${reason}` : ""} — click to clear`
+                            : "Click to unassign"
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+                          tone,
+                        )}
+                      >
+                        <Avatar
+                          name={s?.name ?? "?"}
+                          initials={s?.avatar ?? "?"}
+                          size="sm"
+                          className="!h-4 !w-4 text-[8px]"
+                        />
+                        <span className="truncate max-w-32">{s?.name ?? "Unknown"}</span>
+                        {range && (
+                          <span className="text-[10px] font-medium tabular-nums opacity-80">
+                            {range}
+                          </span>
+                        )}
+                        {status === "accepted" && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider">✓</span>
+                        )}
+                        {status && status !== "accepted" && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider">
+                            {status}
+                          </span>
+                        )}
+                        {!!conflict && (
+                          <AlertTriangle
+                            className="h-3 w-3 text-destructive shrink-0"
+                            aria-label="Marked unavailable this day"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add someone. Staff paid by time range get quick-pick shift
+                  options; flat-rate staff are assigned with no time range. */}
+              <div className="flex flex-wrap gap-1.5">
+                {active.map((s) => {
+                  const rates = ratesFor(s.id);
+                  const key = `${s.id}|${iso}`;
+                  const open = picking === key;
+                  const conflict = unavailableByKey.get(key);
+                  return (
+                    <div key={s.id} className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (rates.length > 0) setPicking(open ? null : key);
+                          else void addAssignment(iso, s.id, null, null);
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
+                          conflict
+                            ? "bg-destructive/10 border-destructive/30 hover:bg-destructive/15"
+                            : "bg-card border-border hover:bg-accent",
+                          open && "ring-1 ring-primary",
+                        )}
+                        title={
+                          conflict
+                            ? conflict.allDay
+                              ? `${s.name} marked the whole day off`
+                              : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
+                            : rates.length > 0
+                              ? "Pick a shift time"
+                              : "Assign this day"
+                        }
+                      >
+                        <Avatar
+                          name={s.name}
+                          initials={s.avatar}
+                          size="sm"
+                          className="!h-4 !w-4 text-[8px]"
+                        />
+                        <span className="truncate max-w-32">{s.name}</span>
+                        {!!conflict && (
+                          <AlertTriangle
+                            className="h-3 w-3 text-destructive shrink-0"
+                            aria-label="Marked unavailable this day"
+                          />
+                        )}
+                        <Plus className="h-3 w-3 opacity-60" />
+                      </button>
+                      {open &&
+                        rates.map((r) => (
+                          <button
+                            key={`${r.shift_start_time}-${r.shift_end_time}`}
+                            type="button"
+                            onClick={() =>
+                              void addAssignment(
+                                iso,
+                                s.id,
+                                hhmm(r.shift_start_time),
+                                hhmm(r.shift_end_time),
+                              )
+                            }
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
+                          >
+                            {hhmm(r.shift_start_time)}–{hhmm(r.shift_end_time)}
+                            <span className="opacity-70">€{Number(r.amount)}</span>
+                          </button>
+                        ))}
+                      {open && (
+                        <button
+                          type="button"
+                          onClick={() => void addAssignment(iso, s.id, null, null)}
+                          className="rounded-full border border-border bg-card px-2 py-1 text-[11px] hover:bg-accent"
+                        >
+                          No time
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
+
         </div>
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableByKey],
+    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, picking],
   );
 
   const ManageRosterButton = (
