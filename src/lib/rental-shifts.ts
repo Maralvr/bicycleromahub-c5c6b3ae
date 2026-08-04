@@ -81,11 +81,6 @@ function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
 
 export type RentalShift = ReturnType<typeof rowToShift>;
 
-/** Cancellations stay visible on the rental-point views for 14 days. */
-function isRecentCancellation(cancelledAt: string): boolean {
-  return Date.now() - new Date(cancelledAt).getTime() < 14 * 86400_000;
-}
-
 export function useRentalShifts() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);

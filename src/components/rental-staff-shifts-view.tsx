@@ -190,7 +190,10 @@ export function RentalStaffShiftsView({
     };
     const channel = supabase
       .channel(`rental-staff-view-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, schedule)
+      // Booking changes arrive as a column-less { id, event_type } broadcast
+      // (trigger public.broadcast_shift_change) rather than postgres_changes,
+      // which would put the customer-paid `rate` on a rental-staff WebSocket.
+      .on("broadcast", { event: "shift_change" }, schedule)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "rental_point_day_assignments" },
