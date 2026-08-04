@@ -322,7 +322,22 @@ export function AllRentalPointsView() {
                                 </Badge>
                               )}
                             </span>
-                            <span className="shrink-0">{b.pax} pax</span>
+                            <span className="shrink-0 flex items-center gap-1.5">
+                              {b.guide ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5">
+                                  <Avatar
+                                    name={b.guide.name}
+                                    initials={b.guide.avatar}
+                                    size="sm"
+                                    className="!h-4 !w-4 text-[8px]"
+                                  />
+                                  <span className="text-foreground">{b.guide.name}</span>
+                                </span>
+                              ) : (
+                                b.isTour && <span className="italic">No guide</span>
+                              )}
+                              <span>{b.pax} pax</span>
+                            </span>
                           </div>
                         ))}
                       </div>
