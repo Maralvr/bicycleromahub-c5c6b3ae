@@ -62,6 +62,9 @@ export type Shift = {
   noShowReportedAt?: string | null;
   noShowReportedBy?: string | null;
   noShowNotes?: string | null;
+  /** Soft-cancellation marker: set when a booking is cancelled instead of deleted. */
+  cancelledAt?: string | null;
+  cancelledReason?: string | null;
 };
 
 export type Task = {

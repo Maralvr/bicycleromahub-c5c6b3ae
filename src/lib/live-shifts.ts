@@ -195,7 +195,18 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     async (id: string) => {
       const prev = shifts;
       setShifts((curr) => curr.filter((s) => s.id !== id));
-      const { error } = await supabase.from("shifts").delete().eq("id", id);
+      // Bokun-sourced bookings are soft-cancelled (kept with cancelled_at) so
+      // they surface as "Cancelled" instead of silently vanishing; manual
+      // shifts are still hard-deleted.
+      const row = prev.find((s) => s.id === id);
+      const { error } =
+        row?.source === "bokun"
+          ? await supabase
+              .from("shifts")
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .update({ cancelled_at: new Date().toISOString() } as any)
+              .eq("id", id)
+          : await supabase.from("shifts").delete().eq("id", id);
       if (error) {
         setShifts(prev);
         throw error;

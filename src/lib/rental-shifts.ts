@@ -35,6 +35,7 @@ type Row = {
   no_show_reported_at: string | null;
   no_show_notes: string | null;
   cancelled_at?: string | null;
+  cancelled_reason?: string | null;
 };
 
 function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
@@ -73,10 +74,17 @@ function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
     noShow: r.no_show ?? false,
     noShowReportedAt: r.no_show_reported_at,
     noShowNotes: r.no_show_notes,
+    cancelledAt: r.cancelled_at ?? null,
+    cancelledReason: r.cancelled_reason ?? null,
   };
 }
 
 export type RentalShift = ReturnType<typeof rowToShift>;
+
+/** Cancellations stay visible on the rental-point views for 14 days. */
+function isRecentCancellation(cancelledAt: string): boolean {
+  return Date.now() - new Date(cancelledAt).getTime() < 14 * 86400_000;
+}
 
 export function useRentalShifts() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -99,15 +107,19 @@ export function useRentalShifts() {
     // array client-side) while capping the query instead of scanning
     // everything ever imported.
     const today = new Date();
+    const cancelledCutoff = new Date(Date.now() - 14 * 86400_000).toISOString();
     const dateFrom = new Date(today.getFullYear() - 1, today.getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10);
     while (true) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes, cancelled_at",
+          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes, cancelled_at, cancelled_reason",
         )
-        .is("cancelled_at", null)
+        // Cancelled bookings are kept for a bounded window (same 14 days as the
+        // rental-staff view) so admins/staff see a "Cancelled" row instead of a
+        // booking silently vanishing; older cancellations fall out.
+        .or(`cancelled_at.is.null,cancelled_at.gte.${cancelledCutoff}`)
         // NOTE: intentionally NOT filtered by rental_point_id. Guided tours are
         // matched to a rental point by meeting point (see rental-point-match.ts),
         // so they must reach the client too. Consumers scope per point.
@@ -140,7 +152,7 @@ export function useRentalShifts() {
         const oldRow = payload.old as { id?: string } | null;
         setRows((prev) => {
           if (payload.eventType === "INSERT" && newRow) {
-            if (newRow.cancelled_at) return prev;
+            if (newRow.cancelled_at && !isRecentCancellation(newRow.cancelled_at)) return prev;
             if (prev.some((r) => r.id === newRow.id)) return prev;
             return [...prev, newRow];
           }
@@ -148,8 +160,9 @@ export function useRentalShifts() {
             // Rows are no longer dropped for a null rental_point_id -- guided
             // tours belong here too and are matched by meeting point.
             const exists = prev.some((r) => r.id === newRow.id);
-            // Soft-cancelled bookings drop out of the rental-point views.
-            if (newRow.cancelled_at) {
+            // Long-cancelled bookings drop out; recent ones stay visible
+            // (rendered greyed with a "Cancelled" badge).
+            if (newRow.cancelled_at && !isRecentCancellation(newRow.cancelled_at)) {
               return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
             }
             if (!exists) return [...prev, newRow];

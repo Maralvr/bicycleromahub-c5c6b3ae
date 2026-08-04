@@ -41,6 +41,7 @@ import {
 } from "@/lib/rental-point-match";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
+import { CancelledBadge } from "@/components/cancelled-badge";
 import { parseCalendarSearch, useCalendarUrlState, type CalendarSearch } from "@/lib/calendar-search";
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
@@ -740,7 +741,7 @@ function RentalBookingsList({
   const renderRow = (s: RentalShift) => {
     const pax = (s.participants?.adults ?? 0) + (s.participants?.teens ?? 0) + (s.participants?.infants ?? 0);
     return (
-      <div key={s.id} className="p-3">
+      <div key={s.id} className={`p-3 ${s.cancelledAt ? "opacity-60" : ""}`}>
         <div className="grid grid-cols-12 gap-3 items-center text-sm">
           <div className="col-span-4 sm:col-span-2 font-medium text-foreground">
             {s.date} · {s.startTime}
@@ -749,6 +750,7 @@ function RentalBookingsList({
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="truncate text-foreground">{s.tourName}</div>
               {isPartnerTour(s.tourName) && <PartnerTag className="shrink-0" />}
+              {s.cancelledAt && <CancelledBadge reason={s.cancelledReason} />}
               {!s.rentalPointId && (
                 <Badge
                   variant="outline"
