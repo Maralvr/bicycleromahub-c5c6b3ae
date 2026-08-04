@@ -502,15 +502,12 @@ function AdminRentalBookingsView({
             <ShiftsCalendar
               shifts={scoped}
               staff={staff}
-                onAssign={handleAssign}
-                onUnassign={handleUnassign}
-                onDelete={handleDelete}
-                onUpdateDeparture={handleUpdateDeparture}
-                showRates
-                renderDayOverlay={pointId ? renderDayOverlay : undefined}
-                renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
-                {...calendarUrlState}
+              showRates
+              renderDayOverlay={pointId ? renderDayOverlay : undefined}
+              renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
+              {...calendarUrlState}
             />
+
 
           )}
         </TabsContent>
