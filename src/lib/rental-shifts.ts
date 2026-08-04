@@ -82,6 +82,18 @@ function rowToShift(r: Row): Shift & { rentalPointId: string | null } {
 
 export type RentalShift = ReturnType<typeof rowToShift>;
 
+const RENTAL_SHIFT_COLUMNS =
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes, cancelled_at, cancelled_reason";
+
+function rentalWindow() {
+  const today = new Date();
+  return {
+    cancelledCutoff: new Date(Date.now() - 14 * 86400_000).toISOString(),
+    dateFrom: new Date(today.getFullYear() - 1, today.getMonth(), 1).toISOString().slice(0, 10),
+    dateTo: new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10),
+  };
+}
+
 export function useRentalShifts() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,10 +114,7 @@ export function useRentalShifts() {
     // navigation working (the calendar itself pages through this in-memory
     // array client-side) while capping the query instead of scanning
     // everything ever imported.
-    const today = new Date();
-    const cancelledCutoff = new Date(Date.now() - 14 * 86400_000).toISOString();
-    const dateFrom = new Date(today.getFullYear() - 1, today.getMonth(), 1).toISOString().slice(0, 10);
-    const dateTo = new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10);
+    const { cancelledCutoff, dateFrom, dateTo } = rentalWindow();
     while (true) {
       // Reads go through shifts_rental_view, which masks `rate` (the amount the
       // customer paid) to NULL for rental-staff-only callers in SQL. Admins get
@@ -113,9 +122,7 @@ export function useRentalShifts() {
       const { data, error: err } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from("shifts_rental_view" as any)
-        .select(
-          "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes, cancelled_at, cancelled_reason",
-        )
+        .select(RENTAL_SHIFT_COLUMNS)
 
         // Cancelled bookings are kept for a bounded window (same 14 days as the
         // rental-staff view) so admins/staff see a "Cancelled" row instead of a
@@ -153,26 +160,69 @@ export function useRentalShifts() {
   // masking that fetchAll() relies on. The trigger public.broadcast_shift_change
   // instead sends only { id, event_type } -- no row columns at all -- and we
   // re-read through the masked view. Nothing sensitive is ever on the wire.
+  //
+  // Cost fix: that re-read used to be a debounced *full* refetch -- every
+  // single booking change re-paginated the whole +/-12-month window (a
+  // 30-column select over potentially thousands of rows) in every open
+  // client. shifts-store.tsx already reconciles one row by id off the same
+  // broadcast; this now does the same, so a change costs one row read.
   const fetchAllRef = useRef(fetchAll);
   fetchAllRef.current = fetchAll;
   useEffect(() => {
     void fetchAll();
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void fetchAllRef.current(), 400);
+
+    const applyRow = async (id: string) => {
+      const { cancelledCutoff, dateFrom, dateTo } = rentalWindow();
+      const { data, error: err } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("shifts_rental_view" as any)
+        .select(RENTAL_SHIFT_COLUMNS)
+        .eq("id", id)
+        .maybeSingle();
+      // Not visible to this user (RLS) or gone: treat as a removal.
+      if (err || !data) {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      const row = data as unknown as Row;
+      const outOfWindow =
+        row.date < dateFrom ||
+        row.date > dateTo ||
+        (!!row.cancelled_at && row.cancelled_at < cancelledCutoff);
+      setRows((prev) => {
+        const exists = prev.some((r) => r.id === row.id);
+        if (outOfWindow) return exists ? prev.filter((r) => r.id !== row.id) : prev;
+        if (!exists) {
+          return [...prev, row].sort((a, b) =>
+            a.date === b.date
+              ? (a.start_time ?? "").localeCompare(b.start_time ?? "")
+              : a.date.localeCompare(b.date),
+          );
+        }
+        return prev.map((r) => (r.id === row.id ? { ...r, ...row } : r));
+      });
     };
-    const offShifts = onShiftChange(schedule);
+
+    const offShifts = onShiftChange((payload) => {
+      const id = payload?.id;
+      // No id on the payload (shouldn't happen): fall back to a full refetch.
+      if (!id) {
+        void fetchAllRef.current();
+        return;
+      }
+      if (payload?.event_type === "delete") {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      void applyRow(id);
+    });
     return () => {
-      if (timer) clearTimeout(timer);
       offShifts();
     };
   }, [fetchAll]);
 
-  const shifts = useMemo<RentalShift[]>(
-    () => rows.map(rowToShift),
-    [rows],
-  );
+  const shifts = useMemo<RentalShift[]>(() => rows.map(rowToShift), [rows]);
+
 
   const updateShift = useCallback(
     async (
