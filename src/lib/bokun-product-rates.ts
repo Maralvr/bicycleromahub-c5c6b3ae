@@ -56,6 +56,44 @@ export function useProductRates(bokunProductId: string | null | undefined) {
   });
 }
 
+/**
+ * Fallback lookup by product title, for shifts imported before we stored
+ * `bokun_product_id` (their tour_name matches the cached product title
+ * exactly, since both come from Bokun's activity title).
+ */
+export function useProductRatesByTitle(
+  tourName: string | null | undefined,
+  enabled: boolean,
+) {
+  const title = tourName ? tourName.trim() : "";
+
+  return useQuery<ProductRates | null>({
+    queryKey: ["bokun-product-rates-by-title", title],
+    enabled: enabled && title.length > 0,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 6 * 60 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bokun_product_rates")
+        .select("bokun_product_id, title, rates, default_rate_id, fetched_at")
+        .eq("title", title)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      const rates = normalizeRates(data.rates);
+      if (rates.length === 0) return null;
+      return {
+        bokunProductId: String(data.bokun_product_id),
+        title: data.title ?? null,
+        rates,
+        defaultRateId: data.default_rate_id ?? null,
+        fetchedAt: data.fetched_at,
+      };
+    },
+  });
+}
+
 /** Invalidate every cached product rate list (after a manual refresh). */
 export function useInvalidateProductRates() {
   const qc = useQueryClient();
