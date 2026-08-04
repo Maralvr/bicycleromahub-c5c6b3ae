@@ -135,7 +135,7 @@ export function useRentalStaffBridge(
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
-      setShiftRates(((r.data ?? []) as unknown as ShiftRate[]) ?? []);
+      setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
 
       if (u.error) {
         // Don't fail the whole roster load over this -- staff/assignments
