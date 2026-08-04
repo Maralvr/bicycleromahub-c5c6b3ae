@@ -198,7 +198,7 @@ export function AllRentalPointsView() {
           })),
       }))
       .filter((g) => g.points.length > 0);
-  }, [days, shifts, today, query, index, pointById]);
+  }, [days, shifts, today, query, index, pointById, guides]);
 
   if (loading || shiftsLoading) {
     return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
