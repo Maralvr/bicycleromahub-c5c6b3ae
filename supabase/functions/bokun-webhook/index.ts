@@ -486,7 +486,12 @@ Deno.serve(async (req: Request) => {
 
   if (topic === "bookings/cancel" || (hasFullBookingDetails(v.data) && v.data.status === "CANCELLED")) {
     if (existing) {
-      await supabase.from("shifts").delete().eq("id", existing.id);
+      // Soft-cancel: keep the row so rental staff / admins see a visible
+      // "Cancelled" record instead of the booking silently disappearing.
+      await supabase
+        .from("shifts")
+        .update({ cancelled_at: new Date().toISOString(), cancelled_reason: "Cancelled in Bokun" })
+        .eq("id", existing.id);
       return new Response(JSON.stringify({ ok: true, action: "cancelled", id: existing.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -514,7 +519,12 @@ Deno.serve(async (req: Request) => {
 
     // Re-check cancel status now that we have full details
     if (fullPayload.status === "CANCELLED" && existing) {
-      await supabase.from("shifts").delete().eq("id", existing.id);
+      // Soft-cancel: keep the row so rental staff / admins see a visible
+      // "Cancelled" record instead of the booking silently disappearing.
+      await supabase
+        .from("shifts")
+        .update({ cancelled_at: new Date().toISOString(), cancelled_reason: "Cancelled in Bokun" })
+        .eq("id", existing.id);
       return new Response(JSON.stringify({ ok: true, action: "cancelled", id: existing.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -599,6 +609,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // A live (non-cancelled) update means the booking is active again.
+    (updates as Record<string, unknown>).cancelled_at = null;
+    (updates as Record<string, unknown>).cancelled_reason = null;
     const { error } = await supabase.from("shifts").update(updates).eq("id", existing.id);
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {

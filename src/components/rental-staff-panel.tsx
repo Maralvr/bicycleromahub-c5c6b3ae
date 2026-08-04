@@ -47,7 +47,7 @@ type Assignment = {
   rental_staff_id: string;
   date: string;
   notes: string | null;
-  status: "pending" | "accepted" | "rejected" | null;
+  status: "pending" | "accepted" | "rejected" | "cancelled" | null;
   pending_expires_at: string | null;
   rejection_reason: string | null;
 };
@@ -221,7 +221,7 @@ export function useRentalStaffBridge(
       const hasBookings = bookingDates ? bookingDates.has(iso) : true;
       if (!hasBookings) return null;
 
-      const assigned = (byDate.get(iso) ?? []).filter((a) => a.status !== "rejected");
+      const assigned = (byDate.get(iso) ?? []).filter((a) => a.status !== "rejected" && a.status !== "cancelled");
       const nameOf = (id: string) => staff.find((x) => x.id === id)?.name ?? "Unknown";
       const accepted = assigned.filter((a) => a.status === "accepted");
       const pending = assigned.filter((a) => a.status !== "accepted");

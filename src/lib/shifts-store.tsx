@@ -53,12 +53,13 @@ type ShiftRow = {
   no_show_reported_at: string | null;
   no_show_reported_by: string | null;
   no_show_notes?: string | null;
+  cancelled_at?: string | null;
 };
 
 // Columns loaded for every shift in the visible date range. Deliberately excludes
 // the heavy detail columns below to keep egress low on the calendar/list views.
 const SHIFT_LIST_COLUMNS =
-  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by";
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, cancelled_at";
 
 // Fetched lazily when a single shift is opened.
 const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
@@ -196,6 +197,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(SHIFT_LIST_COLUMNS)
+        .is("cancelled_at", null)
         .gte("date", from)
         .lte("date", to)
         .order("date", { ascending: true })
@@ -304,12 +306,13 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
         const newRow = payload.new as ShiftRow | null;
         const oldRow = payload.old as { id?: string } | null;
         if (payload.eventType === "INSERT" && newRow) {
-          if (!isWithinRange(newRow.date)) return;
+          if (!isWithinRange(newRow.date) || newRow.cancelled_at) return;
           setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
         } else if (payload.eventType === "UPDATE" && newRow) {
           setRows((prev) => {
             const exists = prev.some((r) => r.id === newRow.id);
-            if (!isWithinRange(newRow.date)) {
+            // Cancelled bookings (soft-deleted) drop out of the main calendar.
+            if (!isWithinRange(newRow.date) || newRow.cancelled_at) {
               return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
             }
             if (!exists) return [...prev, newRow];
@@ -388,8 +391,19 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   const deleteShift: ShiftsStoreContextValue["deleteShift"] = async (id) => {
     const prevRows = rows;
+    const row = rows.find((r) => r.id === id);
     setRows((prev) => prev.filter((r) => r.id !== id));
-    const { error: err } = await supabase.from("shifts").delete().eq("id", id);
+    // Bokun-sourced bookings are soft-cancelled so rental staff and payout
+    // history still see a "Cancelled" record instead of a silent disappearance.
+    // Manually created shifts are still hard-deleted.
+    const { error: err } =
+      row?.source === "bokun"
+        ? await supabase
+            .from("shifts")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .update({ cancelled_at: new Date().toISOString() } as any)
+            .eq("id", id)
+        : await supabase.from("shifts").delete().eq("id", id);
     if (err) {
       setError(err.message);
       setRows(prevRows);

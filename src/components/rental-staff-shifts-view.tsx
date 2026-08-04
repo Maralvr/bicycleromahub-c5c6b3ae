@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { cleanNoteText } from "@/lib/notes-format";
 import { parseBokunNotes } from "@/lib/bokun-notes-format";
 import { rentalLocationForTitle } from "@/lib/rental-products";
+import { supabase } from "@/integrations/supabase/client";
 
 import { setShiftNoShow } from "@/lib/no-show";
 import { AllRentalPointsView } from "@/components/all-rental-points-view";
@@ -176,9 +177,39 @@ export function RentalStaffShiftsView({
     void reload();
   }, [reload]);
 
+  // Live updates: the staff view used to be a one-time fetch, so a booking
+  // added/changed/cancelled after load never showed up. Debounce a refetch on
+  // any change to the bookings or the day assignments.
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void reloadRef.current(), 600);
+    };
+    const channel = supabase
+      .channel(`rental-staff-view-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, schedule)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rental_point_day_assignments" },
+        schedule,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
   const today = new Date().toISOString().slice(0, 10);
   const pending = days.filter((d) => d.status === "pending" && d.date >= today);
-  const accepted = days.filter((d) => d.status === "accepted" && d.date >= today);
+  // Cancelled days stay listed (greyed out, with a "Cancelled" badge) so the
+  // day doesn't silently vanish from the staff member's schedule.
+  const accepted = days.filter(
+    (d) => (d.status === "accepted" || d.status === "cancelled") && d.date >= today,
+  );
   const past = days.filter((d) => d.date < today);
 
   const handleAccept = async (d: MyRentalDay) => {
@@ -467,6 +498,7 @@ function RentalDayCard({
 }) {
   const totalPax = day.bookings.reduce((sum, b) => sum + b.pax, 0);
   const isPending = day.status === "pending";
+  const isCancelled = day.status === "cancelled";
   const [noShowBusyId, setNoShowBusyId] = useState<string | null>(null);
   const handleToggleNoShow = async (bookingId: string, next: boolean) => {
     setNoShowBusyId(bookingId);
@@ -490,6 +522,7 @@ function RentalDayCard({
       className={cn(
         "overflow-hidden border-border/60 scroll-mt-20 transition-shadow",
         isPending && "border-amber-500/60 ring-1 ring-amber-500/20",
+        isCancelled && "opacity-70 border-destructive/40",
         highlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg",
       )}
     >
@@ -505,6 +538,14 @@ function RentalDayCard({
                   className="border-amber-500/60 text-amber-600 dark:text-amber-400 text-[10px]"
                 >
                   Pending · {timeLeft(day.pendingExpiresAt)}
+                </Badge>
+              )}
+              {isCancelled && (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/60 text-destructive text-[10px]"
+                >
+                  <Ban className="h-3 w-3 mr-1" /> Cancelled
                 </Badge>
               )}
             </div>
@@ -548,6 +589,12 @@ function RentalDayCard({
             </div>
           </div>
         </div>
+        {isCancelled && (
+          <div className="mt-3 text-xs text-destructive bg-destructive/10 rounded-md p-2 border border-destructive/30">
+            This day was cancelled by an admin
+            {day.cancelledReason ? ` — ${day.cancelledReason}` : ""}.
+          </div>
+        )}
         {day.notes && (
           <div className="mt-3 text-xs text-foreground bg-background/60 rounded-md p-2 border border-border/40">
             <span className="font-semibold uppercase tracking-wide text-muted-foreground mr-1">
@@ -586,7 +633,18 @@ function RentalDayCard({
           </div>
         ) : (
           day.bookings.map((b) => (
-            <div key={b.id} className="p-3.5 space-y-2.5">
+            <div
+              key={b.id}
+              className={cn("p-3.5 space-y-2.5", b.cancelledAt && "opacity-60")}
+            >
+              {b.cancelledAt && (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/60 text-destructive text-[10px]"
+                >
+                  <Ban className="h-3 w-3 mr-1" /> Cancelled booking
+                </Badge>
+              )}
               <div className="flex items-start gap-3 flex-wrap">
                 <div className="flex flex-col items-center justify-center bg-primary/10 rounded-md px-2.5 py-1.5 shrink-0">
                   <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-primary">
@@ -628,7 +686,7 @@ function RentalDayCard({
                 </div>
               </div>
 
-              {(b.noShow || hasStarted(day.date, b.startTime)) && (
+              {!b.cancelledAt && (b.noShow || hasStarted(day.date, b.startTime)) && (
                 <div className="flex justify-end">
                   <Button
                     size="sm"

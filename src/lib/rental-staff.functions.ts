@@ -91,7 +91,7 @@ export const listAssignmentsForPoint = createServerFn({ method: "GET" })
     await assertAdmin(supabase, userId);
     const { data: rows, error } = await supabase
       .from("rental_point_day_assignments")
-      .select("id, rental_point_id, rental_staff_id, date, notes, status, pending_expires_at, rejection_reason, accepted_at, created_at")
+      .select("id, rental_point_id, rental_staff_id, date, notes, status, pending_expires_at, rejection_reason, accepted_at, created_at, cancelled_at, cancelled_reason")
       .eq("rental_point_id", data.pointId)
       .gte("date", data.from)
       .lte("date", data.to)
@@ -138,7 +138,7 @@ export const assignRentalStaff = createServerFn({ method: "POST" })
           .eq("date", data.date)
           .maybeSingle();
         if (findErr) throw new Error(findErr.message);
-        if (existing?.status === "rejected") {
+        if (existing?.status === "rejected" || existing?.status === "cancelled") {
           const { error: updErr } = await supabase
             .from("rental_point_day_assignments")
             .update({
@@ -146,8 +146,10 @@ export const assignRentalStaff = createServerFn({ method: "POST" })
               pending_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
               accepted_at: null,
               rejection_reason: null,
+              cancelled_at: null,
+              cancelled_reason: null,
               notes: data.notes?.trim() || null,
-            })
+            } as any)
             .eq("id", existing.id);
           if (updErr) throw new Error(updErr.message);
           return { ok: true, id: existing.id, reassigned: true };
@@ -168,10 +170,13 @@ export const unassignRentalStaff = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
-    const { error } = await supabase
-      .from("rental_point_day_assignments")
-      .delete()
-      .eq("id", data.id);
+    // Soft-cancel instead of hard delete so the rental staff member sees a
+    // visible "Cancelled" record (and gets a notification) rather than the
+    // day silently disappearing from their list.
+    const { error } = await supabase.rpc("cancel_rental_day" as any, {
+      _assignment_id: data.id,
+      _reason: null,
+    } as any);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -182,7 +187,9 @@ export type MyRentalDay = {
   assignmentId: string;
   date: string;
   notes: string | null;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "cancelled";
+  cancelledAt?: string | null;
+  cancelledReason?: string | null;
   pendingExpiresAt: string | null;
   rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
   bookings: Array<{
@@ -205,6 +212,8 @@ export type MyRentalDay = {
     guide: { id: string; name: string; avatar: string; phone: string | null } | null;
     noShow: boolean;
     noShowNotes: string | null;
+    cancelledAt: string | null;
+    cancelledReason: string | null;
   }>;
 };
 
@@ -228,7 +237,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const { data: assigns, error: aErr } = await supabase
       .from("rental_point_day_assignments")
       .select(
-        "id, date, notes, status, pending_expires_at, rental_point_id, rental_points (id, name, address, phone)",
+        "id, date, notes, status, pending_expires_at, cancelled_at, cancelled_reason, rental_point_id, rental_points (id, name, address, phone)",
       )
       .eq("rental_staff_id", staffRow.id)
       .gte("date", from)
@@ -263,6 +272,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
       rental_point_id: string | null;
       no_show: boolean | null;
       no_show_notes: string | null;
+      cancelled_at: string | null;
+      cancelled_reason: string | null;
     };
 
     // no_show/no_show_notes aren't in the generated Supabase types yet
@@ -271,7 +282,7 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     const { data: shiftsData, error: shErr } = await supabase
       .from("shifts")
       .select(
-        "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id, no_show, no_show_notes",
+        "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id, no_show, no_show_notes, cancelled_at, cancelled_reason",
       )
       .in("rental_point_id", pointIds)
       .in("date", dates);
@@ -315,8 +326,10 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         assignmentId: a.id,
         date: a.date,
         notes: a.notes ?? null,
-        status: (a.status ?? "accepted") as "pending" | "accepted" | "rejected",
+        status: (a.status ?? "accepted") as MyRentalDay["status"],
         pendingExpiresAt: a.pending_expires_at ?? null,
+        cancelledAt: a.cancelled_at ?? null,
+        cancelledReason: a.cancelled_reason ?? null,
         rentalPoint: {
           id: a.rental_points?.id ?? a.rental_point_id,
           name: a.rental_points?.name ?? "",
@@ -324,6 +337,12 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
           phone: a.rental_points?.phone ?? null,
         },
         bookings: ds
+          .filter((s) => {
+            // Cancelled bookings stay visible for a short while so staff
+            // notice the change, then fall out of the list.
+            if (!s.cancelled_at) return true;
+            return Date.now() - new Date(s.cancelled_at).getTime() < 14 * 86400_000;
+          })
           .sort((x, y) => (x.start_time ?? "").localeCompare(y.start_time ?? ""))
           .map((s) => {
             const parts = paxParts(s);
@@ -347,6 +366,8 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
               guide: s.assigned_staff_id ? guidesById.get(s.assigned_staff_id) ?? null : null,
               noShow: !!s.no_show,
               noShowNotes: s.no_show_notes ?? null,
+              cancelledAt: s.cancelled_at ?? null,
+              cancelledReason: s.cancelled_reason ?? null,
             };
           }),
       };
@@ -445,7 +466,9 @@ export const rejectRentalDay = createServerFn({ method: "POST" })
 export type RentalCoverageDay = {
   assignmentId: string;
   date: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "cancelled";
+  cancelledAt?: string | null;
+  cancelledReason?: string | null;
   rentalPoint: { id: string; name: string; address: string | null; phone: string | null };
   staff: { id: string; name: string; avatar: string } | null;
 };
@@ -471,7 +494,7 @@ export const getAllRentalDays = createServerFn({ method: "GET" })
     const days: RentalCoverageDay[] = (rows ?? []).map((a: any) => ({
       assignmentId: a.id,
       date: a.date,
-      status: (a.status ?? "accepted") as "pending" | "accepted" | "rejected",
+      status: (a.status ?? "accepted") as "pending" | "accepted" | "rejected" | "cancelled",
       rentalPoint: {
         id: a.rental_points?.id ?? a.rental_point_id,
         name: a.rental_points?.name ?? "",

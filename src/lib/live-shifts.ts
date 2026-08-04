@@ -97,6 +97,7 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     let q = supabase
       .from("shifts")
       .select(cols)
+      .is("cancelled_at", null)
       .gte("date", isoFrom)
       .lte("date", isoTo)
       .order("date", { ascending: true })
