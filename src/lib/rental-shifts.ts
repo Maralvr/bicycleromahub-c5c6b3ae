@@ -106,7 +106,9 @@ export function useRentalShifts() {
         .select(
           "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes",
         )
-        .not("rental_point_id", "is", null)
+        // NOTE: intentionally NOT filtered by rental_point_id. Guided tours are
+        // matched to a rental point by meeting point (see rental-point-match.ts),
+        // so they must reach the client too. Consumers scope per point.
         .gte("date", dateFrom)
         .lte("date", dateTo)
         .order("date", { ascending: true })
@@ -136,16 +138,13 @@ export function useRentalShifts() {
         const oldRow = payload.old as { id?: string } | null;
         setRows((prev) => {
           if (payload.eventType === "INSERT" && newRow) {
-            if (!newRow.rental_point_id) return prev;
             if (prev.some((r) => r.id === newRow.id)) return prev;
             return [...prev, newRow];
           }
           if (payload.eventType === "UPDATE" && newRow) {
-            // Row may have moved in/out of rental scope
+            // Rows are no longer dropped for a null rental_point_id -- guided
+            // tours belong here too and are matched by meeting point.
             const exists = prev.some((r) => r.id === newRow.id);
-            if (!newRow.rental_point_id) {
-              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
-            }
             if (!exists) return [...prev, newRow];
             return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
           }
