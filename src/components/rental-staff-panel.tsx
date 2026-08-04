@@ -115,21 +115,28 @@ export function useRentalStaffBridge(
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a, u] = await Promise.all([
+      const [s, a, u, r] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
         // Any unavailability entry (all-day or partial) is worth surfacing
-        // to the admin -- rental-point day assignments aren't time-sliced,
-        // so a partial-day busy window still overlaps whatever hours the
-        // rental point needs covering that day.
+        // to the admin -- a partial-day busy window still overlaps whatever
+        // hours the rental point needs covering that day.
         supabase
           .from("rental_staff_unavailability" as never)
           .select("rental_staff_id, date, all_day, from_time, to_time")
           .gte("date", from)
           .lte("date", to),
+        // Per-staff paid time ranges: staff who have these get quick-pick
+        // shift times (their pay depends on the range); flat-rate staff
+        // don't need a time range at all.
+        supabase
+          .from("rental_staff_shift_rates" as never)
+          .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
+      setShiftRates(((r.data ?? []) as unknown as ShiftRate[]) ?? []);
+
       if (u.error) {
         // Don't fail the whole roster load over this -- staff/assignments
         // still loaded fine -- but do surface it, since a silent failure
