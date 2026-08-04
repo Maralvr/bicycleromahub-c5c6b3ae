@@ -25,7 +25,16 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
 const PUBLIC_ROUTES = ["/auth", "/reset-password"];
-const RENTAL_ROUTES = ["/shifts", "/rental-points", "/profile", "/staff", "/notifications", "/tasks"];
+const RENTAL_ROUTES = [
+  "/shifts",
+  "/rental-points",
+  "/profile",
+  "/staff",
+  "/notifications",
+  "/tasks",
+  "/payouts",
+  "/payout-rates",
+];
 
 function NotFoundComponent() {
   return (
