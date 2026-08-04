@@ -40,7 +40,11 @@ export function cleanNoteText(raw: string | null | undefined): string | null {
 
   if (Array.isArray(parsed)) {
     const bodies = parsed.map(extractBody).filter((b): b is string => !!b);
-    return bodies.length ? bodies.join("\n\n") : raw;
+    if (bodies.length) return bodies.join("\n\n");
+    // An empty (or body-less) parsed array means "no notes" -- returning the
+    // raw text here used to render a literal "[]" in the UI.
+    return parsed.length === 0 ? null : raw;
   }
+
   return extractBody(parsed) ?? raw;
 }
