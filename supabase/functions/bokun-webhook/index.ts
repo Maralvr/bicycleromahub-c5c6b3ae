@@ -611,6 +611,56 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // INSERT-time detail pass. Rental-flow webhook payloads have been observed
+  // to arrive without pricingCategoryBookings and without parentBookingId,
+  // which maps to 0/0/0 participants, no external_booking_ref and a "TBD"
+  // meeting point. Previously that placeholder row was inserted as-is; with
+  // no parent ref the heal cron could never fetch it, so once the departure
+  // date passed the row stayed permanently broken. Re-fetch the full detail
+  // once here and prefer it whenever it carries more than the payload did.
+  const insertTotal = row.adults + row.teens + row.infants;
+  if (insertTotal === 0 || row.external_booking_ref == null) {
+    const detail = await fetchBokunBooking(fullPayload.bookingId);
+    const detailRow = detail ? mapToShiftRow(detail) : null;
+    if (detailRow) {
+      const detailTotal = detailRow.adults + detailRow.teens + detailRow.infants;
+      if (insertTotal === 0 && detailTotal > 0) {
+        row.adults = detailRow.adults;
+        row.teens = detailRow.teens;
+        row.infants = detailRow.infants;
+        row.trailers = detailRow.trailers;
+        
+      }
+      if (row.external_booking_ref == null && detailRow.external_booking_ref) {
+        row.external_booking_ref = detailRow.external_booking_ref;
+      }
+      if (!row.rate_title && detailRow.rate_title) row.rate_title = detailRow.rate_title;
+      if (
+        (!row.meeting_point || row.meeting_point === "TBD") &&
+        detailRow.meeting_point &&
+        detailRow.meeting_point !== "TBD"
+      ) {
+        row.meeting_point = detailRow.meeting_point;
+      }
+      if (row.bokun_product_id == null && detailRow.bokun_product_id != null) {
+        row.bokun_product_id = detailRow.bokun_product_id;
+      }
+      if (row.bokun_rate_id == null && detailRow.bokun_rate_id != null) {
+        row.bokun_rate_id = detailRow.bokun_rate_id;
+      }
+      console.log(
+        `[bokun] INSERT detail pass for ${row.booking_id}: participants=${
+          row.adults + row.teens + row.infants
+        }, ref=${row.external_booking_ref ?? "none"}`,
+      );
+    } else {
+      console.warn(
+        `[bokun] INSERT detail pass inconclusive for ${row.booking_id} ` +
+          `(payload participants=${insertTotal}, ref=${row.external_booking_ref ?? "none"}).`,
+      );
+    }
+  }
+
   const { data: created, error } = await supabase.from("shifts").insert(row).select("id").single();
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
