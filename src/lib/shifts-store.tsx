@@ -331,22 +331,16 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    const channel = supabase
-      .channel("shifts-changes")
-      .on("broadcast", { event: "shift_change" }, (msg) => {
-        const payload = (msg as { payload?: { id?: string; event_type?: string } }).payload;
-        const id = payload?.id;
-        if (!id) return;
-        if (payload?.event_type === "delete") {
-          setRows((prev) => prev.filter((r) => r.id !== id));
-          return;
-        }
-        void applyRow(id);
-      })
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return onShiftChange((payload) => {
+      const id = payload?.id;
+      if (!id) return;
+      if (payload?.event_type === "delete") {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      void applyRow(id);
+    });
+
   }, [isWithinRange]);
 
 
