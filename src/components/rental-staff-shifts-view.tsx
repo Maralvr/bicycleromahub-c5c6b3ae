@@ -686,7 +686,7 @@ function RentalDayCard({
                 </div>
               </div>
 
-              {(b.noShow || hasStarted(day.date, b.startTime)) && (
+              {!b.cancelledAt && (b.noShow || hasStarted(day.date, b.startTime)) && (
                 <div className="flex justify-end">
                   <Button
                     size="sm"
