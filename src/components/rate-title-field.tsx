@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 const CUSTOM = "__custom__";
+const SHOW_ALL = "__show_all__";
 
 type Props = {
   id?: string;
@@ -43,6 +44,8 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
   const [custom, setCustom] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [showAll, setShowAll] = useState(false);
+
   const canonical = product
     ? product.rates.map((r) => r.title)
     : (PUBLIC_TOUR_LANGUAGES as readonly string[]).slice();
@@ -57,7 +60,22 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
     : null;
   const selected = (byId ?? v).trim();
 
-  const options = Array.from(new Set<string>([...canonical, ...(selected ? [selected] : [])]));
+  const allOptions = Array.from(new Set<string>([...canonical, ...(selected ? [selected] : [])]));
+
+  // Type filtering: private bookings only ever switch language within private
+  // rates, and public bookings within public rates — the two are never
+  // interchangeable in practice. Only filter when the product genuinely has
+  // both kinds (tours); rentals/transfers have no split and stay unfiltered,
+  // as does a booking with an empty/legacy rate we can't classify.
+  const kind = (t: string): "private" | "public" | "neutral" =>
+    /private/i.test(t) ? "private" : /public/i.test(t) ? "public" : "neutral";
+  const hasSplit =
+    allOptions.some((o) => kind(o) === "private") && allOptions.some((o) => kind(o) === "public");
+  const selectedKind = selected ? kind(selected) : "neutral";
+  const filtering = hasSplit && !showAll && selectedKind !== "neutral";
+  const options = filtering
+    ? allOptions.filter((o) => kind(o) === selectedKind || o === selected)
+    : allOptions;
   const inList = selected.length > 0 && options.includes(selected);
 
   const refresh = async () => {
@@ -108,6 +126,10 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
             setCustom(true);
             return;
           }
+          if (val === SHOW_ALL) {
+            setShowAll(true);
+            return;
+          }
           onChange(val);
         }}
       >
@@ -120,6 +142,7 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
               {opt}
             </SelectItem>
           ))}
+          {filtering ? <SelectItem value={SHOW_ALL}>Show all rates…</SelectItem> : null}
           <SelectItem value={CUSTOM}>Custom…</SelectItem>
         </SelectContent>
       </Select>
