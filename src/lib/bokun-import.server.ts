@@ -395,6 +395,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     participants: participantList,
     rate: raw.totalPriceAmount ?? moneyAmount(activity?.totalPrice) ?? activity?.totalPriceAmount ?? moneyAmount(raw.totalPrice) ?? moneyAmount(raw.totalPaid) ?? raw.totalAsMoney?.amount ?? raw.paidAmountAsMoney?.amount ?? null,
     rate_title: rateTitle,
+    bokun_rate_id: bokunRateId,
     seller,
     booking_channel: channel,
     bokun_created_at: created,
@@ -404,6 +405,51 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     required_tags: inferTags(productTitle, raw.productTags ?? raw.product?.tags),
   };
 }
+
+/**
+ * Bokun returns a booking's `rateTitle` in the language the booking was made
+ * in ("Mtb elettrica 2 ore"), while the rate dropdown works off the canonical
+ * English list cached in `public.bokun_product_rates` ("Mtb Electric 2-hour").
+ * The numeric `rateId` is locale-stable, so whenever we have one and the
+ * product is in the cache we rewrite `rate_title` to the cached English label.
+ * Rows with no rate id, or an id the cache doesn't know, keep Bokun's own
+ * title untouched.
+ */
+export async function canonicalizeRateTitles<
+  T extends { bokun_product_id?: string | null; bokun_rate_id?: string | null; rate_title?: string | null },
+>(rows: T[]): Promise<T[]> {
+  const productIds = Array.from(
+    new Set(rows.filter((r) => r.bokun_rate_id && r.bokun_product_id).map((r) => String(r.bokun_product_id))),
+  );
+  if (productIds.length === 0) return rows;
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("bokun_product_rates")
+    .select("bokun_product_id, rates")
+    .in("bokun_product_id", productIds);
+
+  const titleByKey = new Map<string, string>();
+  for (const row of data ?? []) {
+    const rates = Array.isArray(row.rates) ? row.rates : [];
+    for (const r of rates as Array<Record<string, unknown>>) {
+      const rid = r?.["id"];
+      const title = r?.["title"];
+      if (rid != null && typeof title === "string" && title.trim()) {
+        titleByKey.set(`${row.bokun_product_id}:${String(rid)}`, title);
+      }
+    }
+  }
+  if (titleByKey.size === 0) return rows;
+
+  for (const row of rows) {
+    if (!row.bokun_rate_id || !row.bokun_product_id) continue;
+    const canonical = titleByKey.get(`${row.bokun_product_id}:${row.bokun_rate_id}`);
+    if (canonical) row.rate_title = canonical;
+  }
+  return rows;
+}
+
 
 type BokunSearchResponse = {
   results?: BokunBookingFull[];
