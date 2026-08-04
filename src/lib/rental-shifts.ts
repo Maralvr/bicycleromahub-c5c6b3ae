@@ -111,11 +111,16 @@ export function useRentalShifts() {
     const dateFrom = new Date(today.getFullYear() - 1, today.getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = new Date(today.getFullYear() + 1, today.getMonth(), 0).toISOString().slice(0, 10);
     while (true) {
+      // Reads go through shifts_rental_view, which masks `rate` (the amount the
+      // customer paid) to NULL for rental-staff-only callers in SQL. Admins get
+      // the real value. Writes below still target public.shifts directly.
       const { data, error: err } = await supabase
-        .from("shifts")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from("shifts_rental_view" as any)
         .select(
           "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, notes, operations_notes, assigned_staff_id, status, required_tags, rental_point_id, no_show, no_show_reported_at, no_show_notes, cancelled_at, cancelled_reason",
         )
+
         // Cancelled bookings are kept for a bounded window (same 14 days as the
         // rental-staff view) so admins/staff see a "Cancelled" row instead of a
         // booking silently vanishing; older cancellations fall out.

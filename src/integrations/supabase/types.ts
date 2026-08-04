@@ -280,6 +280,13 @@ export type Database = {
             referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "guide_notes_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       guide_notifications: {
@@ -334,6 +341,13 @@ export type Database = {
             columns: ["shift_id"]
             isOneToOne: false
             referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guide_notifications_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
             referencedColumns: ["id"]
           },
           {
@@ -439,6 +453,13 @@ export type Database = {
             columns: ["shift_id"]
             isOneToOne: false
             referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
             referencedColumns: ["id"]
           },
         ]
@@ -950,6 +971,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_additional_guides_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shift_additional_guides_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
@@ -1002,6 +1030,13 @@ export type Database = {
             columns: ["shift_id"]
             isOneToOne: false
             referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_dispatch_events_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
             referencedColumns: ["id"]
           },
           {
@@ -1464,11 +1499,155 @@ export type Database = {
             referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "waiver_signatures_matched_shift_id_fkey"
+            columns: ["matched_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts_rental_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      shifts_rental_view: {
+        Row: {
+          adults: number | null
+          assigned_staff_id: string | null
+          bokun_product_id: string | null
+          bokun_rate_id: string | null
+          booking_channel: string | null
+          booking_id: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          channel_booking_ref: string | null
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          date: string | null
+          end_time: string | null
+          external_booking_ref: string | null
+          id: string | null
+          infants: number | null
+          meeting_point: string | null
+          no_show: boolean | null
+          no_show_notes: string | null
+          no_show_reported_at: string | null
+          notes: string | null
+          operations_notes: string | null
+          participants: Json | null
+          rate: number | null
+          rate_title: string | null
+          rental_point_id: string | null
+          required_tags: string[] | null
+          seller: string | null
+          source: Database["public"]["Enums"]["shift_source"] | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["shift_status"] | null
+          teens: number | null
+          ticket_sent: boolean | null
+          tour_name: string | null
+          trailers: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          adults?: number | null
+          assigned_staff_id?: string | null
+          bokun_product_id?: string | null
+          bokun_rate_id?: string | null
+          booking_channel?: string | null
+          booking_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          channel_booking_ref?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          date?: string | null
+          end_time?: string | null
+          external_booking_ref?: string | null
+          id?: string | null
+          infants?: number | null
+          meeting_point?: string | null
+          no_show?: boolean | null
+          no_show_notes?: string | null
+          no_show_reported_at?: string | null
+          notes?: string | null
+          operations_notes?: string | null
+          participants?: Json | null
+          rate?: never
+          rate_title?: string | null
+          rental_point_id?: string | null
+          required_tags?: string[] | null
+          seller?: string | null
+          source?: Database["public"]["Enums"]["shift_source"] | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["shift_status"] | null
+          teens?: number | null
+          ticket_sent?: boolean | null
+          tour_name?: string | null
+          trailers?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          adults?: number | null
+          assigned_staff_id?: string | null
+          bokun_product_id?: string | null
+          bokun_rate_id?: string | null
+          booking_channel?: string | null
+          booking_id?: string | null
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          channel_booking_ref?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          date?: string | null
+          end_time?: string | null
+          external_booking_ref?: string | null
+          id?: string | null
+          infants?: number | null
+          meeting_point?: string | null
+          no_show?: boolean | null
+          no_show_notes?: string | null
+          no_show_reported_at?: string | null
+          notes?: string | null
+          operations_notes?: string | null
+          participants?: Json | null
+          rate?: never
+          rate_title?: string | null
+          rental_point_id?: string | null
+          required_tags?: string[] | null
+          seller?: string | null
+          source?: Database["public"]["Enums"]["shift_source"] | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["shift_status"] | null
+          teens?: number | null
+          ticket_sent?: boolean | null
+          tour_name?: string | null
+          trailers?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_assigned_staff_id_fkey"
+            columns: ["assigned_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_rental_point_id_fkey"
+            columns: ["rental_point_id"]
+            isOneToOne: false
+            referencedRelation: "rental_points"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_additional_guide_assignment: {
