@@ -552,23 +552,7 @@ export function useRentalStaffBridge(
                             )}
                           </button>
                         ))}
-                      {open &&
-                        flatConfigured &&
-                        FLAT_SHIFTS.map((sh) => (
-                          <button
-                            key={sh.label}
-                            type="button"
-                            onClick={() => void addAssignment(iso, s.id, sh.start, sh.end)}
-                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
-                          >
-                            <span className="font-medium">{sh.label}</span>
-                            <span className="opacity-70">
-                              {sh.start}–{sh.end}
-                            </span>
-                            <span className="opacity-70">€{flatAmount}</span>
-                          </button>
-                        ))}
-                      {open && flatConfigured && alreadyToday >= 1 && seasonal && (
+                      {open && alreadyToday >= 1 && seasonal && (
                         <span className="text-[10px] text-muted-foreground">
                           Double-shift day → €{Number(flat!.double_shift_rate)} total
                         </span>
