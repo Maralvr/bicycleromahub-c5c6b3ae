@@ -523,8 +523,17 @@ Deno.serve(async (req: Request) => {
 
   const row = mapToShiftRow(fullPayload);
 
+  // Prefer the canonical English rate label over Bokun's booking-language one.
+  const canonical = await canonicalRateTitle(supabase, fullPayload.bokunProductId, fullPayload.rateId);
+  if (canonical) row.rate_title = canonical;
+
   if (existing) {
     const updates: Record<string, unknown> = { ...row };
+
+    // Bokun-owned identifiers, never admin-edited -- but don't blank them.
+    if (updates.bokun_rate_id == null) delete updates.bokun_rate_id;
+    if (updates.bokun_product_id == null) delete updates.bokun_product_id;
+
 
     // Never null out a parent ref that was already resolved.
     if (updates.external_booking_ref == null && existing.external_booking_ref) {
