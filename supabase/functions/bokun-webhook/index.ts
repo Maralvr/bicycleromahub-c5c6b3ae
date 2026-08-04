@@ -71,8 +71,13 @@ interface FullBookingPayload extends BokunEventPayload {
   // Bokun's booked *rate* (pricing option) -- "Public tour in English",
   // "Regular Bike (City or Mtb) 2-hour" -- distinct from `totalPrice`.
   rateTitle?: string;
+  // Locale-stable id of that rate, plus the product it belongs to: together
+  // they resolve the canonical English title from bokun_product_rates.
+  rateId?: string;
+  bokunProductId?: string;
   status?: "CONFIRMED" | "CANCELLED" | "PENDING";
 }
+
 
 interface BokunPlace {
   title?: string;
