@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TmpNotesPreviewRouteImport } from './routes/tmp-notes-preview'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as ShiftsRouteImport } from './routes/shifts'
@@ -38,6 +39,11 @@ import { Route as ApiPublicHooksBackfillBokunRefsRouteImport } from './routes/ap
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TmpNotesPreviewRoute = TmpNotesPreviewRouteImport.update({
+  id: '/tmp-notes-preview',
+  path: '/tmp-notes-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TasksRoute = TasksRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/tmp-notes-preview': typeof TmpNotesPreviewRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/tmp-notes-preview': typeof TmpNotesPreviewRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/shifts': typeof ShiftsRoute
   '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
+  '/tmp-notes-preview': typeof TmpNotesPreviewRoute
   '/users': typeof UsersRoute
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/tmp-notes-preview'
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/tmp-notes-preview'
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/shifts'
     | '/staff'
     | '/tasks'
+    | '/tmp-notes-preview'
     | '/users'
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
@@ -351,6 +363,7 @@ export interface RootRouteChildren {
   ShiftsRoute: typeof ShiftsRoute
   StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
+  TmpNotesPreviewRoute: typeof TmpNotesPreviewRoute
   UsersRoute: typeof UsersRoute
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
   ApiPublicHooksBackfillBokunRefsRoute: typeof ApiPublicHooksBackfillBokunRefsRoute
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tmp-notes-preview': {
+      id: '/tmp-notes-preview'
+      path: '/tmp-notes-preview'
+      fullPath: '/tmp-notes-preview'
+      preLoaderRoute: typeof TmpNotesPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tasks': {
@@ -559,6 +579,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShiftsRoute: ShiftsRoute,
   StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
+  TmpNotesPreviewRoute: TmpNotesPreviewRoute,
   UsersRoute: UsersRoute,
   ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
   ApiPublicHooksBackfillBokunRefsRoute: ApiPublicHooksBackfillBokunRefsRoute,
@@ -576,3 +597,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
