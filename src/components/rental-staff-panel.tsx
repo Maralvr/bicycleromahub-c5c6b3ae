@@ -509,7 +509,7 @@ export function useRentalStaffBridge(
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, picking],
+    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, ratesReady, picking],
   );
 
   const ManageRosterButton = (
