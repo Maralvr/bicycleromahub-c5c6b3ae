@@ -125,6 +125,10 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
             setCustom(true);
             return;
           }
+          if (val === SHOW_ALL) {
+            setShowAll(true);
+            return;
+          }
           onChange(val);
         }}
       >
@@ -137,6 +141,7 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId,
               {opt}
             </SelectItem>
           ))}
+          {filtering ? <SelectItem value={SHOW_ALL}>Show all rates…</SelectItem> : null}
           <SelectItem value={CUSTOM}>Custom…</SelectItem>
         </SelectContent>
       </Select>
