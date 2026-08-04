@@ -274,6 +274,13 @@ export function useRentalStaffBridge(
     [shiftRates],
   );
 
+  /** Flat-rate pay config for a staff member (null when not configured). */
+  const flatFor = useCallback(
+    (staffId: string) => flatRates.find((f) => f.id === staffId) ?? null,
+    [flatRates],
+  );
+
+
   const addAssignment = async (
     date: string,
     staffId: string,
