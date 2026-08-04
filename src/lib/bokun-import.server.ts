@@ -344,11 +344,14 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
   // maps into activity.rates[] for the human rate code, e.g.
   // "APPIA NAVETTA PUBLIC"). Also mirrored under the invoice product.
   // Verified against parent bookings 98672696 / 99370402.
+  const bokunRateId = (() => {
+    const rid = activity?.rateId ?? a0?.rateId;
+    return rid != null ? String(rid) : null;
+  })();
   const rateFromRates = (() => {
-    const rateId = activity?.rateId ?? a0?.rateId;
-    if (rateId == null) return null;
+    if (bokunRateId == null) return null;
     const rates = activity?.activity?.rates ?? a0?.activity?.rates ?? [];
-    return rates.find((r) => String(r.id) === String(rateId))?.title ?? null;
+    return rates.find((r) => String(r.id) === bokunRateId)?.title ?? null;
   })();
   const rateTitle =
     activity?.rateTitle ||
@@ -363,6 +366,7 @@ function mapToShiftRow(raw: BokunBookingFull, rentalPointIdByName: Map<string, s
     raw.invoice?.productInvoices?.[0]?.product?.rateTitle ||
     rateFromRates ||
     null;
+
 
   const seller = activity?.seller?.title || raw.seller?.title || raw.seller?.companyName || raw.sellerName || null;
   const channel = raw.bookingChannel?.title || raw.bookingChannel?.systemType || raw.channel?.title || raw.channel?.systemType || null;
