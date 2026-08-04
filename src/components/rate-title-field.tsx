@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PUBLIC_TOUR_LANGUAGES } from "@/lib/tour-languages";
-import { useProductRates, useInvalidateProductRates } from "@/lib/bokun-product-rates";
+import { useProductRates, useProductRatesByTitle, useInvalidateProductRates } from "@/lib/bokun-product-rates";
 import { refreshBokunProductRatesFn } from "@/lib/bokun-product-rates.functions";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -21,6 +21,8 @@ type Props = {
   bokunProductId?: string | null;
   /** Bokun rate id of the booked option — locale-stable, matched before title. */
   bokunRateId?: string | null;
+  /** Tour name — used to find the product's rates when the id wasn't imported. */
+  tourName?: string | null;
 };
 
 /**
@@ -36,10 +38,16 @@ type Props = {
  * hatch, and the current value is always preserved as a selectable option so
  * legacy labels are never silently dropped.
  */
-export function RateTitleField({ id, value, onChange, className, bokunProductId, bokunRateId }: Props) {
+export function RateTitleField({ id, value, onChange, className, bokunProductId, bokunRateId, tourName }: Props) {
   const v = (value ?? "").trim();
   const { isAdmin } = useAuth();
-  const { data: product, isLoading } = useProductRates(bokunProductId);
+  const { data: byIdProduct, isLoading: loadingById } = useProductRates(bokunProductId);
+  const { data: byTitleProduct, isLoading: loadingByTitle } = useProductRatesByTitle(
+    tourName,
+    !bokunProductId,
+  );
+  const product = byIdProduct ?? byTitleProduct ?? null;
+  const isLoading = bokunProductId ? loadingById : loadingByTitle;
   const invalidateRates = useInvalidateProductRates();
   const [custom, setCustom] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

@@ -1700,6 +1700,7 @@ function ShiftDetailsDialog({
                 className="h-9 text-xs"
                 bokunProductId={shift.bokunProductId ?? null}
                 bokunRateId={shift.bokunRateId ?? null}
+                tourName={shift.tourName ?? null}
               />
             </div>
           </div>
