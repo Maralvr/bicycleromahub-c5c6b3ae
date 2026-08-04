@@ -264,6 +264,8 @@ function normalizeWebhookPayload(raw: any): FullBookingPayload {
     notes: raw.notes ?? customer.notes,
     productTags: raw.productTags ?? raw.product?.tags,
     rateTitle: extractRateTitle(raw),
+    rateId: extractRateId(raw),
+    bokunProductId: extractProductId(raw),
     status: raw.status,
   };
 }
@@ -360,6 +362,8 @@ async function fetchBokunBooking(bookingId: string | number): Promise<FullBookin
     notes: raw.notes ?? raw.customer?.notes,
     productTags: raw.productTags ?? raw.product?.tags,
     rateTitle: extractRateTitle(raw),
+    rateId: extractRateId(raw),
+    bokunProductId: extractProductId(raw),
     status: raw.status,
   } as FullBookingPayload;
 }
