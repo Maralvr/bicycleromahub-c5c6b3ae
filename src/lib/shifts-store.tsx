@@ -391,8 +391,19 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
 
   const deleteShift: ShiftsStoreContextValue["deleteShift"] = async (id) => {
     const prevRows = rows;
+    const row = rows.find((r) => r.id === id);
     setRows((prev) => prev.filter((r) => r.id !== id));
-    const { error: err } = await supabase.from("shifts").delete().eq("id", id);
+    // Bokun-sourced bookings are soft-cancelled so rental staff and payout
+    // history still see a "Cancelled" record instead of a silent disappearance.
+    // Manually created shifts are still hard-deleted.
+    const { error: err } =
+      row?.source === "bokun"
+        ? await supabase
+            .from("shifts")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .update({ cancelled_at: new Date().toISOString() } as any)
+            .eq("id", id)
+        : await supabase.from("shifts").delete().eq("id", id);
     if (err) {
       setError(err.message);
       setRows(prevRows);
