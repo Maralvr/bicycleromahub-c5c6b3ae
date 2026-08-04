@@ -162,6 +162,51 @@ function extractRateTitle(raw: any): string | undefined {
   );
 }
 
+/** Locale-stable rate id of the booked pricing option, when Bokun sends one. */
+// deno-lint-ignore no-explicit-any
+function extractRateId(raw: any): string | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const rateId = raw.rateId ?? a0?.rateId;
+  return rateId != null ? String(rateId) : undefined;
+}
+
+/** Bokun product id, needed to look the rate id up in bokun_product_rates. */
+// deno-lint-ignore no-explicit-any
+function extractProductId(raw: any): string | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a0 = raw.activityBookings?.[0];
+  const id = a0?.product?.id ?? a0?.activity?.id ?? raw.product?.id ?? raw.productId;
+  return id != null ? String(id) : undefined;
+}
+
+/**
+ * Bokun's booking payload localises `rateTitle` to the language the booking
+ * was made in ("Mtb elettrica 2 ore"). The rate dropdown works off the
+ * canonical English list cached nightly in `bokun_product_rates`, so when we
+ * have a locale-stable rate id we swap in the cached English label.
+ */
+async function canonicalRateTitle(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  productId: string | undefined,
+  rateId: string | undefined,
+): Promise<string | undefined> {
+  if (!productId || !rateId) return undefined;
+  const { data } = await supabase
+    .from("bokun_product_rates")
+    .select("rates")
+    .eq("bokun_product_id", productId)
+    .maybeSingle();
+  const rates = Array.isArray(data?.rates) ? data.rates : [];
+  // deno-lint-ignore no-explicit-any
+  const hit = rates.find((r: any) => String(r?.id) === rateId);
+  const title = hit?.title;
+  return typeof title === "string" && title.trim() ? title : undefined;
+}
+
+
+
 
 function validate(input: unknown): { ok: true; data: BokunEventPayload } | { ok: false; error: string } {
   if (!input || typeof input !== "object") return { ok: false, error: "Body must be an object" };
