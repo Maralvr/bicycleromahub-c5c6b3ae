@@ -95,6 +95,10 @@ export function useRentalStaffBridge(
     { rental_staff_id: string; date: string; all_day: boolean; from_time: string | null; to_time: string | null }[]
   >([]);
   const [showRoster, setShowRoster] = useState(false);
+  const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  /** "<staffId>|<iso>" — which staff pill has its time quick-picker open. */
+  const [picking, setPicking] = useState<string | null>(null);
+
 
   const reload = useCallback(async () => {
     if (!pointId || !enabled) {
