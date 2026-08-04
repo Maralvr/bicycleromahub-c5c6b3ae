@@ -140,6 +140,8 @@ function PayoutsPage() {
       )
       .gte("date", fromStr)
       .lte("date", toStr)
+      // Cancelled bookings drop out unless the payout was already paid.
+      .or("cancelled_at.is.null,payout_paid.eq.true")
       .not("assigned_staff_id", "is", null)
       .is("rental_point_id", null)
       .order("date", { ascending: true })
