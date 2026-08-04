@@ -79,6 +79,8 @@ export function AllRentalPointsView() {
   const fetchAll = useServerFn(getAllRentalDays);
   const { shifts, loading: shiftsLoading } = useRentalShifts();
   const { points } = useRentalPoints();
+  const { guides } = useGuideNames();
+
 
   const [days, setDays] = useState<RentalCoverageDay[]>([]);
   const [loading, setLoading] = useState(true);
