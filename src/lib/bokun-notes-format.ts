@@ -60,13 +60,8 @@ export function parseBokunNotes(raw: string | null | undefined): ParsedBokunNote
   const text = raw.replace(/\r/g, "").trim();
   if (!text) return null;
 
-  // Split on `--- Label: ---` dividers, keeping the label. Bokun also inlines a
-  // few section headings without dividers, so promote those too.
-  const withDividers = text.replace(
-    /\s(Recommended Itineraries|Inclusions|Exclusions|What to bring)\s*:?\s/gi,
-    (_m, label) => ` --- ${label}: --- `,
-  );
-  const parts = withDividers.split(/-{2,}\s*([^-]{1,60}?)\s*-{2,}/g);
+  // Split on `--- Label: ---` dividers, keeping the label.
+  const parts = text.split(/-{2,}\s*([^-]{1,60}?)\s*-{2,}/g);
   const chunks: Array<{ label: string | null; body: string }> = [];
   if (parts[0]?.trim()) chunks.push({ label: null, body: parts[0] });
   for (let i = 1; i < parts.length; i += 2) {
@@ -74,23 +69,38 @@ export function parseBokunNotes(raw: string | null | undefined): ParsedBokunNote
   }
   if (!chunks.length) chunks.push({ label: null, body: text });
 
+  // Bokun also inlines a few headings inside a section body without dividers.
+  const INLINE_HEADING = /\s*\b(Recommended Itineraries|Exclusions|What to bring)\b:?\s*/i;
+  const expanded: Array<{ label: string | null; body: string }> = [];
+  for (const chunk of chunks) {
+    let rest = chunk.body;
+    let label = chunk.label;
+    for (;;) {
+      const m = INLINE_HEADING.exec(rest);
+      if (!m || m.index === 0) break;
+      expanded.push({ label, body: rest.slice(0, m.index) });
+      label = titleCaseLabel(m[1]);
+      rest = rest.slice(m.index + m[0].length);
+    }
+    expanded.push({ label, body: rest });
+  }
 
   const highlights: BokunNoteField[] = [];
   const sections: BokunNoteSection[] = [];
 
-  for (const chunk of chunks) {
+  for (const chunk of expanded) {
     const body = chunk.body.replace(/\s+/g, " ").trim();
-    if (!body && !chunk.label) continue;
+    if (!body) continue;
     const { fields, rest } = extractFields(body);
     const kept: BokunNoteField[] = [];
     for (const f of fields) {
       if (HIGHLIGHT_KEYS.test(f.label)) highlights.push(f);
       else kept.push(f);
     }
-    if (!rest && !kept.length && !highlights.length) continue;
     if (!rest && !kept.length) continue;
     sections.push({ label: chunk.label, text: rest, fields: kept });
   }
+
 
   if (!highlights.length && !sections.length) return null;
   return { highlights, sections };
