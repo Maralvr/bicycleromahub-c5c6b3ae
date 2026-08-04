@@ -18,6 +18,8 @@ type Props = {
   className?: string;
   /** Bokun product id of the booking, when it has one. */
   bokunProductId?: string | null;
+  /** Bokun rate id of the booked option — locale-stable, matched before title. */
+  bokunRateId?: string | null;
 };
 
 /**
@@ -33,7 +35,7 @@ type Props = {
  * hatch, and the current value is always preserved as a selectable option so
  * legacy labels are never silently dropped.
  */
-export function RateTitleField({ id, value, onChange, className, bokunProductId }: Props) {
+export function RateTitleField({ id, value, onChange, className, bokunProductId, bokunRateId }: Props) {
   const v = (value ?? "").trim();
   const { isAdmin } = useAuth();
   const { data: product, isLoading } = useProductRates(bokunProductId);
@@ -45,8 +47,18 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId 
     ? product.rates.map((r) => r.title)
     : (PUBLIC_TOUR_LANGUAGES as readonly string[]).slice();
 
-  const options = Array.from(new Set<string>([...canonical, ...(v ? [v] : [])]));
-  const inList = v.length > 0 && options.includes(v);
+  // Match by rate id first: Bokun stores a booking's rate_title in the
+  // language the booking was made in ("Mtb elettrica 2 ore"), while the cached
+  // list is canonical English ("Mtb Electric 2-hour"). The id is locale-stable,
+  // so when it resolves we show that option as the selected one instead of
+  // dropping the value into free-text mode.
+  const byId = bokunRateId
+    ? product?.rates.find((r) => String(r.id) === String(bokunRateId))?.title ?? null
+    : null;
+  const selected = (byId ?? v).trim();
+
+  const options = Array.from(new Set<string>([...canonical, ...(selected ? [selected] : [])]));
+  const inList = selected.length > 0 && options.includes(selected);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -63,7 +75,7 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId 
     }
   };
 
-  if (custom || (v.length > 0 && !inList)) {
+  if (custom || (selected.length > 0 && !inList)) {
     // Free-text mode: explicit escape hatch, or a legacy value we keep editable.
     return (
       <div className="flex gap-1.5">
@@ -90,7 +102,7 @@ export function RateTitleField({ id, value, onChange, className, bokunProductId 
   return (
     <div className="flex gap-1.5">
       <Select
-        value={inList ? v : ""}
+        value={inList ? selected : ""}
         onValueChange={(val) => {
           if (val === CUSTOM) {
             setCustom(true);

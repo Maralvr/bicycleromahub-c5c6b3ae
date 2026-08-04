@@ -870,7 +870,7 @@ function ShiftOverrideDeparture({ shift, onUpdateDeparture }: { shift: Shift; on
         </div>
         <div className="flex-1 min-w-[200px] space-y-1">
           <Label htmlFor={`ov-lang-${shift.id}`} className="text-[10px] uppercase tracking-wide text-muted-foreground">Tour language / rate name</Label>
-          <RateTitleField id={`ov-lang-${shift.id}`} value={rateTitle} onChange={setRateTitle} className="h-9 text-xs" bokunProductId={shift.bokunProductId ?? null} />
+          <RateTitleField id={`ov-lang-${shift.id}`} value={rateTitle} onChange={setRateTitle} className="h-9 text-xs" bokunProductId={shift.bokunProductId ?? null} bokunRateId={shift.bokunRateId ?? null} />
         </div>
         <Button size="sm" variant="outline" className="h-9 text-xs" disabled={!changed || saving} onClick={save}>
           {saving ? "Saving…" : "Save"}
