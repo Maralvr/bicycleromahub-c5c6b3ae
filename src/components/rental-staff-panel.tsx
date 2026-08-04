@@ -46,11 +46,27 @@ type Assignment = {
   rental_point_id: string;
   rental_staff_id: string;
   date: string;
+  shift_start_time: string | null;
+  shift_end_time: string | null;
   notes: string | null;
   status: "pending" | "accepted" | "rejected" | "cancelled" | null;
   pending_expires_at: string | null;
   rejection_reason: string | null;
 };
+
+type ShiftRate = {
+  rental_staff_id: string;
+  shift_start_time: string;
+  shift_end_time: string;
+  amount: number;
+};
+
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
+const rangeLabel = (a: { shift_start_time: string | null; shift_end_time: string | null }) =>
+  a.shift_start_time || a.shift_end_time
+    ? `${hhmm(a.shift_start_time) ?? "?"}–${hhmm(a.shift_end_time) ?? "?"}`
+    : null;
+
 
 /**
  * Hook for integrating rental-point staff assignment into the existing
