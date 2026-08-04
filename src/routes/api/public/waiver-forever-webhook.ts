@@ -268,14 +268,21 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
         const rawBody = await request.text();
 
         // Signature verification — only enforced if WAIVER_FOREVER_WEBHOOK_SECRET is set.
+        // WaiverForever issues a distinct `secret_key` per webhook subscription, so the
+        // env var may hold a comma-separated list of secrets (one per subscription).
         // See verifySignature() for WaiverForever's actual (non-HMAC) scheme.
-        const secret = process.env.WAIVER_FOREVER_WEBHOOK_SECRET;
-        if (secret) {
+        const secrets = (process.env.WAIVER_FOREVER_WEBHOOK_SECRET || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (secrets.length > 0) {
           const sigHeader = request.headers.get("x-waiverforever-signature") || "";
-          if (!sigHeader || !verifySignature(rawBody, sigHeader, secret)) {
+          const ok = !!sigHeader && secrets.some((s) => verifySignature(rawBody, sigHeader, s));
+          if (!ok) {
             return jsonResponse({ error: "Invalid signature" }, 401);
           }
         }
+
 
         let payload: Record<string, unknown>;
         try {
