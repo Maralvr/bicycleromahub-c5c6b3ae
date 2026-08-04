@@ -1,80 +1,53 @@
-# Show all tours (not just rentals) under rental points
+# Rental staff: live updates + visible cancellations
 
-## 1. Meeting-point data quality — findings from live data
+Two gaps, one shared root cause: the rental staff view is a snapshot, and every removal path erases the row, so a removal is indistinguishable from "never existed".
 
-3,597 shifts. 332 (9%) are `TBD`. The rest are far cleaner than expected: 36 distinct values cover the last 90 days, and nearly all follow the Bokun pattern
-`<place label> — <street> <number>, Roma, <ZIP>, IT`.
+## Part 1 — Realtime in the rental staff view
 
-Top values and how they'd map:
+`RentalStaffShiftsView` fetches once via `getMyRentalDays()`. Add a `postgres_changes` subscription mirroring `useRentalShifts()`:
 
-| Meeting point (grouped) | Count | Street signal |
-|---|---|---|
-| Bicycl-e Appia Antica Bike Point — Via Appia Antica 175 | ~575 | Via Appia Antica |
-| Basilica San Sebastiano (3 spelling variants) — Via Appia Antica 136 | ~270 | Via Appia Antica |
-| StarsBOX ROMA — Via Appia Antica 300 | 19 | Via Appia Antica |
-| Lungotevere delle Armi 44 (6+ label variants) | ~400 | Lungotevere delle Armi |
-| Bicycl-e Piazza Venezia Bike Point — Via del Gesù 91 | 7 | Via del Gesù |
-| Bike Shuttle / RUVER pizzeria — Viale Aventino 46 | ~270 | no rental point |
-| Easy Bike — Via dei Cerchi 59 | 92 | no rental point |
-| Villa Borghese — Largo Pablo Picasso | 15 | no rental point |
-| Le Meridien Visconti — Via Federico Cesi 37 | 1 | no rental point (partner) |
-| TBD / bare fragments ("Appia", "Via appia antica 136") | ~345 | partial |
+- One channel, created in a `useEffect` with `[]`-stable deps, torn down with `supabase.removeChannel` on unmount (per the realtime billing rule — never at component scope).
+- Two listeners on that channel:
+  - `shifts` (event `*`) — bookings added/edited/removed at any of the staff member's points.
+  - `rental_point_day_assignments` (event `*`) — their day assignments granted/changed/removed.
+- Handler strategy: **debounced refetch** (~400 ms) of `getMyRentalDays()` rather than patching local state. The view's shape is a server-computed join (assignment + its bookings + guides), so reconstructing it client-side from a raw row payload would duplicate server logic and drift. Refetch is one small server call per burst.
+- Relevance filter before refetching, so an unrelated admin edit elsewhere doesn't cause a fetch: keep a ref of the staff member's `{assignmentIds, rentalPointIds, dates}` from the last load and only refetch when the payload's `rental_staff_id` / `rental_point_id` / `date` (or `old` values for DELETE) intersect it. When a payload lacks enough info (DELETE payloads only carry replica-identity columns, usually just `id`), fall back to refetching if the id is one we already show.
 
-Noise is limited to: label spelling variants, casing, one typo (`Via AppiaAntica 136`), sometimes-missing ZIP/country tail, and bare-address rows without a label. All of that is handled by normalised substring matching. So: **structured enough to match reliably — no geocoding needed.**
+## Part 2 — Visible cancellation
 
-Rental point rows to match against:
+### Option A — soft delete (recommended)
 
-```text
-Appia Antica    | via appia antica 175       | Rome
-Lungotevere     | Lungotevere delle Armi, 44 | Rome
-Piazza Venezia  | via del Gesù 91            | Rome
-```
+Stop hard-deleting; mark the row.
 
-Key judgement call: Via Appia Antica **136** / **300** are not the rental point's own address (175), but they're on the same street in the same area — Maral's intent ("everything happening at their location") means these should count. So matching is **street-level, not house-number-level**.
+- `shifts`: add `cancelled_at timestamptz`, `cancelled_reason text`, `cancelled_by uuid`. All read paths filter `cancelled_at is null` **except** the rental staff day view and the admin day detail, which keep cancelled rows for a bounded window (proposal: still shown while `date >= today - 2 days`) rendered greyed with a "Cancelled" badge.
+- `rental_point_day_assignments`: it already has a `status` column with a `rejected` state — add `cancelled` and set it instead of deleting, plus reuse `rejection_reason` or add `cancelled_reason`.
+- Bokun cancel webhook sets `cancelled_at = now()` instead of `.delete()`. Re-booking of the same Bokun ref clears `cancelled_at` (un-cancel) rather than inserting a duplicate.
+- Admin `deleteShift` becomes "cancel" for Bokun-sourced rows; a true hard delete stays available for manual rows created by mistake (admin-only).
 
-## 2. Matching mechanism
+Tradeoffs: needs a migration + an audit of every `from("shifts").select` to add the `cancelled_at is null` filter (miss one and cancelled bookings reappear on the main calendar). In exchange: payout reconciliation can still see that a paid/partly-worked booking was cancelled; dispatch/audit history stays intact (`shift_dispatch_events` currently FKs to `shifts` and loses rows on delete); the staff member sees a persistent "Cancelled" row instead of needing to have been looking at the screen.
 
-Driven by the live `rental_points` table, not a hardcoded map. For each point derive matchable keys:
+### Option B — hard delete + live notice (lighter)
 
-1. Normalise both sides: lowercase, strip accents, collapse whitespace/punctuation, drop the `, Roma, 00179, IT` tail, and drop house numbers.
-2. Keys per point, in priority order:
-   - the point's `name` (`appia antica`, `lungotevere`, `piazza venezia`)
-   - the point's street from `address` with the number removed (`via appia antica`, `lungotevere delle armi`, `via del gesu`)
-3. A shift matches a point when any key appears as a substring of the normalised meeting point. Longest key wins; if two different points match, treat as ambiguous → unmatched (safe default).
-4. `TBD`, empty, or shorter-than-4-char meeting points → unmatched.
+Keep `.delete()`. The realtime DELETE handler shows a toast, and the removal paths also insert a `rental_staff_notifications` row (`type: 'unassigned'`) so the notice survives being offline — the assignment-delete path already does this via the `rpda_notify_del` trigger; extend the same idea to shift deletion.
 
-Against the live data this yields: all Appia Antica variants (175/136/300, incl. the `AppiaAntica` typo, via the `appia antica` name key), all Lungotevere variants, Piazza Venezia via `via del gesu`. Viale Aventino, Via dei Cerchi, Villa Borghese, Le Meridien stay unmatched — correct, they're not at a rental point.
+Tradeoffs: no migration on `shifts`, no read-path audit, no risk of cancelled rows leaking into calendars. But nothing downstream can reconstruct what was cancelled: payouts for a cancelled-late booking, and dispatch history, are gone. The badge is impossible — you get a notice, not a state.
 
-Existing rental-product matching (`rentalLocationForBooking`) stays exactly as-is; this is a second, independent signal.
+### Recommendation
 
-## 3. Where it's computed and stored — recommendation
+**A for `shifts` and `rental_point_day_assignments`, plus B's notification for delivery.** The deciding factor is downstream need: payouts (`payout_paid`, `payout_amount` live on `shifts`) and `shift_dispatch_events` both reference rows that hard-delete currently destroys, so a late cancellation of an already-dispatched, already-owed booking loses money-relevant history today. That alone justifies the migration. Layering the notification on top means the staff member learns about it even if they weren't on the page.
 
-**Compute client-side on the fly** (a shared `matchRentalPointByMeetingPoint(meetingPoint, points)` helper in `src/lib/rental-point-match.ts`), used by the rental-point calendars and the "All rental points" view.
+If you'd rather avoid touching every `shifts` read path right now, B alone is a legitimate smaller step and Part 1 still fixes the "nothing ever updates" complaint.
 
-Why, over a new `matched_rental_point_id` column:
-- Zero migration, zero backfill, retroactive for free, instantly reversible.
-- Never stale: edit a rental point's name/address and matching re-resolves immediately.
-- Cost is trivial: a few string ops over shifts already loaded in the store; `rental_points` is 3 rows.
-- No new sync-path coupling — nothing to break in the Bokun importer.
+## Consistency across all three removal paths
 
-Tradeoff accepted: matching isn't queryable in SQL, so we can't push it into a DB filter or RLS. Not needed — rental staff already read shifts broadly. If later we want server-side filtering or reporting on it, add the column then as a cached denormalisation (generated at sync + nightly re-match), keeping this helper as the single source of truth.
-
-Explicitly **not** touching `rental_point_id`, so the `.filter((r) => !r.rental_point_id)` hide-from-main-calendar behaviour in `shifts-store.tsx` is untouched: matched guided tours keep showing on the main admin/guide calendar *and* additionally appear under the rental point.
-
-## 4. Unmatched tours
-
-Safe default: a tour that doesn't confidently match shows under **no** rental point (and continues to behave exactly as today everywhere else). Never guess.
-
-Admin visibility for fixing them: an "Unmatched meeting points" collapsible on the Rental points page (admin only) listing upcoming shifts whose meeting point is non-empty, non-`TBD`, and matched nothing — grouped by distinct meeting-point string with a count. That immediately surfaces cases like Viale Aventino, and the fix is either editing the shift's meeting point or adding/renaming a rental point.
-
-## 5. Retroactive?
-
-Retroactive automatically, since it's computed at render time from data already present — nothing to backfill and nothing to undo. Rental staff will see today/upcoming tours at their point straight away.
+| Path | Today | After |
+| --- | --- | --- |
+| `unassignRentalStaff` (`src/lib/rental-staff.functions.ts`) | hard delete | `status = 'cancelled'`, reason recorded, notification |
+| `deleteShift` (`src/lib/shifts-store.tsx`) | hard delete | `cancelled_at = now()` (hard delete only for manual rows) |
+| Bokun cancel (`supabase/functions/bokun-webhook/index.ts`, both branches at ~487 and ~516) | hard delete | `cancelled_at = now()`, un-cancel on re-book |
 
 ## Technical notes
 
-- New: `src/lib/rental-point-match.ts` — normaliser + `matchRentalPointByMeetingPoint()` + `buildRentalPointKeys()`, unit-testable pure functions.
-- `src/components/rental-staff-panel.tsx` / rental-point calendar: include shifts where `rental_point_id === pointId` **or** the meeting-point match resolves to `pointId`.
-- `src/components/all-rental-points-view.tsx`: same union when bucketing bookings per point; keep the existing no-PII rule.
-- Matched-by-meeting-point tours get a subtle marker (e.g. "tour" vs rental) so rental staff can tell a guided departure from a bike rental.
-- No migration, no changes to `src/lib/shifts-store.tsx` filtering, no changes to the Bokun import path.
+- Migration: nullable columns only, no backfill needed; enum-free (`rental_point_day_assignments.status` is `text`).
+- Realtime must already be on both tables in `supabase_realtime`; verify and add if missing.
+- Read-path audit list to update with `cancelled_at is null`: `shifts-store.tsx`, `rental-shifts.ts`, `live-shifts.ts`, `payouts`, `smart-assign`/`busy_guides` SQL (a cancelled booking must stop blocking a guide's availability), and the calendar count shown on the rental points page.
