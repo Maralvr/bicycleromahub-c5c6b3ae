@@ -711,23 +711,8 @@ function RentalBookingsList({
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = useMemo(() => rows.filter((r) => r.date >= today), [rows, today]);
-  const [noShowBusyId, setNoShowBusyId] = useState<string | null>(null);
-  const handleToggleNoShow = async (shiftId: string, next: boolean) => {
-    setNoShowBusyId(shiftId);
-    try {
-      const { error } = await setShiftNoShow(shiftId, next);
-      if (error) {
-        toast.error(next ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
-        return;
-      }
-      toast.success(next ? "Marked as no-show" : "No-show cleared", {
-        description: next ? "Admins have been notified. This doesn't affect payouts." : undefined,
-      });
-      onNoShowChanged?.();
-    } finally {
-      setNoShowBusyId(null);
-    }
-  };
+  // Read-only list: no no-show toggle here. All booking mutations live on Shifts.
+
 
   const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const byPoint = useMemo(() => {
