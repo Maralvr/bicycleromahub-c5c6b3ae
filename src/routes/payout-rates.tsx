@@ -50,7 +50,7 @@ function PayoutRatesPage() {
       });
   }, []);
 
-  if (role !== "admin") return <Navigate to="/" />;
+  if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const q = search.trim().toLowerCase();
   const filtered = q === "" ? rates : rates.filter((r) => r.title.toLowerCase().includes(q));
