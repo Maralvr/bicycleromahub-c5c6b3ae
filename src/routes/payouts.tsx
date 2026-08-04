@@ -674,7 +674,10 @@ function PayoutsPage() {
           })}
         </div>
       )}
+
+      <RentalStaffPayouts from={from} to={to} paidFilter={paidFilter} />
     </AppShell>
+
   );
 }
 
