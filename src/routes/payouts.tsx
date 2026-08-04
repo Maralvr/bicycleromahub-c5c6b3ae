@@ -441,7 +441,7 @@ function PayoutsPage() {
     toast.success(paid ? `Marked ${lines.length} as paid` : `Reopened ${lines.length}`);
   };
 
-  if (role !== "admin") return <Navigate to="/" />;
+  if (role !== "admin" && !isRentalStaff) return <Navigate to="/" />;
 
   const grandTotal = grouped.reduce((a, g) => a + g.total, 0);
 
