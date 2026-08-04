@@ -801,17 +801,6 @@ function RentalBookingsList({
             {s.bookingId ?? ""}
           </div>
         </div>
-        <div className="flex justify-end mt-1.5">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={noShowBusyId === s.id}
-            onClick={() => handleToggleNoShow(s.id, !s.noShow)}
-            className={cn("h-6 px-2 text-[10px]", !s.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
-          >
-            <Ban className="h-3 w-3 mr-1" /> {s.noShow ? "Undo" : "Mark no-show"}
-          </Button>
-        </div>
       </div>
     );
   };
