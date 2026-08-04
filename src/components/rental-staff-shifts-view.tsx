@@ -383,6 +383,67 @@ export function RentalStaffShiftsView({
   );
 }
 
+/**
+ * A pure bike rental has no guide concept, so "No guide assigned yet" would
+ * read as a missing assignment when it's simply not applicable.
+ */
+function isPureRental(tourName: string | null | undefined): boolean {
+  return rentalLocationForTitle(tourName) !== null;
+}
+
+/** True once a booking's scheduled start time has passed (past date, or today and elapsed). */
+function hasStarted(date: string, startTime: string): boolean {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (date < today) return true;
+  if (date > today) return false;
+  const nowHm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  return !!startTime && startTime <= nowHm;
+}
+
+/** Renders a booking's Bokun notes as labeled sections + highlighted sizing fields. */
+function BookingNotes({ notes }: { notes: string | null }) {
+  const raw = cleanNoteText(notes);
+  const parsed = parseBokunNotes(raw);
+  if (!parsed) return null;
+  return (
+    <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border border-border/30 space-y-1.5">
+      {parsed.highlights.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {parsed.highlights.map((f) => (
+            <span
+              key={f.label}
+              className="rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
+            >
+              {f.label}: {f.value}
+            </span>
+          ))}
+        </div>
+      )}
+      {parsed.sections.map((s, i) => (
+        <div key={`${s.label ?? "note"}-${i}`}>
+          {s.label ? (
+            <div className="font-semibold uppercase tracking-wide text-[10px] text-foreground/70">
+              {s.label}
+            </div>
+          ) : null}
+          {s.text && <div className="whitespace-pre-line">{i === 0 && !s.label ? `📝 ${s.text}` : s.text}</div>}
+          {s.fields.length > 0 && (
+            <ul className="mt-0.5 space-y-0.5">
+              {s.fields.map((f) => (
+                <li key={f.label}>
+                  <span className="font-medium text-foreground/80">{f.label}:</span> {f.value}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 function RentalDayCard({
   day,
   busy,
