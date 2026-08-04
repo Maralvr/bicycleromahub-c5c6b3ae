@@ -154,17 +154,17 @@ export function useRentalStaffBridge(
           .gte("date", from)
           .lte("date", to),
         // Per-staff paid time ranges: staff who have these get quick-pick
-        // shift times (their pay depends on the range); flat-rate staff
+        // shift times (their pay depends on the range); staff with no
         // don't need a time range at all.
         supabase
           .from("rental_staff_shift_rates" as never)
           .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
-        // Flat-rate pay config: flat-rate staff still get morning/afternoon
+        // Double-shift day pay config (applies to everyone).
         // quick-picks so a double-shift day can actually be recorded.
         supabase
           .from("rental_staff" as never)
           .select(
-            "id, default_shift_rate, double_shift_rate, double_shift_season_start, double_shift_season_end",
+            "id, double_shift_rate, double_shift_season_start, double_shift_season_end",
           ),
       ]);
       setStaff(s.staff as RentalStaff[]);
@@ -260,7 +260,7 @@ export function useRentalStaffBridge(
     return map;
   }, [unavailable]);
 
-  /** Paid time ranges configured for a staff member (empty = flat-rate). */
+  /** Paid time ranges configured for a staff member. */
   const ratesFor = useCallback(
     (staffId: string) =>
       shiftRates
@@ -269,7 +269,7 @@ export function useRentalStaffBridge(
     [shiftRates],
   );
 
-  /** Flat-rate pay config for a staff member (null when not configured). */
+  /** Double-shift day pay config for a staff member (null when not set). */
   const flatFor = useCallback(
     (staffId: string) => flatRates.find((f) => f.id === staffId) ?? null,
     [flatRates],
