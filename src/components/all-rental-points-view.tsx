@@ -38,7 +38,7 @@ function CoverageDot({
   staff: { name: string; status: string }[];
 }) {
   if (bookings === 0) return null;
-  const active = staff.filter((s) => s.status !== "rejected");
+  const active = staff.filter((s) => s.status !== "rejected" && s.status !== "cancelled");
   const accepted = active.filter((s) => s.status === "accepted");
   const pending = active.filter((s) => s.status !== "accepted");
   const state = accepted.length > 0 ? "covered" : active.length > 0 ? "pending" : "uncovered";
