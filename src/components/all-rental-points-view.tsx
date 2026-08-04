@@ -119,7 +119,15 @@ export function AllRentalPointsView() {
       address: string | null;
       phone: string | null;
       staff: { name: string; avatar: string; status: string }[];
-      bookings: { id: string; tourName: string; startTime: string; pax: number; isTour: boolean }[];
+      bookings: {
+        id: string;
+        tourName: string;
+        startTime: string;
+        pax: number;
+        isTour: boolean;
+        guide: { name: string; avatar: string } | null;
+      }[];
+
     };
     const byDate = new Map<string, Map<string, Entry>>();
 
