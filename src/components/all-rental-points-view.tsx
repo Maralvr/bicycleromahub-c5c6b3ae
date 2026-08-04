@@ -180,7 +180,14 @@ export function AllRentalPointsView() {
                   <Card key={p.pointId} className="p-3 border-border/60">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="min-w-0">
-                        <div className="font-semibold text-foreground">{p.pointName}</div>
+                        <div className="font-semibold text-foreground flex items-center gap-1.5">
+                          <CoverageDot
+                            bookings={p.bookings.length}
+                            staff={p.staff}
+                          />
+                          {p.pointName}
+                        </div>
+
                         {p.address && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                             <MapPin className="h-3 w-3" /> {p.address}
