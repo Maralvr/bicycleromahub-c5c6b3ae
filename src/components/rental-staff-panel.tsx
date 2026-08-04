@@ -147,7 +147,7 @@ export function useRentalStaffBridge(
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a, u, r] = await Promise.all([
+      const [s, a, u, r, f] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
         // Any unavailability entry (all-day or partial) is worth surfacing
@@ -164,9 +164,22 @@ export function useRentalStaffBridge(
         supabase
           .from("rental_staff_shift_rates" as never)
           .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
+        // Flat-rate pay config: flat-rate staff still get morning/afternoon
+        // quick-picks so a double-shift day can actually be recorded.
+        supabase
+          .from("rental_staff" as never)
+          .select(
+            "id, default_shift_rate, double_shift_rate, double_shift_season_start, double_shift_season_end",
+          ),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
+      if (f.error) {
+        toast.error(`Couldn't load flat pay rates: ${f.error.message}`);
+        setFlatRates([]);
+      } else {
+        setFlatRates((f.data ?? []) as unknown as FlatRate[]);
+      }
       if (r.error) {
         // Never assume "no rates" on a failed read -- that silently assigns
         // time-range-paid staff with no shift time, which computes as EUR 0
@@ -178,6 +191,7 @@ export function useRentalStaffBridge(
         setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
         setRatesReady(true);
       }
+
 
 
       if (u.error) {
