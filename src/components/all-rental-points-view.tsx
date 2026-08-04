@@ -13,6 +13,8 @@ import { getAllRentalDays, type RentalCoverageDay } from "@/lib/rental-staff.fun
 import { useRentalShifts } from "@/lib/rental-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
 import { buildRentalPointIndex, effectiveRentalPointId } from "@/lib/rental-point-match";
+import { useGuideNames } from "@/lib/guide-names";
+
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
