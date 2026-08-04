@@ -107,6 +107,9 @@ function RentalStaffNotificationsView() {
     try {
       const r = await list();
       setItems(r.notifications as RentalNotif[]);
+    } catch {
+      // Not signed in yet / session refreshing — keep the page usable.
+      setItems([]);
     } finally {
       setLoading(false);
     }
