@@ -501,9 +501,15 @@ export const getAllRentalDays = createServerFn({ method: "GET" })
         address: a.rental_points?.address ?? null,
         phone: a.rental_points?.phone ?? null,
       },
+      // Rental-staff users can only read their own rental_staff row, so the
+      // embedded join comes back null for colleagues. Keep coverage accurate by
+      // falling back to a non-identifying placeholder instead of dropping the
+      // assignment (which would render a covered day as uncovered).
       staff: a.rental_staff
         ? { id: a.rental_staff.id, name: a.rental_staff.name, avatar: a.rental_staff.avatar }
-        : null,
+        : a.rental_staff_id
+          ? { id: a.rental_staff_id, name: "Assigned staff", avatar: "?" }
+          : null,
     }));
     return { days };
   });
