@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotesStore, GuideNotification } from "@/lib/notes-store";
 import { cn } from "@/lib/utils";
+import { resolveNotificationLink, navigateToNotificationLink } from "@/lib/notification-link";
 
 const TYPE_META: Record<GuideNotification["type"], { icon: typeof Bell; cls: string; label: string }> = {
   assigned: { icon: CalendarRange, cls: "bg-primary/10 text-primary border-primary/30", label: "New shift" },
@@ -75,24 +76,17 @@ export function NotificationBell({ staffId }: { staffId: string }) {
           ) : (
             <div className="divide-y divide-border">
               {mine.map((n) => {
-                const meta = TYPE_META[n.type];
+                const meta = TYPE_META[n.type] ?? TYPE_META.reminder;
                 const Icon = meta.icon;
+                const target = resolveNotificationLink({ link: n.link, shiftId: n.shiftId });
                 return (
                   <button
                     key={n.id}
                     onClick={() => {
                       if (!n.read) markRead(n.id);
-                      if (n.link) {
+                      if (target) {
                         setOpen(false);
-                        try {
-                          const url = new URL(n.link as string, window.location.origin);
-                          const search = Object.fromEntries(url.searchParams);
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          navigate({ to: url.pathname as any, search: search as any });
-                        } catch {
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          navigate({ to: n.link as any });
-                        }
+                        navigateToNotificationLink(navigate, target);
                       }
                     }}
                     className={cn(
