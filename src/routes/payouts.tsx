@@ -399,14 +399,11 @@ function PayoutsPage() {
         );
         const results = await Promise.all(
           additionalLines.map((l) =>
-            supabase
-              .from("shift_additional_guides" as never)
-              .update({
-                payout_paid: true,
-                payout_paid_at: nowIso,
-                payout_amount: amounts.get(l.id),
-              } as never)
-              .eq("id", l.id),
+            supabase.rpc("set_additional_guide_payout" as never, {
+              _row_id: l.id,
+              _paid: true,
+              _amount: amounts.get(l.id) ?? null,
+            } as never),
           ),
         );
         const failed = results.find((r) => r.error);
@@ -424,13 +421,18 @@ function PayoutsPage() {
               : x,
           ),
         );
-        const { error } = await supabase
-          .from("shift_additional_guides" as never)
-          .update({ payout_paid: false, payout_paid_at: null, payout_amount: null } as never)
-          .in("id", ids);
-        if (error) {
+        const unpaidResults = await Promise.all(
+          ids.map((id) =>
+            supabase.rpc("set_additional_guide_payout" as never, {
+              _row_id: id,
+              _paid: false,
+            } as never),
+          ),
+        );
+        const unpaidFailed = unpaidResults.find((r) => r.error);
+        if (unpaidFailed?.error) {
           setAdditionalRows(prev);
-          toast.error(error.message);
+          toast.error(unpaidFailed.error.message);
           return;
         }
       }
