@@ -45,7 +45,6 @@ import { parseCalendarSearch, useCalendarUrlState, type CalendarSearch } from "@
 import { useRentalStaffBridge } from "@/components/rental-staff-panel";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { setShiftNoShow } from "@/lib/no-show";
 import { cn } from "@/lib/utils";
 import type { Staff } from "@/lib/mock-data";
 
@@ -447,7 +446,7 @@ function AdminRentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, updateShift, assignShift, deleteShift, refresh } = useRentalShifts();
+  const { shifts, loading } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
   const { staff } = useStaffStore();
 
@@ -463,49 +462,10 @@ function AdminRentalBookingsView({
     [shifts, pointId, index],
   );
 
-  const handleAssign = async (shiftId: string, staffId: string) => {
-    try {
-      await assignShift(shiftId, staffId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to assign");
-    }
-  };
+  // Rental points is a READ-ONLY "what's happening at my location" view for
+  // every role, admins included. All booking-level mutations (assign/unassign,
+  // delete, departure overrides, no-show) live on the Shifts page only.
 
-  const handleUnassign = async (shiftId: string) => {
-    try {
-      await assignShift(shiftId, null);
-      toast.success("Guide unassigned");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to unassign");
-    }
-  };
-
-  const handleDelete = async (shift: { id: string }) => {
-    try {
-      await deleteShift(shift.id);
-      toast.success("Booking deleted");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
-    }
-  };
-
-  const handleUpdateDeparture = async (
-    shiftId: string,
-    patch: {
-      startTime?: string;
-      endTime?: string;
-      meetingPoint?: string;
-      rate?: number | null;
-      rateTitle?: string | null;
-    },
-  ) => {
-    try {
-      await updateShift(shiftId, patch);
-      toast.success("Booking updated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update");
-    }
-  };
 
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
     useRentalStaffBridge(pointId, true);
@@ -541,21 +501,18 @@ function AdminRentalBookingsView({
             <ShiftsCalendar
               shifts={scoped}
               staff={staff}
-                onAssign={handleAssign}
-                onUnassign={handleUnassign}
-                onDelete={handleDelete}
-                onUpdateDeparture={handleUpdateDeparture}
-                showRates
-                renderDayOverlay={pointId ? renderDayOverlay : undefined}
-                renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
-                {...calendarUrlState}
+              showRates
+              renderDayOverlay={pointId ? renderDayOverlay : undefined}
+              renderDayDialogSection={pointId ? renderDayDialogSection : undefined}
+              {...calendarUrlState}
             />
+
 
           )}
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
           {!pointId && <UnmatchedMeetingPointsCard shifts={shifts} points={points} />}
         </TabsContent>
       </Tabs>
@@ -685,7 +642,7 @@ function RentalReadOnlyBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, refresh } = useRentalShifts();
+  const { shifts, loading } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
   const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const scoped = useMemo(
@@ -731,7 +688,7 @@ function RentalReadOnlyBookingsView({
         </TabsContent>
 
         <TabsContent value="list" className="mt-0">
-          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
+          <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} />
         </TabsContent>
       </Tabs>
     </div>
@@ -743,33 +700,16 @@ function RentalBookingsList({
   points,
   loading,
   pointId,
-  onNoShowChanged,
 }: {
   rows: RentalShift[];
   points: RentalPoint[];
   loading: boolean;
   pointId: string | null;
-  onNoShowChanged?: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = useMemo(() => rows.filter((r) => r.date >= today), [rows, today]);
-  const [noShowBusyId, setNoShowBusyId] = useState<string | null>(null);
-  const handleToggleNoShow = async (shiftId: string, next: boolean) => {
-    setNoShowBusyId(shiftId);
-    try {
-      const { error } = await setShiftNoShow(shiftId, next);
-      if (error) {
-        toast.error(next ? "Couldn't mark as no-show" : "Couldn't undo no-show", { description: error.message });
-        return;
-      }
-      toast.success(next ? "Marked as no-show" : "No-show cleared", {
-        description: next ? "Admins have been notified. This doesn't affect payouts." : undefined,
-      });
-      onNoShowChanged?.();
-    } finally {
-      setNoShowBusyId(null);
-    }
-  };
+  // Read-only list: no no-show toggle here. All booking mutations live on Shifts.
+
 
   const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const byPoint = useMemo(() => {
@@ -842,17 +782,6 @@ function RentalBookingsList({
           <div className="col-span-3 sm:col-span-1 text-right text-xs text-muted-foreground truncate">
             {s.bookingId ?? ""}
           </div>
-        </div>
-        <div className="flex justify-end mt-1.5">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={noShowBusyId === s.id}
-            onClick={() => handleToggleNoShow(s.id, !s.noShow)}
-            className={cn("h-6 px-2 text-[10px]", !s.noShow && "border-destructive/40 text-destructive hover:bg-destructive/5")}
-          >
-            <Ban className="h-3 w-3 mr-1" /> {s.noShow ? "Undo" : "Mark no-show"}
-          </Button>
         </div>
       </div>
     );
