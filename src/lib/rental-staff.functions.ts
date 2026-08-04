@@ -295,7 +295,9 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
     // (added in 20260709020000) -- cast through unknown, same pattern used
     // elsewhere in this file and codebase for columns ahead of a codegen run.
     const { data: shiftsData, error: shErr } = await supabase
-      .from("shifts")
+      // Rental staff read bookings only through shifts_rental_view, which
+      // masks `rate` (the amount the customer paid) for them.
+      .from("shifts_rental_view" as any)
       .select(
         "id, tour_name, date, start_time, end_time, meeting_point, rate_title, adults, teens, infants, trailers, participants, customer_name, customer_phone, customer_email, notes, booking_id, channel_booking_ref, assigned_staff_id, rental_point_id, no_show, no_show_notes, cancelled_at, cancelled_reason",
       )
