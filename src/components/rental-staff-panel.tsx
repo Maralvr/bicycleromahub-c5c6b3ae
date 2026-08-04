@@ -61,11 +61,34 @@ type ShiftRate = {
   amount: number;
 };
 
+/** Flat-rate pay config (staff without per-time-range rates). */
+type FlatRate = {
+  id: string;
+  default_shift_rate: number | null;
+  double_shift_rate: number | null;
+  double_shift_season_start: string | null;
+  double_shift_season_end: string | null;
+};
+
+/** Default shift windows offered to flat-rate staff (morning / afternoon). */
+const FLAT_SHIFTS = [
+  { label: "Morning", start: "09:00", end: "13:00" },
+  { label: "Afternoon", start: "14:00", end: "19:00" },
+] as const;
+
+/** Season bounds are MM-DD text compared month/day only, so they recur yearly. */
+const inSeason = (iso: string, start: string | null, end: string | null) => {
+  if (!start || !end) return false;
+  const md = iso.slice(5, 10);
+  return start <= end ? md >= start && md <= end : md >= start || md <= end;
+};
+
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
 const rangeLabel = (a: { shift_start_time: string | null; shift_end_time: string | null }) =>
   a.shift_start_time || a.shift_end_time
     ? `${hhmm(a.shift_start_time) ?? "?"}–${hhmm(a.shift_end_time) ?? "?"}`
     : null;
+
 
 
 /**
@@ -96,6 +119,8 @@ export function useRentalStaffBridge(
   >([]);
   const [showRoster, setShowRoster] = useState(false);
   const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  const [flatRates, setFlatRates] = useState<FlatRate[]>([]);
+
   /**
    * False until the per-staff time-range rates have actually been read.
    * Guards the assign click: if we can't prove whether someone is paid by
@@ -122,7 +147,7 @@ export function useRentalStaffBridge(
       .toISOString()
       .slice(0, 10);
     try {
-      const [s, a, u, r] = await Promise.all([
+      const [s, a, u, r, f] = await Promise.all([
         list(),
         listA({ data: { pointId, from, to } }),
         // Any unavailability entry (all-day or partial) is worth surfacing
@@ -139,9 +164,22 @@ export function useRentalStaffBridge(
         supabase
           .from("rental_staff_shift_rates" as never)
           .select("rental_staff_id, shift_start_time, shift_end_time, amount"),
+        // Flat-rate pay config: flat-rate staff still get morning/afternoon
+        // quick-picks so a double-shift day can actually be recorded.
+        supabase
+          .from("rental_staff" as never)
+          .select(
+            "id, default_shift_rate, double_shift_rate, double_shift_season_start, double_shift_season_end",
+          ),
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
+      if (f.error) {
+        toast.error(`Couldn't load flat pay rates: ${f.error.message}`);
+        setFlatRates([]);
+      } else {
+        setFlatRates((f.data ?? []) as unknown as FlatRate[]);
+      }
       if (r.error) {
         // Never assume "no rates" on a failed read -- that silently assigns
         // time-range-paid staff with no shift time, which computes as EUR 0
@@ -153,6 +191,7 @@ export function useRentalStaffBridge(
         setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
         setRatesReady(true);
       }
+
 
 
       if (u.error) {
@@ -234,6 +273,13 @@ export function useRentalStaffBridge(
         .sort((a, b) => a.shift_end_time.localeCompare(b.shift_end_time)),
     [shiftRates],
   );
+
+  /** Flat-rate pay config for a staff member (null when not configured). */
+  const flatFor = useCallback(
+    (staffId: string) => flatRates.find((f) => f.id === staffId) ?? null,
+    [flatRates],
+  );
+
 
   const addAssignment = async (
     date: string,
@@ -423,9 +469,29 @@ export function useRentalStaffBridge(
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
+                  const flat = flatFor(s.id);
+                  const flatConfigured = rates.length === 0 && flat?.default_shift_rate != null;
+                  const alreadyToday = (byDate.get(iso) ?? []).filter(
+                    (a) =>
+                      a.rental_staff_id === s.id &&
+                      a.status !== "rejected" &&
+                      a.status !== "cancelled",
+                  ).length;
+                  // Flat-rate pay: 1 shift = flat amount; a 2nd shift in the
+                  // same day pays the double-shift amount inside the season,
+                  // otherwise it's just another flat shift.
+                  const seasonal =
+                    flat != null &&
+                    inSeason(iso, flat.double_shift_season_start, flat.double_shift_season_end) &&
+                    flat.double_shift_rate != null;
+                  const flatAmount =
+                    alreadyToday >= 1 && seasonal
+                      ? Number(flat!.double_shift_rate)
+                      : Number(flat?.default_shift_rate ?? 0);
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
+                  const hasPicker = rates.length > 0 || flatConfigured;
                   return (
                     <div key={s.id} className="flex flex-wrap items-center gap-1.5">
                       <button
@@ -435,7 +501,7 @@ export function useRentalStaffBridge(
                             toast.error("Pay rates haven't loaded yet — try again in a moment.");
                             return;
                           }
-                          if (rates.length > 0) setPicking(open ? null : key);
+                          if (hasPicker) setPicking(open ? null : key);
                           else void addAssignment(iso, s.id, null, null);
                         }}
                         className={cn(
@@ -450,7 +516,7 @@ export function useRentalStaffBridge(
                             ? conflict.allDay
                               ? `${s.name} marked the whole day off`
                               : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
-                            : rates.length > 0
+                            : hasPicker
                               ? "Pick a shift time"
                               : "Assign this day"
                         }
@@ -489,6 +555,27 @@ export function useRentalStaffBridge(
                             <span className="opacity-70">€{Number(r.amount)}</span>
                           </button>
                         ))}
+                      {open &&
+                        flatConfigured &&
+                        FLAT_SHIFTS.map((sh) => (
+                          <button
+                            key={sh.label}
+                            type="button"
+                            onClick={() => void addAssignment(iso, s.id, sh.start, sh.end)}
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
+                          >
+                            <span className="font-medium">{sh.label}</span>
+                            <span className="opacity-70">
+                              {sh.start}–{sh.end}
+                            </span>
+                            <span className="opacity-70">€{flatAmount}</span>
+                          </button>
+                        ))}
+                      {open && flatConfigured && alreadyToday >= 1 && seasonal && (
+                        <span className="text-[10px] text-muted-foreground">
+                          Double-shift day → €{Number(flat!.double_shift_rate)} total
+                        </span>
+                      )}
                       {open && (
                         <button
                           type="button"
@@ -501,6 +588,7 @@ export function useRentalStaffBridge(
                     </div>
                   );
                 })}
+
               </div>
             </div>
           )}
@@ -509,7 +597,7 @@ export function useRentalStaffBridge(
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, ratesReady, picking],
+    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, flatFor, ratesReady, picking],
   );
 
   const ManageRosterButton = (
