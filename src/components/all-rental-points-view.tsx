@@ -13,6 +13,8 @@ import { getAllRentalDays, type RentalCoverageDay } from "@/lib/rental-staff.fun
 import { useRentalShifts } from "@/lib/rental-shifts";
 import { useRentalPoints } from "@/lib/rental-points";
 import { buildRentalPointIndex, effectiveRentalPointId } from "@/lib/rental-point-match";
+import { useGuideNames } from "@/lib/guide-names";
+
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -77,6 +79,8 @@ export function AllRentalPointsView() {
   const fetchAll = useServerFn(getAllRentalDays);
   const { shifts, loading: shiftsLoading } = useRentalShifts();
   const { points } = useRentalPoints();
+  const { guides } = useGuideNames();
+
 
   const [days, setDays] = useState<RentalCoverageDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,7 +119,15 @@ export function AllRentalPointsView() {
       address: string | null;
       phone: string | null;
       staff: { name: string; avatar: string; status: string }[];
-      bookings: { id: string; tourName: string; startTime: string; pax: number; isTour: boolean }[];
+      bookings: {
+        id: string;
+        tourName: string;
+        startTime: string;
+        pax: number;
+        isTour: boolean;
+        guide: { name: string; avatar: string } | null;
+      }[];
+
     };
     const byDate = new Map<string, Map<string, Entry>>();
 
@@ -162,6 +174,13 @@ export function AllRentalPointsView() {
         startTime: s.startTime,
         pax: (p?.adults ?? 0) + (p?.teens ?? 0) + (p?.infants ?? 0),
         isTour: !s.rentalPointId,
+        guide: s.assignedStaffId
+          ? (() => {
+              const g = guides.get(s.assignedStaffId);
+              return g ? { name: g.name, avatar: g.avatar } : null;
+            })()
+          : null,
+
       });
     }
 
@@ -179,7 +198,7 @@ export function AllRentalPointsView() {
           })),
       }))
       .filter((g) => g.points.length > 0);
-  }, [days, shifts, today, query, index, pointById]);
+  }, [days, shifts, today, query, index, pointById, guides]);
 
   if (loading || shiftsLoading) {
     return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
@@ -303,7 +322,22 @@ export function AllRentalPointsView() {
                                 </Badge>
                               )}
                             </span>
-                            <span className="shrink-0">{b.pax} pax</span>
+                            <span className="shrink-0 flex items-center gap-1.5">
+                              {b.guide ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5">
+                                  <Avatar
+                                    name={b.guide.name}
+                                    initials={b.guide.avatar}
+                                    size="sm"
+                                    className="!h-4 !w-4 text-[8px]"
+                                  />
+                                  <span className="text-foreground">{b.guide.name}</span>
+                                </span>
+                              ) : (
+                                b.isTour && <span className="italic">No guide</span>
+                              )}
+                              <span>{b.pax} pax</span>
+                            </span>
                           </div>
                         ))}
                       </div>
