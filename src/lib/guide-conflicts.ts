@@ -80,7 +80,7 @@ function useBusyRealtime() {
   useEffect(() => {
     const invalidate = () => void qc.invalidateQueries({ queryKey: [BUSY_KEY] });
     const channel = supabase
-      .channel(`busy-guides-${Math.random().toString(36).slice(2)}`)
+      .channel("shifts-changes")
       .on("broadcast", { event: "shift_change" }, invalidate)
       .on(
         "postgres_changes",
