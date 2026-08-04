@@ -108,42 +108,59 @@ export const listAssignmentsForPoint = createServerFn({ method: "GET" })
 
 export const assignRentalStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { pointId: string; staffId: string; date: string; notes?: string }) => {
-    if (!input?.pointId || !input?.staffId || !input?.date) {
-      throw new Error("pointId, staffId, date required");
-    }
-    return input;
-  })
+  .inputValidator(
+    (input: {
+      pointId: string;
+      staffId: string;
+      date: string;
+      notes?: string;
+      /** Optional shift time range ("HH:MM"). Drives pay-rate lookup for
+       *  time-range-paid rental staff; flat-rate staff can leave it blank. */
+      startTime?: string | null;
+      endTime?: string | null;
+    }) => {
+      if (!input?.pointId || !input?.staffId || !input?.date) {
+        throw new Error("pointId, staffId, date required");
+      }
+      return input;
+    },
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertRentalManager(supabase, userId);
+    const start = data.startTime?.trim() ? `${data.startTime.slice(0, 5)}:00` : null;
+    const end = data.endTime?.trim() ? `${data.endTime.slice(0, 5)}:00` : null;
     const { data: ins, error } = await supabase
       .from("rental_point_day_assignments")
       .insert({
         rental_point_id: data.pointId,
         rental_staff_id: data.staffId,
         date: data.date,
+        shift_start_time: start,
+        shift_end_time: end,
         notes: data.notes?.trim() || null,
         created_by: userId,
-      })
+      } as any)
       .select("id")
       .single();
     if (error) {
-      // Unique violation: a row for this point+staff+date already exists.
-      // If it's a previously-rejected assignment (kept on file so admins can
-      // see it, see 20260708000000 migration), re-offering the same day to
-      // the same person should reset it to a fresh pending request instead
-      // of silently doing nothing -- otherwise a rejected slot could never
-      // be re-assigned to that same staff member.
+      // Unique violation: a row for this point+staff+date+time-range already
+      // exists. If it's a previously-rejected/cancelled assignment (kept on
+      // file so admins can see it), re-offering the same slot to the same
+      // person resets it to a fresh pending request instead of silently
+      // doing nothing.
       if ((error as any).code === "23505") {
-        const { data: existing, error: findErr } = await supabase
+        let q = supabase
           .from("rental_point_day_assignments")
           .select("id, status")
           .eq("rental_point_id", data.pointId)
           .eq("rental_staff_id", data.staffId)
-          .eq("date", data.date)
-          .maybeSingle();
+          .eq("date", data.date);
+        q = start ? q.eq("shift_start_time", start) : q.is("shift_start_time", null);
+        q = end ? q.eq("shift_end_time", end) : q.is("shift_end_time", null);
+        const { data: existing, error: findErr } = await q.maybeSingle();
         if (findErr) throw new Error(findErr.message);
+
         if (existing?.status === "rejected" || existing?.status === "cancelled") {
           const { error: updErr } = await supabase
             .from("rental_point_day_assignments")
