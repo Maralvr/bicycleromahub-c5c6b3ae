@@ -29,7 +29,7 @@ const WAIVER_COLUMNS =
  */
 function createSharedStore<T>(
   channelPrefix: string,
-  load: () => Promise<T>,
+  load: () => Promise<T | null>,
   initial: T,
 ) {
   let value: T = initial;
@@ -46,7 +46,7 @@ function createSharedStore<T>(
     if (!inflight) {
       inflight = load()
         .then((next) => {
-          value = next;
+          if (next !== null) value = next;
           loaded = true;
         })
         .finally(() => {
@@ -103,7 +103,7 @@ const signaturesStore = createSharedStore<WaiverSignature[]>(
       .select(WAIVER_COLUMNS)
       .gte("signed_at", isoFrom)
       .order("signed_at", { ascending: false });
-    if (error) return signaturesStore.get();
+    if (error) return null;
     return (data ?? []) as WaiverSignature[];
   },
   [],
@@ -149,7 +149,7 @@ const signedShiftIdsStore = createSharedStore<Set<string>>(
   "my-signed-waivers",
   async () => {
     const { data, error } = await supabase.rpc("my_signed_waiver_shift_ids" as never);
-    if (error || !Array.isArray(data)) return signedShiftIdsStore.get();
+    if (error || !Array.isArray(data)) return null;
     return new Set((data as unknown as string[]).filter(Boolean));
   },
   new Set<string>(),
