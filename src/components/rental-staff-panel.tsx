@@ -431,6 +431,10 @@ export function useRentalStaffBridge(
                       <button
                         type="button"
                         onClick={() => {
+                          if (!ratesReady) {
+                            toast.error("Pay rates haven't loaded yet — try again in a moment.");
+                            return;
+                          }
                           if (rates.length > 0) setPicking(open ? null : key);
                           else void addAssignment(iso, s.id, null, null);
                         }}
