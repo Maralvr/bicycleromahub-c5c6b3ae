@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { onShiftChange } from "./shifts-broadcast";
 import type { Shift } from "./mock-data";
 
 type Row = {
@@ -161,13 +162,10 @@ export function useRentalShifts() {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => void fetchAllRef.current(), 400);
     };
-    const channel = supabase
-      .channel("shifts-changes")
-      .on("broadcast", { event: "shift_change" }, schedule)
-      .subscribe();
+    const offShifts = onShiftChange(schedule);
     return () => {
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      offShifts();
     };
   }, [fetchAll]);
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { onShiftChange } from "@/lib/shifts-broadcast";
 import { PartnerBadge, isPartnerTour } from "@/components/partner-tour-badge";
 import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
@@ -193,10 +194,7 @@ export function RentalStaffShiftsView({
     // which would put the customer-paid `rate` on a rental-staff WebSocket.
     // Broadcast is topic-based, so it needs its own channel named after the
     // topic; day assignments keep using postgres_changes (no pricing there).
-    const shiftsChannel = supabase
-      .channel("shifts-changes")
-      .on("broadcast", { event: "shift_change" }, schedule)
-      .subscribe();
+    const offShifts = onShiftChange(schedule);
     const channel = supabase
       .channel(`rental-staff-view-${Math.random().toString(36).slice(2)}`)
       .on(
@@ -207,7 +205,7 @@ export function RentalStaffShiftsView({
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(shiftsChannel);
+      offShifts();
       void supabase.removeChannel(channel);
     };
   }, []);

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { onShiftChange } from "./shifts-broadcast";
 import { toast } from "sonner";
 import { guideConflictMessage } from "./guide-conflicts";
 import type { Shift } from "./mock-data";

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { onShiftChange } from "./shifts-broadcast";
 
 /**
  * Guide overlap detection — single source of truth lives in the DATABASE.
@@ -79,9 +80,9 @@ function useBusyRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
     const invalidate = () => void qc.invalidateQueries({ queryKey: [BUSY_KEY] });
+    const offShifts = onShiftChange(invalidate);
     const channel = supabase
-      .channel("shifts-changes")
-      .on("broadcast", { event: "shift_change" }, invalidate)
+      .channel(`busy-guides-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "shift_additional_guides" },
@@ -89,6 +90,7 @@ function useBusyRealtime() {
       )
       .subscribe();
     return () => {
+      offShifts();
       void supabase.removeChannel(channel);
     };
   }, [qc]);
