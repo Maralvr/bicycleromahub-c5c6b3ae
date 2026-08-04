@@ -294,16 +294,22 @@ export const Route = createFileRoute("/api/public/waiver-forever-webhook")({
         const { eventName, waiver } = unwrapEvent(payload);
         const extracted = extractFromWaiver(waiver);
 
-        // Only persist once the waiver is actually complete/signed.
-        // `pdf_generated` (equal to the deprecated `new_waiver_signed`) is the
-        // event WaiverForever fires once a waiver is signed and its PDF
-        // exists — `new_waiver_submitted`/`new_waiver_accepted`/
-        // `waiver_checkin` are not "signed" for our purposes. If we can't
-        // read an `event` name off the body (e.g. the Waiver resource was
-        // posted unwrapped), fall back to the resource's own `status` field,
-        // which is `"approved"` once fully signed.
+        // Persist on signature events. `new_waiver_submitted` fires the moment
+        // the customer signs; `pdf_generated` (equal to the deprecated
+        // `new_waiver_signed`) fires later once the PDF is rendered. We accept
+        // both — rows are upserted on `external_signature_id`, so the later
+        // event just refreshes the same row. `waiver_checkin` is not a
+        // signature event. If we can't read an `event` name off the body (e.g.
+        // the Waiver resource was posted unwrapped), fall back to the
+        // resource's own `status` field, which is `"approved"` once signed.
+        const SIGNED_EVENTS = new Set([
+          "pdf_generated",
+          "new_waiver_signed",
+          "new_waiver_submitted",
+          "new_waiver_accepted",
+        ]);
         const isSignedEvent = eventName
-          ? eventName === "pdf_generated" || eventName === "new_waiver_signed"
+          ? SIGNED_EVENTS.has(eventName)
           : extracted.status === "approved";
 
         if (!isSignedEvent) {
