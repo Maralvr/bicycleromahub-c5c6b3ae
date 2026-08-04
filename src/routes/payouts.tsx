@@ -279,14 +279,18 @@ function PayoutsPage() {
       .sort((a, b) => (a.guide?.name ?? "").localeCompare(b.guide?.name ?? ""));
   }, [allLines, staff, paidFilter, ratesByProduct, ratesByTitle]);
 
+  // Payout writes go through the payout-only RPCs (set_shift_payout /
+  // set_additional_guide_payout) rather than raw table updates: rental staff
+  // have payout parity with admins, but must not be able to touch any other
+  // column on shifts (customer data, dates, assignment, rate).
   const setTier = async (line: { id: string; kind: "primary" | "additional" }, tier: 1 | 2 | 3) => {
     if (line.kind === "primary") {
       const prev = shifts;
       setShifts((s) => s.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)));
-      const { error } = await supabase
-        .from("shifts")
-        .update({ payout_tier: tier })
-        .eq("id", line.id);
+      const { error } = await supabase.rpc("set_shift_payout" as never, {
+        _shift_id: line.id,
+        _tier: tier,
+      } as never);
       if (error) {
         setShifts(prev);
         toast.error(error.message);
@@ -296,10 +300,10 @@ function PayoutsPage() {
       setAdditionalRows((rows) =>
         rows.map((x) => (x.id === line.id ? { ...x, payout_tier: tier } : x)),
       );
-      const { error } = await supabase
-        .from("shift_additional_guides" as never)
-        .update({ payout_tier: tier } as never)
-        .eq("id", line.id);
+      const { error } = await supabase.rpc("set_additional_guide_payout" as never, {
+        _row_id: line.id,
+        _tier: tier,
+      } as never);
       if (error) {
         setAdditionalRows(prev);
         toast.error(error.message);
