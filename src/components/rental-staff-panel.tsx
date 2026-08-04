@@ -142,7 +142,18 @@ export function useRentalStaffBridge(
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
-      setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
+      if (r.error) {
+        // Never assume "no rates" on a failed read -- that silently assigns
+        // time-range-paid staff with no shift time, which computes as EUR 0
+        // in the payout view.
+        toast.error(`Couldn't load pay rates: ${r.error.message}`);
+        setShiftRates([]);
+        setRatesReady(false);
+      } else {
+        setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
+        setRatesReady(true);
+      }
+
 
       if (u.error) {
         // Don't fail the whole roster load over this -- staff/assignments
