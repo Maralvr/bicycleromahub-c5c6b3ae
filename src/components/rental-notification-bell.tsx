@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { resolveNotificationLink, navigateToNotificationLink } from "@/lib/notification-link";
 import {
   listMyRentalNotifications,
   markRentalNotificationRead,
@@ -124,20 +125,8 @@ export function RentalNotificationBell() {
                         await mark({ data: { id: n.id } });
                         await refresh();
                       }
-                      if (n.link) {
-                        // Preserve the query string (e.g. ?rental_day=<id>)
-                        // instead of discarding it -- see notifications.tsx
-                        // for the same fix and rationale.
-                        try {
-                          const url = new URL(n.link, window.location.origin);
-                          const search = Object.fromEntries(url.searchParams);
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          navigate({ to: url.pathname as any, search: search as any });
-                        } catch {
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          navigate({ to: n.link.split("?")[0] as any, search: {} as any });
-                        }
-                      }
+                      const target = resolveNotificationLink({ link: n.link });
+                      if (target) navigateToNotificationLink(navigate, target);
                       setOpen(false);
                     }}
                     className={cn(

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
+import { resolveNotificationLink, navigateToNotificationLink } from "@/lib/notification-link";
 import { useCurrentUser } from "@/lib/current-user";
 import { useStaffStore } from "@/lib/staff-store";
 import { Attachment } from "@/lib/mock-data";
@@ -171,22 +172,8 @@ function RentalStaffNotificationsView() {
                   await mark({ data: { id: n.id } });
                   await refresh();
                 }
-                if (n.link) {
-                  // Preserve the query string (e.g. ?rental_day=<id>) instead
-                  // of discarding it -- rental_staff_notifications links
-                  // point at a specific day assignment, and dropping the
-                  // param meant clicking a notification always just landed
-                  // on the generic "My rental days" list.
-                  try {
-                    const url = new URL(n.link, window.location.origin);
-                    const search = Object.fromEntries(url.searchParams);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    navigate({ to: url.pathname as any, search: search as any });
-                  } catch {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    navigate({ to: n.link.split("?")[0] as any, search: {} as any });
-                  }
-                }
+                const target = resolveNotificationLink({ link: n.link });
+                if (target) navigateToNotificationLink(navigate, target);
               }}
               className={`w-full text-left p-4 hover:bg-accent/50 transition-colors flex items-start gap-3 ${
                 !n.read ? "bg-primary/5" : ""
@@ -513,16 +500,9 @@ function NotificationsPage() {
                         type="button"
                         onClick={() => {
                           if (!n.read) markRead(n.id);
-                          if (n.link) {
-                            try {
-                              const url = new URL(n.link as string, window.location.origin);
-                              const search = Object.fromEntries(url.searchParams);
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              navigate({ to: url.pathname as any, search: search as any });
-                            } catch {
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              navigate({ to: n.link as any });
-                            }
+                          const target = resolveNotificationLink({ link: n.link, shiftId: n.shiftId });
+                          if (target) {
+                            navigateToNotificationLink(navigate, target);
                             return;
                           }
                           if (!isOpen && (n.attachmentCount ?? 0) > 0 && !n.attachments) {
@@ -559,9 +539,10 @@ function NotificationsPage() {
                         </div>
                       )}
                       <div className="px-2.5 pb-2.5 flex items-center gap-2 flex-wrap">
-                        {isOpen && n.link && (
+                        {isOpen && resolveNotificationLink({ link: n.link, shiftId: n.shiftId }) && (
                           <Link
-                            to={n.link as string}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            to={resolveNotificationLink({ link: n.link, shiftId: n.shiftId }) as any}
                             className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                           >
                             Open <ChevronDown className="h-3 w-3 -rotate-90" />
