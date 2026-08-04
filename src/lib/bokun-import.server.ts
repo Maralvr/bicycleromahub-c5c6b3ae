@@ -772,6 +772,9 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             customer_name: r!.customer_name,
             customer_phone: r!.customer_phone,
             customer_email: r!.customer_email,
+            // Bokun-owned identifier, never admin-edited -- safe to always
+            // refresh so the rate dropdown can resolve the real option.
+            ...(r!.bokun_rate_id ? { bokun_rate_id: r!.bokun_rate_id } : {}),
             // Fill-only, never overwrite: rows created by the Bokun webhook
             // (which historically didn't map the rate at all) sit here with
             // rate_title = NULL forever, since resyncs only patch
@@ -780,6 +783,7 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
             ...(!existingRow?.rate_title && r!.rate_title
               ? { rate_title: r!.rate_title }
               : {}),
+
             // Same deal for meeting_point: "TBD" is our placeholder for "we
             // never got a start point", so treat it as missing and fill it,
             // but leave any real value (imported or admin-edited) alone.
