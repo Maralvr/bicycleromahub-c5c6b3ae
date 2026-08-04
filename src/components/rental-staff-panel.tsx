@@ -96,8 +96,15 @@ export function useRentalStaffBridge(
   >([]);
   const [showRoster, setShowRoster] = useState(false);
   const [shiftRates, setShiftRates] = useState<ShiftRate[]>([]);
+  /**
+   * False until the per-staff time-range rates have actually been read.
+   * Guards the assign click: if we can't prove whether someone is paid by
+   * time range, we must NOT quietly assign them with no time recorded.
+   */
+  const [ratesReady, setRatesReady] = useState(false);
   /** "<staffId>|<iso>" — which staff pill has its time quick-picker open. */
   const [picking, setPicking] = useState<string | null>(null);
+
 
 
   const reload = useCallback(async () => {
@@ -135,7 +142,18 @@ export function useRentalStaffBridge(
       ]);
       setStaff(s.staff as RentalStaff[]);
       setAssignments(a.assignments as Assignment[]);
-      setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
+      if (r.error) {
+        // Never assume "no rates" on a failed read -- that silently assigns
+        // time-range-paid staff with no shift time, which computes as EUR 0
+        // in the payout view.
+        toast.error(`Couldn't load pay rates: ${r.error.message}`);
+        setShiftRates([]);
+        setRatesReady(false);
+      } else {
+        setShiftRates((r.data ?? []) as unknown as ShiftRate[]);
+        setRatesReady(true);
+      }
+
 
       if (u.error) {
         // Don't fail the whole roster load over this -- staff/assignments
@@ -413,6 +431,10 @@ export function useRentalStaffBridge(
                       <button
                         type="button"
                         onClick={() => {
+                          if (!ratesReady) {
+                            toast.error("Pay rates haven't loaded yet — try again in a moment.");
+                            return;
+                          }
                           if (rates.length > 0) setPicking(open ? null : key);
                           else void addAssignment(iso, s.id, null, null);
                         }}
@@ -487,7 +509,7 @@ export function useRentalStaffBridge(
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, picking],
+    [byDate, staff, pointId, enabled, unavailableByKey, ratesFor, ratesReady, picking],
   );
 
   const ManageRosterButton = (
