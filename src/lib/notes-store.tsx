@@ -9,6 +9,7 @@ import {
   useRef,
 } from "react";
 import { GuideNote, FieldUpdate, Attachment } from "@/lib/mock-data";
+import { resolveNotificationLink } from "@/lib/notification-link";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffStore } from "@/lib/staff-store";
 import { useAuth } from "@/lib/auth";
@@ -466,13 +467,16 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
 
   const notifyGuide: NotesStore["notifyGuide"] = useCallback(async (n) => {
     const uploaded = await persistAttachments(n.attachments);
+    // Store a deep link (e.g. /shifts?shift=<id>) instead of a bare list URL
+    // so clicking the notification opens the booking it is about.
+    const deepLink = resolveNotificationLink({ link: n.link, shiftId: n.shiftId });
     const { error } = await supabase.from("guide_notifications").insert({
       staff_id: n.staffId,
       type: n.type,
       title: n.title,
       body: n.body,
       shift_id: n.shiftId ?? null,
-      link: n.link ?? null,
+      link: deepLink,
       attachments: uploaded,
       read: false,
     });
@@ -484,7 +488,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const { sendPushForNotification } = await import("@/lib/push.functions");
-        await sendPushForNotification({ data: { staffIds: [n.staffId], title: n.title, body: n.body, url: n.link ?? "/notifications" } });
+        await sendPushForNotification({ data: { staffIds: [n.staffId], title: n.title, body: n.body, url: deepLink ?? "/notifications" } });
       } catch (e) {
         console.warn("[notifyGuide] push failed (non-fatal)", e);
       }
@@ -506,6 +510,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
   const notifyGuides: NotesStore["notifyGuides"] = useCallback(async (staffIds, n) => {
     if (staffIds.length === 0) return;
     const uploaded = await persistAttachments(n.attachments);
+    const deepLink = resolveNotificationLink({ link: n.link, shiftId: n.shiftId });
     const { error } = await supabase.from("guide_notifications").insert(
       staffIds.map((staffId) => ({
         staff_id: staffId,
@@ -513,7 +518,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
         title: n.title,
         body: n.body,
         shift_id: n.shiftId ?? null,
-        link: n.link ?? null,
+        link: deepLink,
         attachments: uploaded,
         field_update_id: n.fieldUpdateId ?? null,
         read: false,
@@ -526,7 +531,7 @@ export function NotesStoreProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const { sendPushForNotification } = await import("@/lib/push.functions");
-        await sendPushForNotification({ data: { staffIds, title: n.title, body: n.body, url: n.link ?? "/notifications" } });
+        await sendPushForNotification({ data: { staffIds, title: n.title, body: n.body, url: deepLink ?? "/notifications" } });
       } catch (e) {
         console.warn("[notifyGuides] push failed (non-fatal)", e);
       }
