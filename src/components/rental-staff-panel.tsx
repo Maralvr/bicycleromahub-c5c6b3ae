@@ -469,9 +469,29 @@ export function useRentalStaffBridge(
               <div className="flex flex-wrap gap-1.5">
                 {active.map((s) => {
                   const rates = ratesFor(s.id);
+                  const flat = flatFor(s.id);
+                  const flatConfigured = rates.length === 0 && flat?.default_shift_rate != null;
+                  const alreadyToday = (byDate.get(iso) ?? []).filter(
+                    (a) =>
+                      a.rental_staff_id === s.id &&
+                      a.status !== "rejected" &&
+                      a.status !== "cancelled",
+                  ).length;
+                  // Flat-rate pay: 1 shift = flat amount; a 2nd shift in the
+                  // same day pays the double-shift amount inside the season,
+                  // otherwise it's just another flat shift.
+                  const seasonal =
+                    flat != null &&
+                    inSeason(iso, flat.double_shift_season_start, flat.double_shift_season_end) &&
+                    flat.double_shift_rate != null;
+                  const flatAmount =
+                    alreadyToday >= 1 && seasonal
+                      ? Number(flat!.double_shift_rate)
+                      : Number(flat?.default_shift_rate ?? 0);
                   const key = `${s.id}|${iso}`;
                   const open = picking === key;
                   const conflict = unavailableByKey.get(key);
+                  const hasPicker = rates.length > 0 || flatConfigured;
                   return (
                     <div key={s.id} className="flex flex-wrap items-center gap-1.5">
                       <button
@@ -481,7 +501,7 @@ export function useRentalStaffBridge(
                             toast.error("Pay rates haven't loaded yet — try again in a moment.");
                             return;
                           }
-                          if (rates.length > 0) setPicking(open ? null : key);
+                          if (hasPicker) setPicking(open ? null : key);
                           else void addAssignment(iso, s.id, null, null);
                         }}
                         className={cn(
@@ -496,7 +516,7 @@ export function useRentalStaffBridge(
                             ? conflict.allDay
                               ? `${s.name} marked the whole day off`
                               : `${s.name} marked themselves busy ${conflict.from ?? "?"}–${conflict.to ?? "?"}`
-                            : rates.length > 0
+                            : hasPicker
                               ? "Pick a shift time"
                               : "Assign this day"
                         }
@@ -535,6 +555,27 @@ export function useRentalStaffBridge(
                             <span className="opacity-70">€{Number(r.amount)}</span>
                           </button>
                         ))}
+                      {open &&
+                        flatConfigured &&
+                        FLAT_SHIFTS.map((sh) => (
+                          <button
+                            key={sh.label}
+                            type="button"
+                            onClick={() => void addAssignment(iso, s.id, sh.start, sh.end)}
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
+                          >
+                            <span className="font-medium">{sh.label}</span>
+                            <span className="opacity-70">
+                              {sh.start}–{sh.end}
+                            </span>
+                            <span className="opacity-70">€{flatAmount}</span>
+                          </button>
+                        ))}
+                      {open && flatConfigured && alreadyToday >= 1 && seasonal && (
+                        <span className="text-[10px] text-muted-foreground">
+                          Double-shift day → €{Number(flat!.double_shift_rate)} total
+                        </span>
+                      )}
                       {open && (
                         <button
                           type="button"
@@ -547,6 +588,7 @@ export function useRentalStaffBridge(
                     </div>
                   );
                 })}
+
               </div>
             </div>
           )}
