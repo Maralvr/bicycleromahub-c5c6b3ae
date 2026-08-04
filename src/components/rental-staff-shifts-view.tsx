@@ -635,11 +635,12 @@ function RentalDayCard({
                       </a>
                     )}
                   </div>
-                ) : (
+                ) : isPureRental(b.tourName) ? null : (
                   <span className="ml-auto text-muted-foreground italic flex items-center gap-1">
                     <UserIcon className="h-3 w-3" /> No guide assigned yet
                   </span>
                 )}
+
               </div>
 
               <BookingNotes notes={b.notes} />
