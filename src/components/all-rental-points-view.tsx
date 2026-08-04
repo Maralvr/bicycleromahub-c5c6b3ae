@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getAllRentalDays, type RentalCoverageDay } from "@/lib/rental-staff.functions";
 import { useRentalShifts } from "@/lib/rental-shifts";
+import { useRentalPoints } from "@/lib/rental-points";
+import { buildRentalPointIndex, effectiveRentalPointId } from "@/lib/rental-point-match";
 
 function fmtDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -37,6 +39,7 @@ const PAGE_SIZE = 7;
 export function AllRentalPointsView() {
   const fetchAll = useServerFn(getAllRentalDays);
   const { shifts, loading: shiftsLoading } = useRentalShifts();
+  const { points } = useRentalPoints();
 
   const [days, setDays] = useState<RentalCoverageDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +64,11 @@ export function AllRentalPointsView() {
   }, [fetchAll]);
 
   const today = new Date().toISOString().slice(0, 10);
+  const index = useMemo(() => buildRentalPointIndex(points), [points]);
+  const pointById = useMemo(
+    () => new Map(points.map((p) => [p.id, { name: p.name, address: p.address, phone: p.phone }])),
+    [points],
+  );
 
   // date -> pointId -> { point, staff[], bookings[] }
   const grouped = useMemo(() => {
@@ -70,7 +78,7 @@ export function AllRentalPointsView() {
       address: string | null;
       phone: string | null;
       staff: { name: string; avatar: string; status: string }[];
-      bookings: { id: string; tourName: string; startTime: string; pax: number }[];
+      bookings: { id: string; tourName: string; startTime: string; pax: number; isTour: boolean }[];
     };
     const byDate = new Map<string, Map<string, Entry>>();
 
@@ -103,17 +111,20 @@ export function AllRentalPointsView() {
     }
 
     for (const s of shifts) {
-      if (!s.rentalPointId || s.date < today) continue;
-      // Only surface bookings at points that appear in the coverage data, so
-      // point names stay resolvable.
-      const pts = byDate.get(s.date);
-      if (!pts?.has(s.rentalPointId)) continue;
+      if (s.date < today) continue;
+      // Additive association: explicit rental_point_id (bike rentals) OR a
+      // meeting-point match (guided tours departing from that location).
+      const matchedId = effectiveRentalPointId(s, index);
+      if (!matchedId) continue;
+      const point = pointById.get(matchedId);
+      const e = ensure(s.date, matchedId, point);
       const p = s.participants;
-      pts.get(s.rentalPointId)!.bookings.push({
+      e.bookings.push({
         id: s.id,
         tourName: s.tourName,
         startTime: s.startTime,
         pax: (p?.adults ?? 0) + (p?.teens ?? 0) + (p?.infants ?? 0),
+        isTour: !s.rentalPointId,
       });
     }
 
@@ -131,7 +142,7 @@ export function AllRentalPointsView() {
           })),
       }))
       .filter((g) => g.points.length > 0);
-  }, [days, shifts, today, query]);
+  }, [days, shifts, today, query, index, pointById]);
 
   if (loading || shiftsLoading) {
     return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
@@ -238,6 +249,15 @@ export function AllRentalPointsView() {
                               <span className="font-medium text-foreground">{b.startTime}</span>
                               <span className="truncate">{b.tourName}</span>
                               {isPartnerTour(b.tourName) && <PartnerTag className="shrink-0" />}
+                              {b.isTour && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] uppercase tracking-wider font-bold border-primary/40 text-primary bg-primary/5 shrink-0"
+                                  title="Guided tour departing from this location (not a bike rental)"
+                                >
+                                  Tour
+                                </Badge>
+                              )}
                             </span>
                             <span className="shrink-0">{b.pax} pax</span>
                           </div>

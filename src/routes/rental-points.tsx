@@ -34,6 +34,11 @@ import { toast } from "sonner";
 import { useRentalPoints, RentalPoint, RentalPointInput } from "@/lib/rental-points";
 import { useRequireAdminOrRental } from "@/lib/require-admin";
 import { useRentalShifts, type RentalShift } from "@/lib/rental-shifts";
+import {
+  buildRentalPointIndex,
+  effectiveRentalPointId,
+  isUnknownMeetingPoint,
+} from "@/lib/rental-point-match";
 import { useStaffStore } from "@/lib/staff-store";
 import { ShiftsCalendar } from "@/components/shifts-calendar";
 import { parseCalendarSearch, useCalendarUrlState, type CalendarSearch } from "@/lib/calendar-search";
@@ -446,9 +451,16 @@ function AdminRentalBookingsView({
   const calendarUrlState = useCalendarUrlState(Route);
   const { staff } = useStaffStore();
 
+  // Bookings shown at a point = explicit rental_point_id (bike rentals) OR a
+  // meeting-point match (guided tours). Additive only: rental_point_id itself
+  // is never written, so the main calendar keeps showing these tours.
+  const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const scoped = useMemo(
-    () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
-    [shifts, pointId],
+    () =>
+      pointId
+        ? shifts.filter((s) => effectiveRentalPointId(s, index) === pointId)
+        : shifts.filter((s) => effectiveRentalPointId(s, index) !== null),
+    [shifts, pointId, index],
   );
 
   const handleAssign = async (shiftId: string, staffId: string) => {
@@ -544,9 +556,74 @@ function AdminRentalBookingsView({
 
         <TabsContent value="list" className="mt-0">
           <RentalBookingsList rows={scoped} points={points} loading={loading} pointId={pointId} onNoShowChanged={refresh} />
+          {!pointId && <UnmatchedMeetingPointsCard shifts={shifts} points={points} />}
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/**
+ * Admin-only review list: upcoming bookings whose meeting point carries a real
+ * location but matched no rental point. Grouped by the distinct meeting-point
+ * string so the fix (edit the meeting point, or add/rename a rental point) is
+ * obvious.
+ */
+function UnmatchedMeetingPointsCard({
+  shifts,
+  points,
+}: {
+  shifts: RentalShift[];
+  points: RentalPoint[];
+}) {
+  const [open, setOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const index = useMemo(() => buildRentalPointIndex(points), [points]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of shifts) {
+      if (s.date < today) continue;
+      if (effectiveRentalPointId(s, index) !== null) continue;
+      if (isUnknownMeetingPoint(s.meetingPoint)) continue;
+      const key = s.meetingPoint.trim();
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [shifts, index, today]);
+
+  if (groups.length === 0) return null;
+  const total = groups.reduce((n, [, c]) => n + c, 0);
+
+  return (
+    <Card className="mt-6 p-4 border-warning/40 bg-warning/5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 text-left"
+      >
+        <div>
+          <div className="text-sm font-semibold text-foreground">Unmatched meeting points</div>
+          <div className="text-xs text-muted-foreground">
+            {total} upcoming booking{total === 1 ? "" : "s"} across {groups.length} meeting point
+            {groups.length === 1 ? "" : "s"} aren&apos;t shown under any rental point.
+          </div>
+        </div>
+        <Badge variant="outline" className="shrink-0 text-xs">
+          {open ? "Hide" : "Review"}
+        </Badge>
+      </button>
+      {open && (
+        <div className="mt-3 divide-y divide-border/50 border-t border-border/50">
+          {groups.map(([mp, count]) => (
+            <div key={mp} className="py-2 flex items-start justify-between gap-3 text-xs">
+              <span className="text-foreground break-words">{mp}</span>
+              <span className="shrink-0 text-muted-foreground">{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -610,9 +687,13 @@ function RentalReadOnlyBookingsView({
 }) {
   const { shifts, loading, refresh } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
+  const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const scoped = useMemo(
-    () => (pointId ? shifts.filter((s) => s.rentalPointId === pointId) : shifts),
-    [shifts, pointId],
+    () =>
+      pointId
+        ? shifts.filter((s) => effectiveRentalPointId(s, index) === pointId)
+        : shifts.filter((s) => effectiveRentalPointId(s, index) !== null),
+    [shifts, pointId, index],
   );
   const assignedStaffIds = useMemo(
     () => Array.from(new Set(scoped.map((s) => s.assignedStaffId).filter((id): id is string => !!id))),
@@ -690,16 +771,17 @@ function RentalBookingsList({
     }
   };
 
+  const index = useMemo(() => buildRentalPointIndex(points), [points]);
   const byPoint = useMemo(() => {
     const map = new Map<string, RentalShift[]>();
     for (const r of upcoming) {
-      const key = r.rentalPointId ?? "__none__";
+      const key = effectiveRentalPointId(r, index) ?? "__none__";
       const arr = map.get(key) ?? [];
       arr.push(r);
       map.set(key, arr);
     }
     return map;
-  }, [upcoming]);
+  }, [upcoming, index]);
 
   if (loading) {
     return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
@@ -725,6 +807,15 @@ function RentalBookingsList({
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="truncate text-foreground">{s.tourName}</div>
               {isPartnerTour(s.tourName) && <PartnerTag className="shrink-0" />}
+              {!s.rentalPointId && (
+                <Badge
+                  variant="outline"
+                  className="text-[9px] uppercase tracking-wider font-bold border-primary/40 text-primary bg-primary/5 shrink-0"
+                  title="Guided tour departing from this location (not a bike rental)"
+                >
+                  Tour
+                </Badge>
+              )}
               {s.noShow && (
                 <Badge
                   variant="outline"
