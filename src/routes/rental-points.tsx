@@ -661,6 +661,17 @@ function RentalReadOnlyBookingsView({
   );
   const staff = useRentalCalendarStaff(assignedStaffIds);
 
+  // Bookings stay read-only here for every non-admin, but designated rental
+  // managers get the same staff-assignment controls admins have (no limit on
+  // how many people can cover a point on a day).
+  const { canManageRentalAssignments } = useAuth();
+  const bookingDates = useMemo(() => new Set(scoped.map((s) => s.date)), [scoped]);
+  const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } = useRentalStaffBridge(
+    pointId,
+    canManageRentalAssignments,
+    bookingDates,
+  );
+
   return (
     <div className="mt-8">
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as RentalTab)}>
@@ -668,14 +679,17 @@ function RentalReadOnlyBookingsView({
           <h2 className="text-lg font-semibold text-foreground">
             {pointId ? "Bookings" : "Rental bookings"}
           </h2>
-          <TabsList>
-            <TabsTrigger value="calendar">
-              <CalendarDays className="h-4 w-4 mr-1" /> Calendar
-            </TabsTrigger>
-            <TabsTrigger value="list">
-              <ListIcon className="h-4 w-4 mr-1" /> List
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            {canManageRentalAssignments && pointId && ManageRosterButton}
+            <TabsList>
+              <TabsTrigger value="calendar">
+                <CalendarDays className="h-4 w-4 mr-1" /> Calendar
+              </TabsTrigger>
+              <TabsTrigger value="list">
+                <ListIcon className="h-4 w-4 mr-1" /> List
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="calendar" className="mt-0">
@@ -686,7 +700,16 @@ function RentalReadOnlyBookingsView({
               No rental bookings.
             </Card>
           ) : (
-            <ShiftsCalendar shifts={scoped} staff={staff} showRates={false} {...calendarUrlState} />
+            <ShiftsCalendar
+              shifts={scoped}
+              staff={staff}
+              showRates={false}
+              renderDayOverlay={canManageRentalAssignments && pointId ? renderDayOverlay : undefined}
+              renderDayDialogSection={
+                canManageRentalAssignments && pointId ? renderDayDialogSection : undefined
+              }
+              {...calendarUrlState}
+            />
           )}
         </TabsContent>
 
