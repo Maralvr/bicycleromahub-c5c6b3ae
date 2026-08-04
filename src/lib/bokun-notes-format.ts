@@ -60,14 +60,20 @@ export function parseBokunNotes(raw: string | null | undefined): ParsedBokunNote
   const text = raw.replace(/\r/g, "").trim();
   if (!text) return null;
 
-  // Split on `--- Label: ---` dividers, keeping the label.
-  const parts = text.split(/-{2,}\s*([^-]{1,60}?)\s*-{2,}/g);
+  // Split on `--- Label: ---` dividers, keeping the label. Bokun also inlines a
+  // few section headings without dividers, so promote those too.
+  const withDividers = text.replace(
+    /\s(Recommended Itineraries|Inclusions|Exclusions|What to bring)\s*:?\s/gi,
+    (_m, label) => ` --- ${label}: --- `,
+  );
+  const parts = withDividers.split(/-{2,}\s*([^-]{1,60}?)\s*-{2,}/g);
   const chunks: Array<{ label: string | null; body: string }> = [];
   if (parts[0]?.trim()) chunks.push({ label: null, body: parts[0] });
   for (let i = 1; i < parts.length; i += 2) {
     chunks.push({ label: titleCaseLabel(parts[i] ?? ""), body: parts[i + 1] ?? "" });
   }
   if (!chunks.length) chunks.push({ label: null, body: text });
+
 
   const highlights: BokunNoteField[] = [];
   const sections: BokunNoteSection[] = [];
