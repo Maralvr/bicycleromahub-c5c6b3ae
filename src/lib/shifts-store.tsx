@@ -197,6 +197,7 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       const { data, error: err } = await supabase
         .from("shifts")
         .select(SHIFT_LIST_COLUMNS)
+        .is("cancelled_at", null)
         .gte("date", from)
         .lte("date", to)
         .order("date", { ascending: true })
