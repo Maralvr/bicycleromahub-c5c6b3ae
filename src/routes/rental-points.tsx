@@ -447,7 +447,7 @@ function AdminRentalBookingsView({
   tab: RentalTab;
   onTabChange: (t: RentalTab) => void;
 }) {
-  const { shifts, loading, updateShift, assignShift, deleteShift, refresh } = useRentalShifts();
+  const { shifts, loading, refresh } = useRentalShifts();
   const calendarUrlState = useCalendarUrlState(Route);
   const { staff } = useStaffStore();
 
@@ -463,49 +463,10 @@ function AdminRentalBookingsView({
     [shifts, pointId, index],
   );
 
-  const handleAssign = async (shiftId: string, staffId: string) => {
-    try {
-      await assignShift(shiftId, staffId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to assign");
-    }
-  };
+  // Rental points is a READ-ONLY "what's happening at my location" view for
+  // every role, admins included. All booking-level mutations (assign/unassign,
+  // delete, departure overrides, no-show) live on the Shifts page only.
 
-  const handleUnassign = async (shiftId: string) => {
-    try {
-      await assignShift(shiftId, null);
-      toast.success("Guide unassigned");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to unassign");
-    }
-  };
-
-  const handleDelete = async (shift: { id: string }) => {
-    try {
-      await deleteShift(shift.id);
-      toast.success("Booking deleted");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
-    }
-  };
-
-  const handleUpdateDeparture = async (
-    shiftId: string,
-    patch: {
-      startTime?: string;
-      endTime?: string;
-      meetingPoint?: string;
-      rate?: number | null;
-      rateTitle?: string | null;
-    },
-  ) => {
-    try {
-      await updateShift(shiftId, patch);
-      toast.success("Booking updated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update");
-    }
-  };
 
   const { renderDayOverlay, renderDayDialogSection, ManageRosterButton } =
     useRentalStaffBridge(pointId, true);
