@@ -31,6 +31,7 @@ type Rate = {
 
 function PayoutRatesPage() {
   const { role } = useCurrentUser();
+  const { isRentalStaff } = useAuth();
   const navigate = useNavigate();
   const [rates, setRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
