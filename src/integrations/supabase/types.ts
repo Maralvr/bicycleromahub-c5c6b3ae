@@ -1705,6 +1705,14 @@ export type Database = {
         }
         Returns: string
       }
+      guide_names: {
+        Args: never
+        Returns: {
+          avatar: string
+          id: string
+          name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
