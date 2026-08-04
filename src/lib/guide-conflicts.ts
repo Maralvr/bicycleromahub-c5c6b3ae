@@ -66,14 +66,22 @@ const BUSY_KEY = "busy-guides";
 /**
  * Realtime freshness: the same tables the DB check reads are watched here, so
  * the busy markers refresh exactly like the rest of the shifts data does.
+ *
+ * `shifts` is watched via the broadcast channel (trigger
+ * public.broadcast_shift_change, payload { id, event_type }) rather than
+ * postgres_changes: postgres_changes would ship every column of the changed
+ * row -- including `rate` -- to whoever is subscribed. This hook only needs a
+ * ping to invalidate, so there is no reason to have row data on the wire.
+ * shift_additional_guides carries no customer pricing, so it stays on
+ * postgres_changes.
  */
 function useBusyRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
     const invalidate = () => void qc.invalidateQueries({ queryKey: [BUSY_KEY] });
     const channel = supabase
-      .channel(`busy-guides-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, invalidate)
+      .channel("shifts-changes")
+      .on("broadcast", { event: "shift_change" }, invalidate)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "shift_additional_guides" },
@@ -85,6 +93,7 @@ function useBusyRealtime() {
     };
   }, [qc]);
 }
+
 
 /** Guides who already have a live overlapping commitment for this shift's window. */
 export function useBusyGuides(shift: ShiftWindow | null | undefined): BusyMap {

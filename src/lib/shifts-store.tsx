@@ -299,34 +299,56 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     void fetchAll(dateRange);
   }, [dateRange, fetchAll]);
 
+  // Live updates go through the "Broadcast from Database" channel
+  // (trigger public.broadcast_shift_change), NOT postgres_changes.
+  // postgres_changes streams the entire row off the replication stream: RLS
+  // decides *whether* a change is delivered, never which columns ride along,
+  // so every live INSERT/UPDATE put the real `rate` (what the customer paid)
+  // on the socket of whoever was subscribed -- guides included, who must
+  // never see it. The broadcast payload is only { id, event_type }, and we
+  // re-read the affected row through the normal RLS-checked query below.
   useEffect(() => {
-    const channel = supabase
-      .channel(`shifts-realtime-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, (payload) => {
-        const newRow = payload.new as ShiftRow | null;
-        const oldRow = payload.old as { id?: string } | null;
-        if (payload.eventType === "INSERT" && newRow) {
-          if (!isWithinRange(newRow.date) || newRow.cancelled_at) return;
-          setRows((prev) => (prev.some((r) => r.id === newRow.id) ? prev : [...prev, newRow]));
-        } else if (payload.eventType === "UPDATE" && newRow) {
-          setRows((prev) => {
-            const exists = prev.some((r) => r.id === newRow.id);
-            // Cancelled bookings (soft-deleted) drop out of the main calendar.
-            if (!isWithinRange(newRow.date) || newRow.cancelled_at) {
-              return exists ? prev.filter((r) => r.id !== newRow.id) : prev;
-            }
-            if (!exists) return [...prev, newRow];
-            return prev.map((r) => (r.id === newRow.id ? { ...r, ...newRow } : r));
-          });
-        } else if (payload.eventType === "DELETE" && oldRow?.id) {
-          setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+    const applyRow = async (id: string) => {
+      const { data, error: err } = await supabase
+        .from("shifts")
+        .select(SHIFT_LIST_COLUMNS)
+        .eq("id", id)
+        .maybeSingle();
+      // Not visible to this user (RLS) or gone: treat as a removal.
+      if (err || !data) {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        return;
+      }
+      const row = data as unknown as ShiftRow;
+      setRows((prev) => {
+        const exists = prev.some((r) => r.id === row.id);
+        // Out of the loaded window, or soft-cancelled: drop from the calendar.
+        if (!isWithinRange(row.date) || row.cancelled_at) {
+          return exists ? prev.filter((r) => r.id !== row.id) : prev;
         }
+        if (!exists) return [...prev, row];
+        return prev.map((r) => (r.id === row.id ? { ...r, ...row } : r));
+      });
+    };
+
+    const channel = supabase
+      .channel("shifts-changes")
+      .on("broadcast", { event: "shift_change" }, (msg) => {
+        const payload = (msg as { payload?: { id?: string; event_type?: string } }).payload;
+        const id = payload?.id;
+        if (!id) return;
+        if (payload?.event_type === "delete") {
+          setRows((prev) => prev.filter((r) => r.id !== id));
+          return;
+        }
+        void applyRow(id);
       })
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [isWithinRange]);
+
 
 
 
