@@ -558,6 +558,9 @@ export type Database = {
       rental_point_day_assignments: {
         Row: {
           accepted_at: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
           created_at: string
           created_by: string | null
           date: string
@@ -574,6 +577,9 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           created_at?: string
           created_by?: string | null
           date: string
@@ -590,6 +596,9 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
@@ -1013,6 +1022,9 @@ export type Database = {
           bokun_rate_id: string | null
           booking_channel: string | null
           booking_id: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
           channel_booking_ref: string | null
           created_at: string
           customer_email: string | null
@@ -1064,6 +1076,9 @@ export type Database = {
           bokun_rate_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           channel_booking_ref?: string | null
           created_at?: string
           customer_email?: string | null
@@ -1115,6 +1130,9 @@ export type Database = {
           bokun_rate_id?: string | null
           booking_channel?: string | null
           booking_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           channel_booking_ref?: string | null
           created_at?: string
           customer_email?: string | null
@@ -1487,6 +1505,10 @@ export type Database = {
         Returns: string[]
       }
       can_read_attachment: { Args: { _path: string }; Returns: boolean }
+      cancel_rental_day: {
+        Args: { _assignment_id: string; _reason?: string }
+        Returns: undefined
+      }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
