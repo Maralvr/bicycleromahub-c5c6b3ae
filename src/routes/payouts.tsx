@@ -462,16 +462,22 @@ function PayoutsPage() {
         title="Guide Payouts"
         subtitle="Track what's owed to each guide. Pick the rate tier for each shift, then mark as paid."
         actions={
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => void navigate({ to: "/payout-rates" })}
-            title="Edit payout tier rates"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => void navigate({ to: "/rental-staff-rates" })}>
+              Rental staff rates
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => void navigate({ to: "/payout-rates" })}
+              title="Edit payout tier rates"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         }
       />
+
 
       <Card className="p-4 mb-4 flex flex-wrap items-end gap-3">
         <DateField label="From" value={from} onChange={setFrom} />
