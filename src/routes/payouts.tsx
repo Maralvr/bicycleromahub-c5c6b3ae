@@ -107,7 +107,7 @@ const paxOf = (s: { adults: number | null; teens: number | null; infants: number
 
 function PayoutsPage() {
   const { role } = useCurrentUser();
-  const { user } = useAuth();
+  const { isRentalStaff } = useAuth();
   const { staff } = useStaffStore();
   const navigate = useNavigate();
 
