@@ -552,7 +552,11 @@ export function useRentalStaffBridge(
                             className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[11px] tabular-nums hover:bg-primary/20"
                           >
                             {hhmm(r.shift_start_time)}–{hhmm(r.shift_end_time)}
-                            <span className="opacity-70">€{Number(r.amount)}</span>
+                            {/* Fixed-salary staff have 0-amount ranges: the time
+                                range is recorded, but there's nothing to pay. */}
+                            {Number(r.amount) > 0 && (
+                              <span className="opacity-70">€{Number(r.amount)}</span>
+                            )}
                           </button>
                         ))}
                       {open &&
