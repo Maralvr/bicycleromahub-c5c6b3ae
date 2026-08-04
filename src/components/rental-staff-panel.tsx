@@ -61,11 +61,34 @@ type ShiftRate = {
   amount: number;
 };
 
+/** Flat-rate pay config (staff without per-time-range rates). */
+type FlatRate = {
+  id: string;
+  default_shift_rate: number | null;
+  double_shift_rate: number | null;
+  double_shift_season_start: string | null;
+  double_shift_season_end: string | null;
+};
+
+/** Default shift windows offered to flat-rate staff (morning / afternoon). */
+const FLAT_SHIFTS = [
+  { label: "Morning", start: "09:00", end: "13:00" },
+  { label: "Afternoon", start: "14:00", end: "19:00" },
+] as const;
+
+/** Season bounds are MM-DD text compared month/day only, so they recur yearly. */
+const inSeason = (iso: string, start: string | null, end: string | null) => {
+  if (!start || !end) return false;
+  const md = iso.slice(5, 10);
+  return start <= end ? md >= start && md <= end : md >= start || md <= end;
+};
+
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
 const rangeLabel = (a: { shift_start_time: string | null; shift_end_time: string | null }) =>
   a.shift_start_time || a.shift_end_time
     ? `${hhmm(a.shift_start_time) ?? "?"}–${hhmm(a.shift_end_time) ?? "?"}`
     : null;
+
 
 
 /**
