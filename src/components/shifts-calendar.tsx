@@ -1273,14 +1273,19 @@ function MonthView({
                   </div>
                 )}
               </div>
-              {renderDayOverlay && (
-                <div
-                  className="mt-1.5 pt-1.5 border-t border-border/60"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {renderDayOverlay(iso)}
-                </div>
-              )}
+              {(() => {
+                const overlay = renderDayOverlay?.(iso);
+                if (!overlay) return null;
+                return (
+                  <div
+                    className="mt-1.5 pt-1.5 border-t border-border/60"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {overlay}
+                  </div>
+                );
+              })()}
+
             </div>
           );
         })}
