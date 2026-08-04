@@ -75,20 +75,25 @@ type WaiverResource = {
 };
 
 /**
- * The docs list the webhook payload schema as "Event" (distinct from the
- * "Waiver" resource returned by GET /waiver/{id}), but the fetched docs page
- * never rendered a concrete "Event" schema/example. Every other WaiverForever
- * response we do have an example for wraps the resource as
- * `{ result, msg, data }`, so we defensively support the same `{ event,
- * data }` shape here (event name + nested Waiver), while also accepting the
- * Waiver resource unwrapped at the top level in case it's posted directly.
+ * WaiverForever's real webhook envelope (confirmed against live deliveries) is:
+ *   { type: "pdf_generated" | "new_waiver_submitted" | ...,
+ *     content_type: "waiver",
+ *     content: { ...Waiver resource... } }
+ *
+ * Older/other shapes we still tolerate: `{ event, data }` and a bare Waiver
+ * resource posted unwrapped at the top level.
  */
 function unwrapEvent(payload: Record<string, unknown>): {
   eventName: string | null;
   waiver: WaiverResource;
 } {
-  const eventName = typeof payload.event === "string" ? payload.event : null;
-  const nested = payload.data;
+  const eventName =
+    typeof payload.type === "string"
+      ? payload.type
+      : typeof payload.event === "string"
+        ? payload.event
+        : null;
+
   const looksLikeWaiver = (v: unknown): v is WaiverResource =>
     !!v &&
     typeof v === "object" &&
@@ -96,11 +101,15 @@ function unwrapEvent(payload: Record<string, unknown>): {
     "id" in (v as object) &&
     "data" in (v as object);
 
-  if (looksLikeWaiver(nested)) {
-    return { eventName, waiver: nested };
+  if (looksLikeWaiver(payload.content)) {
+    return { eventName, waiver: payload.content };
+  }
+  if (looksLikeWaiver(payload.data)) {
+    return { eventName, waiver: payload.data };
   }
   return { eventName, waiver: payload as WaiverResource };
 }
+
 
 function unixToIso(value: unknown): string | null {
   const n = Number(value);
