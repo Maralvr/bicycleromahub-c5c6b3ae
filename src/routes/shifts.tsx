@@ -46,7 +46,7 @@ import { setShiftNoShow } from "@/lib/no-show";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, UserPlus, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass, ChevronDown, Ban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { ShiftsCalendar, groupDepartures, type CalendarShift } from "@/components/shifts-calendar";
 import { parseCalendarSearch, type CalendarSearch } from "@/lib/calendar-search";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
