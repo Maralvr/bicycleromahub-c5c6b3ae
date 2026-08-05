@@ -113,6 +113,15 @@ export function AssignGuideCombobox({
                   const isRec = !!sg && sg.score > 0;
                   const isCurrent = m.id === currentStaffId;
                   const conflict = isCurrent ? null : (busy.get(m.id) ?? null);
+                  // Guide-submitted availability (staff_unavailability). Never
+                  // blocks the assignment — just a heads-up, same as the
+                  // rental-staff assignment panel.
+                  const off = findUnavailabilityConflict(m, shift);
+                  const offLabel = off
+                    ? off.hard
+                      ? `${m.name} marked the whole day off`
+                      : `${m.name} marked themselves busy — ${off.reason}`
+                    : undefined;
                   return (
                     <CommandItem
                       key={m.id}
