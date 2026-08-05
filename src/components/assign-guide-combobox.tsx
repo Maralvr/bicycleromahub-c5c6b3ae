@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, UserPlus, ChevronDown, Handshake } from "lucide-react";
+import { Sparkles, UserPlus, ChevronDown, Handshake, AlertTriangle } from "lucide-react";
 import { isNoGuideTour } from "@/lib/partner-tours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +13,11 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Avatar } from "@/components/avatar";
-import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { suggestStaffForShift, findUnavailabilityConflict } from "@/lib/staff-matcher";
 import { conflictLabel, useBusyGuides } from "@/lib/guide-conflicts";
 
 import type { Shift, Staff } from "@/lib/mock-data";
+
 
 export function AssignGuideCombobox({
   shift,
