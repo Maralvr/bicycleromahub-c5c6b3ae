@@ -192,7 +192,7 @@ function groupedStatus(items: Shift[]): Shift["status"] {
   return "rejected";
 }
 
-function groupDepartures(shifts: Shift[]): CalendarShift[] {
+export function groupDepartures(shifts: Shift[]): CalendarShift[] {
   const groups = new Map<string, Shift[]>();
   const singles: CalendarShift[] = [];
 
@@ -345,24 +345,6 @@ export function ShiftsCalendar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shiftId]);
 
-  // Re-read the selected booking from the latest `shifts` prop so lazily loaded
-  // detail columns show up once they arrive. When the parent persists the open
-  // booking in the URL (`?shift=`), fall back to that id so the dialog survives
-  // a remount (tab refocus, panel unmount) even though local state is gone.
-  const liveSelectedShift = useMemo<CalendarShift | null>(() => {
-    const byId = new Map(shifts.map((s) => [s.id, s]));
-    const base: CalendarShift | null =
-      selectedShift ?? (shiftId ? (byId.get(shiftId) as CalendarShift | undefined) ?? null : null);
-    if (!base) return null;
-    const fresh = byId.get(base.id);
-    return {
-      ...base,
-      ...(fresh ?? {}),
-      groupedShifts: base.groupedShifts?.map((g) => byId.get(g.id) ?? g),
-
-    };
-  }, [selectedShift, shiftId, shifts]);
-
   const [platform, setPlatform] = useState<"all" | "bokun" | "manual">("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "unassigned" | "pending" | "accepted" | "rejected"
@@ -374,6 +356,36 @@ export function ShiftsCalendar({
       (s) => statusFilter === "all" || s.status === statusFilter,
     );
   }, [shifts, platform, statusFilter]);
+
+  // Re-read the selected booking from the latest `shifts` prop so lazily loaded
+  // detail columns show up once they arrive. When the parent persists the open
+  // booking in the URL (`?shift=`), fall back to that id so the dialog survives
+  // a remount (tab refocus, panel unmount) even though local state is gone.
+  // `?shift=` holds a single booking id, so resolve it back to the grouped
+  // departure it belongs to -- otherwise a multi-booking departure reopens
+  // showing only the first booking.
+  const liveSelectedShift = useMemo<CalendarShift | null>(() => {
+    const byId = new Map(shifts.map((s) => [s.id, s]));
+    const fromUrl = shiftId
+      ? filteredShifts.find(
+          (d) => d.id === shiftId || (d.groupedShifts ?? []).some((g) => g.id === shiftId),
+        ) ?? (byId.get(shiftId) as CalendarShift | undefined) ?? null
+      : null;
+    const base: CalendarShift | null = selectedShift ?? fromUrl;
+    if (!base) return null;
+    const fresh = byId.get(base.id);
+    const group =
+      base.groupedShifts ??
+      filteredShifts.find(
+        (d) => d.id === base.id || (d.groupedShifts ?? []).some((g) => g.id === base.id),
+      )?.groupedShifts;
+    return {
+      ...base,
+      ...(fresh ?? {}),
+      groupedShifts: group?.map((g) => byId.get(g.id) ?? g),
+    };
+  }, [selectedShift, shiftId, shifts, filteredShifts]);
+
 
   const shiftsByDate = useMemo(() => {
     const map: Record<string, CalendarShift[]> = {};

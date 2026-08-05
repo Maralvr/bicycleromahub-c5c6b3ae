@@ -46,7 +46,7 @@ import { setShiftNoShow } from "@/lib/no-show";
 import { Plus, Copy, MapPin, Users, Sparkles, Clock, CheckCircle2, XCircle, ExternalLink, Euro, Webhook, AlertTriangle, Wand2, MessageSquarePlus, Wrench, User, UserX, UserPlus, MessageSquare, FileSignature, FileText, CalendarDays, List as ListIcon, Trash2, Hourglass, ChevronDown, Ban } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { ShiftsCalendar, type CalendarShift } from "@/components/shifts-calendar";
+import { ShiftsCalendar, groupDepartures, type CalendarShift } from "@/components/shifts-calendar";
 import { parseCalendarSearch, type CalendarSearch } from "@/lib/calendar-search";
 import { ShiftFilters, matchesShiftFilter, EMPTY_FILTERS, type ShiftFiltersValue } from "@/components/shift-filters";
 import { cleanNoteText } from "@/lib/notes-format";
@@ -147,11 +147,25 @@ function ShiftsPage() {
   const [noteDialogShift, setNoteDialogShift] = useState<Shift | null>(null);
   const [invoiceDialogShift, setInvoiceDialogShift] = useState<Shift | null>(null);
   const [cardDialogShifts, setCardDialogShifts] = useState<Shift[] | null>(null);
-  // Deep-link: open the shift dialog when ?shift=<id> is present
+  // Deep-link: open the shift dialog when ?shift=<id> is present.
+  // `?shift=` only carries one booking id, so expand it back to every booking
+  // of that departure -- otherwise this effect re-ran on each `shifts` update
+  // and collapsed an open multi-booking departure down to a single booking.
   useEffect(() => {
     if (!search.shift) return;
     const target = shifts.find((s) => s.id === search.shift);
-    if (target) setCardDialogShifts([target]);
+    if (!target) return;
+    const departure = groupDepartures(shifts).find(
+      (d) => d.id === target.id || (d.groupedShifts ?? []).some((g) => g.id === target.id),
+    );
+    const rows = departure?.groupedShifts?.length ? departure.groupedShifts : [target];
+    setCardDialogShifts((prev) => {
+      const sameSet =
+        prev &&
+        prev.length === rows.length &&
+        prev.every((p, i) => p.id === rows[i].id);
+      return sameSet ? prev : rows;
+    });
   }, [search.shift, shifts]);
   const closeCardDialog = () => {
     setCardDialogShifts(null);
