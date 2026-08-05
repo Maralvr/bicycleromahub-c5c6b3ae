@@ -1169,12 +1169,13 @@ export async function backfillMissingRateTitles(limit = 40) {
       const patch: { rate_title?: string; meeting_point?: string } = {};
       if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
       if (
-        (!row.meeting_point || row.meeting_point === "TBD") &&
         mapped?.meeting_point &&
-        mapped.meeting_point !== "TBD"
+        mapped.meeting_point !== "TBD" &&
+        mapped.meeting_point !== row.meeting_point
       ) {
         patch.meeting_point = mapped.meeting_point;
       }
+
       if (Object.keys(patch).length === 0) {
         notFound++;
         continue;
