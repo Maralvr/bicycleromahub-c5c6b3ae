@@ -72,8 +72,10 @@ export function buildRentalPointKeys(point: Pick<RentalPoint, "id" | "name" | "a
 export function buildRentalPointIndex(
   points: Pick<RentalPoint, "id" | "name" | "address">[],
 ): RentalPointKeys[] {
+  registerRentalPointNames(points);
   return points.map(buildRentalPointKeys).filter((e) => e.keys.length > 0);
 }
+
 
 const UNKNOWN_MEETING_POINTS = new Set(["tbd", "tba", "n a", "na", "none", ""]);
 
