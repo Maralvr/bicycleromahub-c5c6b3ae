@@ -885,13 +885,22 @@ export async function runBokunImport(
 
 export async function continueBokunImport(
   runId: string,
-  options: { maxPages?: number } = {},
+  options: { maxPages?: number; budgetMs?: number } = {},
 ) {
   const maxPages = options.maxPages ?? 1;
+  // The cron caller (pg_net) gives us a 55s HTTP timeout. Pages are processed
+  // one at a time and progress is persisted per page (next_page), so a run
+  // that runs out of time is resumable -- but if the request is *killed*
+  // mid-page the remaining pages sit unimported until the next tick. Stop
+  // voluntarily just before the timeout instead, so the run always ends in a
+  // clean resumable state and the follow-up tick picks up immediately.
+  const budgetMs = options.budgetMs ?? Infinity;
+  const startedAt = Date.now();
   let lastResult: Awaited<ReturnType<typeof processBokunImportChunk>> | null = null;
   for (let i = 0; i < maxPages; i++) {
     lastResult = await processBokunImportChunk(runId);
     if (lastResult.done) break;
+    if (Date.now() - startedAt > budgetMs) break;
   }
   return {
     runId,
