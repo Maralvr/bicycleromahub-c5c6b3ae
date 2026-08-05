@@ -291,6 +291,29 @@ function ShiftsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.from, filters.to]);
 
+  // A text search has to look outside the default rolling window too, else
+  // typing a customer/booking that exists a few months out returns "no
+  // results" purely because that slice was never fetched.
+  useEffect(() => {
+    if (!filters.query.trim()) return;
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const back = new Date();
+    back.setMonth(back.getMonth() - 6);
+    const fwd = new Date();
+    fwd.setMonth(fwd.getMonth() + 12);
+    widenDateRange({ from: filters.from || iso(back), to: filters.to || iso(fwd) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.query]);
+
+  // Results live in the list tabs; staying on the calendar makes a search look
+  // broken whenever the match sits in another month.
+  useEffect(() => {
+    if (filters.query.trim() && activeTab === "calendar") {
+      setActiveTab(isAdmin ? "all" : "mine");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.query]);
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const isPast = (s: Shift) => s.date < todayStr;
   const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
