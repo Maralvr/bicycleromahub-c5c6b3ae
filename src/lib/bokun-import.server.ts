@@ -784,14 +784,13 @@ export async function processBokunImportChunk(runId: string, detailConcurrency =
               ? { rate_title: r!.rate_title }
               : {}),
 
-            // Same deal for meeting_point: "TBD" is our placeholder for "we
-            // never got a start point", so treat it as missing and fill it,
-            // but leave any real value (imported or admin-edited) alone.
-            ...((!existingRow?.meeting_point || existingRow.meeting_point === "TBD") &&
-            r!.meeting_point &&
-            r!.meeting_point !== "TBD"
+            // meeting_point is now treated as Bokun-owned: always refresh it
+            // to the real booked start point (skipping our "TBD" placeholder),
+            // so start-point changes made in Bokun show up on the calendar.
+            ...(r!.meeting_point && r!.meeting_point !== "TBD"
               ? { meeting_point: r!.meeting_point }
               : {}),
+
           };
 
 
@@ -1170,12 +1169,13 @@ export async function backfillMissingRateTitles(limit = 40) {
       const patch: { rate_title?: string; meeting_point?: string } = {};
       if (!row.rate_title && mapped?.rate_title) patch.rate_title = mapped.rate_title;
       if (
-        (!row.meeting_point || row.meeting_point === "TBD") &&
         mapped?.meeting_point &&
-        mapped.meeting_point !== "TBD"
+        mapped.meeting_point !== "TBD" &&
+        mapped.meeting_point !== row.meeting_point
       ) {
         patch.meeting_point = mapped.meeting_point;
       }
+
       if (Object.keys(patch).length === 0) {
         notFound++;
         continue;
@@ -1212,8 +1212,8 @@ export async function backfillMissingRateTitles(limit = 40) {
           .from("shifts")
           .update({ meeting_point: patch.meeting_point })
           .eq("id", row.id)
-          .or("meeting_point.is.null,meeting_point.eq.TBD")
           .select("id");
+
         if (updErr) {
           errors.push(`${row.booking_id} (meeting_point): ${updErr.message}`);
         } else {
