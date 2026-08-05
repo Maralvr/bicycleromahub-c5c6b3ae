@@ -192,6 +192,11 @@ export function AssignGuideCombobox({
                           <div className="text-[10px] text-destructive mt-0.5 truncate">
                             {conflictLabel(conflict)}
                           </div>
+                        ) : off ? (
+                          <div className="text-[10px] text-destructive mt-0.5 truncate">
+                            {off.hard ? "Marked unavailable all day" : `Marked unavailable — ${off.reason}`}
+                            <span className="text-muted-foreground"> · you can still assign</span>
+                          </div>
                         ) : (
                           sg &&
                           (sg.reasons.length > 0 || sg.warnings.length > 0) && (
