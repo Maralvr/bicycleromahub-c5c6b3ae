@@ -361,9 +361,14 @@ export const getMyRentalDays = createServerFn({ method: "GET" })
         (s) =>
           s.date === a.date &&
           effectiveRentalPointId(
-            { rentalPointId: s.rental_point_id, meetingPoint: s.meeting_point },
+            {
+              rentalPointId: s.rental_point_id,
+              meetingPoint: s.meeting_point,
+              tourName: s.tour_name,
+            },
             pointIndex,
           ) === a.rental_point_id,
+
       );
       return {
         assignmentId: a.id,
