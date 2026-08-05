@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, UserPlus, ChevronDown, Handshake } from "lucide-react";
+import { Sparkles, UserPlus, ChevronDown, Handshake, AlertTriangle } from "lucide-react";
 import { isNoGuideTour } from "@/lib/partner-tours";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,10 +13,11 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { Avatar } from "@/components/avatar";
-import { suggestStaffForShift } from "@/lib/staff-matcher";
+import { suggestStaffForShift, findUnavailabilityConflict } from "@/lib/staff-matcher";
 import { conflictLabel, useBusyGuides } from "@/lib/guide-conflicts";
 
 import type { Shift, Staff } from "@/lib/mock-data";
+
 
 export function AssignGuideCombobox({
   shift,
@@ -112,6 +113,15 @@ export function AssignGuideCombobox({
                   const isRec = !!sg && sg.score > 0;
                   const isCurrent = m.id === currentStaffId;
                   const conflict = isCurrent ? null : (busy.get(m.id) ?? null);
+                  // Guide-submitted availability (staff_unavailability). Never
+                  // blocks the assignment — just a heads-up, same as the
+                  // rental-staff assignment panel.
+                  const off = findUnavailabilityConflict(m, shift);
+                  const offLabel = off
+                    ? off.hard
+                      ? `${m.name} marked the whole day off`
+                      : `${m.name} marked themselves busy — ${off.reason}`
+                    : undefined;
                   return (
                     <CommandItem
                       key={m.id}
@@ -122,12 +132,15 @@ export function AssignGuideCombobox({
                         onSelect(m);
                         setOpen(false);
                       }}
+                      title={offLabel}
                       className={
                         conflict
                           ? "opacity-50 cursor-not-allowed"
-                          : isRec
-                            ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
-                            : ""
+                          : off
+                            ? "bg-destructive/5 data-[selected=true]:bg-destructive/10 border-l-2 border-destructive/50 my-0.5"
+                            : isRec
+                              ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
+                              : ""
                       }
                     >
 
@@ -140,6 +153,12 @@ export function AssignGuideCombobox({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-medium">{m.name}</span>
+                          {!!off && (
+                            <AlertTriangle
+                              className="h-3 w-3 text-destructive shrink-0"
+                              aria-label={offLabel}
+                            />
+                          )}
                           {m.role === "admin" && (
                             <Badge variant="secondary" className="text-[8px] h-4 px-1">
                               admin
@@ -172,6 +191,11 @@ export function AssignGuideCombobox({
                         {conflict ? (
                           <div className="text-[10px] text-destructive mt-0.5 truncate">
                             {conflictLabel(conflict)}
+                          </div>
+                        ) : off ? (
+                          <div className="text-[10px] text-destructive mt-0.5 truncate">
+                            {off.hard ? "Marked unavailable all day" : `Marked unavailable — ${off.reason}`}
+                            <span className="text-muted-foreground"> · you can still assign</span>
                           </div>
                         ) : (
                           sg &&

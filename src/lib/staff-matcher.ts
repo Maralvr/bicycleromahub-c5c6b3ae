@@ -53,7 +53,7 @@ function toMinutes(t: string): number {
  *  - { hard: false, reason } when there's only a partial-time conflict (soft warn)
  *  - null when no conflict
  */
-function findUnavailabilityConflict(
+export function findUnavailabilityConflict(
   staff: Staff,
   shift: Shift,
 ): { hard: boolean; reason: string } | null {
@@ -105,7 +105,12 @@ function scoreStaff(staff: Staff, shift: Shift, allShifts: Shift[], busy: BusyMa
   // --- 3. Availability / unavailability check ---
   const conflict = findUnavailabilityConflict(staff, shift);
   if (conflict?.hard) return null; // hard block — only "all day off" disqualifies
-  if (conflict) warnings.push(conflict.reason);
+  if (conflict) {
+    // Guide told us they're busy in this window: still assignable, but should
+    // never be the tool's top pick.
+    score -= 40;
+    warnings.push(`Marked unavailable — ${conflict.reason}`);
+  }
 
   // Overlapping commitment — HARD block. `busy` comes straight from the
   // database helper `busy_guides`, the same function the write triggers use,
@@ -244,7 +249,7 @@ export function rankAllCandidates(
       const conflict = findUnavailabilityConflict(s, shift);
       const overlap = busy.get(s.id);
       if (overlap) reason = conflictLabel(overlap);
-      else if (conflict?.hard) reason = conflict.reason;
+      else if (conflict?.hard) reason = `Marked unavailable — ${conflict.reason}`;
       return { staff: s, eligible: false, score: 0, reasons: [], warnings: [], disqualifiedReason: reason };
 
     })
