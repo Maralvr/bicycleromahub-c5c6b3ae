@@ -318,7 +318,12 @@ function ShiftsPage() {
   const isPast = (s: Shift) => s.date < todayStr;
   const filteredShifts = shifts.filter((s) => matchesShiftFilter(s, filters));
   const byStatus = (s: Shift) => !statusFilter || s.status === statusFilter;
-  const upcomingShifts = filteredShifts.filter((s) => !isPast(s) && byStatus(s));
+  // A text search should reach past tours too -- otherwise searching a
+  // yesterday booking in "All" comes back empty.
+  const searching = !!filters.query.trim();
+  const upcomingShifts = filteredShifts
+    .filter((s) => (searching ? true : !isPast(s)) && byStatus(s))
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
   const pastShifts = filteredShifts.filter((s) => isPast(s) && byStatus(s));
   // For guides: include every assigned shift that still needs their response (pending),
   // even if the date already passed, so notifications never point to an empty list.
