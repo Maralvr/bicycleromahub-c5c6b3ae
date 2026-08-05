@@ -1212,8 +1212,8 @@ export async function backfillMissingRateTitles(limit = 40) {
           .from("shifts")
           .update({ meeting_point: patch.meeting_point })
           .eq("id", row.id)
-          .or("meeting_point.is.null,meeting_point.eq.TBD")
           .select("id");
+
         if (updErr) {
           errors.push(`${row.booking_id} (meeting_point): ${updErr.message}`);
         } else {
