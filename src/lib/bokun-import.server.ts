@@ -877,7 +877,7 @@ export async function runBokunImport(
   fromDate: string,
   toDate = "2099-12-31",
   trigger: "manual" | "cron" = "manual",
-  options: { maxPages?: number } = {},
+  options: { maxPages?: number; budgetMs?: number } = {},
 ) {
   const { runId } = await startBokunImport(fromDate, toDate, trigger);
   return continueBokunImport(runId, options);
