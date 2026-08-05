@@ -192,7 +192,7 @@ function groupedStatus(items: Shift[]): Shift["status"] {
   return "rejected";
 }
 
-function groupDepartures(shifts: Shift[]): CalendarShift[] {
+export function groupDepartures(shifts: Shift[]): CalendarShift[] {
   const groups = new Map<string, Shift[]>();
   const singles: CalendarShift[] = [];
 
