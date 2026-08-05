@@ -75,8 +75,9 @@ function LiveShiftsPage() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const baseTodays = shifts.filter((s) => s.date === todayStr);
-  // If a date range is set, ignore the "today" restriction so users can search the full range.
-  const visibleShifts = filters.from || filters.to ? shifts : baseTodays;
+  // If a date range or a text search is set, ignore the "today" restriction so
+  // users can search the full loaded range.
+  const visibleShifts = filters.from || filters.to || filters.query.trim() ? shifts : baseTodays;
   const todays = visibleShifts.filter((s) => matchesShiftFilter(s, filters));
 
   if (!ready) return null;

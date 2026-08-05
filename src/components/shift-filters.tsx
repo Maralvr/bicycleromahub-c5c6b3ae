@@ -78,22 +78,52 @@ export function matchesShiftFilter(
     meeting_point?: string | null;
     bookingId?: string | null;
     booking_id?: string | null;
-    customer?: { name?: string } | null;
+    channelBookingRef?: string | null;
+    channel_booking_ref?: string | null;
+    externalBookingRef?: string | null;
+    external_booking_ref?: string | null;
+    rateTitle?: string | null;
+    rate_title?: string | null;
+    customer?: { name?: string; phone?: string; email?: string | null } | null;
     customer_name?: string | null;
+    customer_phone?: string | null;
+    customer_email?: string | null;
   },
   f: ShiftFiltersValue,
 ): boolean {
   if (f.from && s.date < f.from) return false;
   if (f.to && s.date > f.to) return false;
-  const q = f.query.trim().toLowerCase();
+  const q = normalize(f.query);
   if (!q) return true;
-  const hay = [
-    s.tourName ?? s.tour_name ?? "",
-    s.meetingPoint ?? s.meeting_point ?? "",
-    s.bookingId ?? s.booking_id ?? "",
-    s.customer?.name ?? s.customer_name ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  return hay.includes(q);
+  const hay = normalize(
+    [
+      s.tourName ?? s.tour_name ?? "",
+      s.meetingPoint ?? s.meeting_point ?? "",
+      s.bookingId ?? s.booking_id ?? "",
+      s.channelBookingRef ?? s.channel_booking_ref ?? "",
+      s.externalBookingRef ?? s.external_booking_ref ?? "",
+      s.rateTitle ?? s.rate_title ?? "",
+      s.customer?.name ?? s.customer_name ?? "",
+      s.customer?.phone ?? s.customer_phone ?? "",
+      s.customer?.email ?? s.customer_email ?? "",
+    ].join(" "),
+  );
+  // Every whitespace-separated term must appear somewhere, so "john appia"
+  // matches regardless of field order.
+  return q.split(" ").every((term) => hay.includes(term));
+}
+
+/**
+ * Booking refs are typed with or without the punctuation Bokun uses
+ * ("BIC-T140711252" vs "bic t140711252" vs "140711252"), and names arrive
+ * accented. Fold both sides to the same shape so the search bar isn't
+ * silently punctuation/accent sensitive.
+ */
+function normalize(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
