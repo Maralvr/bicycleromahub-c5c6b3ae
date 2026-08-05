@@ -51,7 +51,14 @@ export const processBokunImportChunkFn = createServerFn({ method: "POST" })
  *
  * Resumes the existing in-flight cron run before starting a new one.
  */
-export const syncBokunCronImport = createServerFn({ method: "POST" }).handler(async () => {
+export const syncBokunCronImport = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({ resumeOnly: z.boolean().optional() })
+      .optional()
+      .parse(input ?? undefined),
+  )
+  .handler(async ({ data }) => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { continueBokunImport, runBokunImport, healStuckZeroParticipantBookings } =
     await import("./bokun-import.server");
@@ -68,13 +75,21 @@ export const syncBokunCronImport = createServerFn({ method: "POST" }).handler(as
 
   let result;
   if (inflight) {
-    result = await continueBokunImport(inflight.id, { maxPages: 20 });
+    // Pick up exactly where the previous tick ran out of its HTTP budget.
+    result = await continueBokunImport(inflight.id, { maxPages: 40, budgetMs: 40_000 });
+  } else if (data?.resumeOnly) {
+    // Cheap resume-only tick: nothing in flight means nothing to do. Used by
+    // the frequent cron so a run that couldn't finish its pages in one HTTP
+    // request gets completed within the hour instead of waiting a full day
+    // for the next full sweep (which is what made tail-page bookings show up
+    // late / appear missing from the calendar).
+    return { runId: null, done: true, resumeOnly: true, skippedNoInflightRun: true };
   } else {
     const today = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const from = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-01`;
     const to = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    result = await runBokunImport(from, to, "cron", { maxPages: 20 });
+    result = await runBokunImport(from, to, "cron", { maxPages: 40, budgetMs: 40_000 });
   }
 
   // The search-pagination sweep above can miss a small number of bookings
