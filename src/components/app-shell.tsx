@@ -143,7 +143,7 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
             <Link
               to="/profile"
               className="flex items-center gap-2.5 min-w-0 flex-1 group"
-              title="Edit my profile"
+              title={t.shell.editProfile}
             >
               {profile?.avatar_url ? (
                 <img
@@ -187,7 +187,7 @@ function GuideAdminAppShell({ children }: { children: ReactNode }) {
               {staffId && <NotificationBell staffId={staffId} />}
               <Link
                 to="/profile"
-                title="Edit my profile"
+                title={t.shell.editProfile}
                 className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border hover:ring-primary/60 transition flex-shrink-0"
               >
                 {profile?.avatar_url ? (
@@ -254,8 +254,8 @@ function RentalAppShell({ children }: { children: ReactNode }) {
     { to: "/notifications", label: t.nav.notifications, icon: Bell },
     { to: "/rental-points", label: t.nav.rentalPoints, icon: MapPin },
     { to: "/payouts", label: t.nav.payouts, icon: Euro },
-    { to: "/payout-rates", label: "Payout rates", icon: Euro },
-    { to: "/profile", label: "Profile", icon: UserCog },
+    { to: "/payout-rates", label: t.nav.payoutRates, icon: Euro },
+    { to: "/profile", label: t.nav.profile, icon: UserCog },
   ];
 
   return (
@@ -321,7 +321,7 @@ function RentalAppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/15">
-            <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 group" title="Edit my profile">
+            <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 group" title={t.shell.editProfile}>
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={displayName} className="h-8 w-8 rounded-full object-cover ring-1 ring-border group-hover:ring-primary/50 transition" />
               ) : (
@@ -359,7 +359,7 @@ function RentalAppShell({ children }: { children: ReactNode }) {
               <RentalNotificationBell />
               <Link
                 to="/profile"
-                title="Edit my profile"
+                title={t.shell.editProfile}
                 className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border hover:ring-primary/60 transition flex-shrink-0"
               >
                 {profile?.avatar_url ? (
@@ -397,6 +397,7 @@ function MobileTabBar({
   nav: { to: string; label: string; icon: typeof LayoutDashboard }[];
   pathname: string;
 }) {
+  const { t } = useI18n();
   const [moreOpen, setMoreOpen] = useState(false);
   const primary = nav.slice(0, 4);
   const overflow = nav.slice(4);
@@ -406,7 +407,7 @@ function MobileTabBar({
   return (
     <nav
       className="md:hidden fixed bottom-0 inset-x-0 z-30 glass border-t border-border/60 pb-[env(safe-area-inset-bottom)]"
-      aria-label="Primary"
+      aria-label={t.shell.primaryNav}
     >
       <div className="grid grid-cols-5 h-16">
         {primary.map((item) => {
@@ -435,15 +436,15 @@ function MobileTabBar({
                   "flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors active:scale-95",
                   overflowActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
-                aria-label="More"
+                aria-label={t.shell.more}
               >
                 <MoreHorizontal className="h-5 w-5" />
-                <span className="leading-none">More</span>
+                <span className="leading-none">{t.shell.more}</span>
               </button>
             </SheetTrigger>
             <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]">
               <SheetHeader>
-                <SheetTitle>More</SheetTitle>
+                <SheetTitle>{t.shell.more}</SheetTitle>
               </SheetHeader>
               <div className="grid grid-cols-3 gap-2 mt-4">
                 {overflow.map((item) => {
