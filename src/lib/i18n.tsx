@@ -54,8 +54,8 @@ const dict = {
   it: {
     appName: "Bicycle Roma",
     tagline: "Centro Operativo",
-    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni", rentalPoints: "Punti noleggio", liveShifts: "Turni live", payouts: "Pagamenti", bokunRuns: "Sync Bokun", dispatchLog: "Log invii", users: "Utenti" },
-    shell: { language: "Lingua", workspace: "Area di lavoro", myWorkspace: "La mia area", actingAs: "Stai operando come", signOut: "Esci", switchToGuide: "Passa a vista Guida", switchToAdmin: "Passa a vista Admin" },
+    nav: { dashboard: "Dashboard", staff: "Team", shifts: "Turni", calendar: "Calendario", tasks: "Attività", notifications: "Aggiornamenti", myAvailability: "Disponibilità", myShifts: "I miei turni", rentalPoints: "Punti noleggio", liveShifts: "Turni live", payouts: "Pagamenti", payoutRates: "Tariffe pagamenti", profile: "Profilo", bokunRuns: "Sync Bokun", dispatchLog: "Log invii", users: "Utenti" },
+    shell: { language: "Lingua", workspace: "Area di lavoro", myWorkspace: "La mia area", actingAs: "Stai operando come", signOut: "Esci", switchToGuide: "Passa a vista Guida", switchToAdmin: "Passa a vista Admin", more: "Altro", editProfile: "Modifica il mio profilo", primaryNav: "Principale" },
     common: {
       today: "Oggi", upcoming: "Prossimi", pending: "In attesa", accepted: "Accettato",
       rejected: "Rifiutato", assigned: "Assegnato", unassigned: "Non assegnato",
