@@ -132,12 +132,15 @@ export function AssignGuideCombobox({
                         onSelect(m);
                         setOpen(false);
                       }}
+                      title={offLabel}
                       className={
                         conflict
                           ? "opacity-50 cursor-not-allowed"
-                          : isRec
-                            ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
-                            : ""
+                          : off
+                            ? "bg-destructive/5 data-[selected=true]:bg-destructive/10 border-l-2 border-destructive/50 my-0.5"
+                            : isRec
+                              ? "bg-emerald-500/5 data-[selected=true]:bg-emerald-500/15 border-l-2 border-emerald-500/60 my-0.5"
+                              : ""
                       }
                     >
 
@@ -150,6 +153,12 @@ export function AssignGuideCombobox({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-medium">{m.name}</span>
+                          {!!off && (
+                            <AlertTriangle
+                              className="h-3 w-3 text-destructive shrink-0"
+                              aria-label={offLabel}
+                            />
+                          )}
                           {m.role === "admin" && (
                             <Badge variant="secondary" className="text-[8px] h-4 px-1">
                               admin
