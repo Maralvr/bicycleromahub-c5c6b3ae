@@ -93,3 +93,55 @@ export function formatDate(date: string | null | undefined): string {
 export function hhmm(t: string | null | undefined): string {
   return t ? t.slice(0, 5) : "";
 }
+
+export type RentalEmailKind = "assigned" | "cancelled";
+
+/**
+ * Emails a rental-staff member when a manager assigns them to a rental point
+ * day, or cancels that assignment. Pay rates are never included.
+ */
+export async function sendRentalAssignmentEmail(
+  rentalStaffId: string,
+  pointId: string,
+  date: string,
+  kind: RentalEmailKind,
+  times?: { start?: string | null; end?: string | null },
+): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [{ data: staffRow }, { data: pointRow }] = await Promise.all([
+      supabaseAdmin.from("rental_staff").select("name, email").eq("id", rentalStaffId).maybeSingle(),
+      supabaseAdmin.from("rental_points").select("name").eq("id", pointId).maybeSingle(),
+    ]);
+    if (!staffRow?.email) return;
+
+    const range =
+      times?.start || times?.end ? ` (${hhmm(times?.start)}–${hhmm(times?.end)})` : "";
+    const pointName = pointRow?.name ?? "rental point";
+
+    await sendMail({
+      to: staffRow.email,
+      subject:
+        kind === "assigned"
+          ? `New rental shift · ${pointName} · ${formatDate(date)}`
+          : `Rental shift cancelled · ${pointName} · ${formatDate(date)}`,
+      heading:
+        kind === "assigned"
+          ? "You have a new rental point shift"
+          : "A rental point shift was cancelled",
+      lines: [
+        `Hi ${staffRow.name ?? "there"},`,
+        "",
+        `Rental point: ${pointName}`,
+        `Date: ${formatDate(date)}${range}`,
+        "",
+        kind === "assigned"
+          ? "Please open the app to accept or decline this day."
+          : "No action is needed — your calendar has been updated.",
+      ],
+    });
+  } catch (e) {
+    console.error("[email-notify] rental assignment email failed:", e);
+  }
+}
