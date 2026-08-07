@@ -1869,6 +1869,15 @@ export type Database = {
           shift_count: number
         }[]
       }
+      rental_staff_names: {
+        Args: never
+        Returns: {
+          active: boolean
+          avatar: string
+          id: string
+          name: string
+        }[]
+      }
       send_rental_point_reminders: { Args: never; Returns: number }
       send_shift_reminders: { Args: never; Returns: number }
       set_additional_guide_payout: {
