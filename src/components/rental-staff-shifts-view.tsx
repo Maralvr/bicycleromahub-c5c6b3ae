@@ -971,9 +971,9 @@ function RentalCalendar({
         </div>
         <div className="flex items-center gap-1 ml-auto">
           <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Current day
+        </div>
       </div>
-
-
     </Card>
+
   );
 }
