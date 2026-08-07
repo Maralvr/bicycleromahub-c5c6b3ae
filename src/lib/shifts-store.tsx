@@ -372,6 +372,13 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
     return rowToShift(inserted);
   };
 
+  // Fire-and-forget email notification. Server-side it is admin-gated, so a
+  // non-admin caller simply gets a rejected promise we swallow here.
+  const notifyByEmail = (shiftId: string, staffId: string | null | undefined, kind: ShiftEmailKind) => {
+    if (!staffId) return;
+    void notifyGuideShiftChange({ data: { shiftId, staffId, kind } }).catch(() => {});
+  };
+
   const updateShift: ShiftsStoreContextValue["updateShift"] = async (id, patch) => {
     const dbPatch = shiftToDbPatch(patch);
     const prevRow = rows.find((r) => r.id === id);
@@ -403,28 +410,44 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       if (authoritative) {
         setRows((prev) => prev.map((r) => (r.id === id ? authoritative : r)));
       }
+      return;
+    }
+
+    // Email the guide whenever the assignment itself changed.
+    if (patch.assignedStaffId !== undefined) {
+      const before = prevRow?.assigned_staff_id ?? null;
+      const after = patch.assignedStaffId ?? null;
+      if (before !== after) {
+        if (before) notifyByEmail(id, before, "unassigned");
+        if (after) notifyByEmail(id, after, "assigned");
+      }
     }
   };
 
   const deleteShift: ShiftsStoreContextValue["deleteShift"] = async (id) => {
     const prevRows = rows;
     const row = rows.find((r) => r.id === id);
+    const assigned = row?.assigned_staff_id ?? null;
     setRows((prev) => prev.filter((r) => r.id !== id));
+    // Notify before a hard delete — the row (and its details) is gone after.
+    const hardDelete = row?.source !== "bokun";
+    if (hardDelete) notifyByEmail(id, assigned, "deleted");
     // Bokun-sourced bookings are soft-cancelled so rental staff and payout
     // history still see a "Cancelled" record instead of a silent disappearance.
     // Manually created shifts are still hard-deleted.
-    const { error: err } =
-      row?.source === "bokun"
-        ? await supabase
-            .from("shifts")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .update({ cancelled_at: new Date().toISOString() } as any)
-            .eq("id", id)
-        : await supabase.from("shifts").delete().eq("id", id);
+    const { error: err } = !hardDelete
+      ? await supabase
+          .from("shifts")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .update({ cancelled_at: new Date().toISOString() } as any)
+          .eq("id", id)
+      : await supabase.from("shifts").delete().eq("id", id);
     if (err) {
       setError(err.message);
       setRows(prevRows);
+      return;
     }
+    if (!hardDelete) notifyByEmail(id, assigned, "cancelled");
   };
 
   const setStatus: ShiftsStoreContextValue["setStatus"] = async (id, status) => {
@@ -437,6 +460,8 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
       status: assignedStaffId ? "pending" : "unassigned",
     });
   };
+
+
 
   return (
     <ShiftsStoreContext.Provider
