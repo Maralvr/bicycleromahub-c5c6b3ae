@@ -175,12 +175,18 @@ export const assignRentalStaff = createServerFn({ method: "POST" })
             } as any)
             .eq("id", existing.id);
           if (updErr) throw new Error(updErr.message);
-          return { ok: true, id: existing.id, reassigned: true };
+          void (await import("@/lib/email-notify.server")).sendRentalAssignmentEmail(
+          data.staffId, data.pointId, data.date, "assigned", { start, end },
+        );
+        return { ok: true, id: existing.id, reassigned: true };
         }
         return { ok: true, alreadyAssigned: true };
       }
       throw new Error(error.message);
     }
+    void (await import("@/lib/email-notify.server")).sendRentalAssignmentEmail(
+      data.staffId, data.pointId, data.date, "assigned", { start, end },
+    );
     return { ok: true, id: ins!.id };
   });
 
@@ -196,11 +202,25 @@ export const unassignRentalStaff = createServerFn({ method: "POST" })
     // Soft-cancel instead of hard delete so the rental staff member sees a
     // visible "Cancelled" record (and gets a notification) rather than the
     // day silently disappearing from their list.
+    const { data: assignment } = await supabase
+      .from("rental_point_day_assignments")
+      .select("rental_staff_id, rental_point_id, date, shift_start_time, shift_end_time")
+      .eq("id", data.id)
+      .maybeSingle();
     const { error } = await supabase.rpc("cancel_rental_day" as any, {
       _assignment_id: data.id,
       _reason: null,
     } as any);
     if (error) throw new Error(error.message);
+    if (assignment) {
+      void (await import("@/lib/email-notify.server")).sendRentalAssignmentEmail(
+        (assignment as any).rental_staff_id,
+        (assignment as any).rental_point_id,
+        (assignment as any).date,
+        "cancelled",
+        { start: (assignment as any).shift_start_time, end: (assignment as any).shift_end_time },
+      );
+    }
     return { ok: true };
   });
 
