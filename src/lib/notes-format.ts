@@ -17,6 +17,16 @@
  * shift's notes (so already-synced rows with this shape still render
  * cleanly without needing a re-sync/backfill).
  */
+/**
+ * A Bokun booking carries three separate note fields ("Note for booking",
+ * "Note to appear on finance reports", "Note to appear on operations"), which
+ * come back in the notes array tagged as GENERAL / FINANCE / OPERATIONS.
+ * Guides and rental staff only need the operations note, so whenever the array
+ * carries type tags we keep OPERATIONS entries only (and drop the rest).
+ * Untagged notes are kept as-is for backwards compatibility.
+ */
+const OPERATIONS_TYPE = /^operations?$/i;
+
 export function cleanNoteText(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -38,13 +48,29 @@ export function cleanNoteText(raw: string | null | undefined): string | null {
     return null;
   };
 
+  const noteType = (item: unknown): string | null => {
+    if (item && typeof item === "object" && typeof (item as { type?: unknown }).type === "string") {
+      return (item as { type: string }).type;
+    }
+    return null;
+  };
+
   if (Array.isArray(parsed)) {
-    const bodies = parsed.map(extractBody).filter((b): b is string => !!b);
+    const typed = parsed.filter((item) => noteType(item) !== null);
+    const source = typed.length ? typed.filter((item) => OPERATIONS_TYPE.test(noteType(item) ?? "")) : parsed;
+    const bodies = source.map(extractBody).filter((b): b is string => !!b);
     if (bodies.length) return bodies.join("\n\n");
     // An empty (or body-less) parsed array means "no notes" -- returning the
-    // raw text here used to render a literal "[]" in the UI.
-    return parsed.length === 0 ? null : raw;
+    // raw text here used to render a literal "[]" in the UI. Same when the
+    // booking only had GENERAL/FINANCE notes: nothing operational to show.
+    return parsed.length === 0 || typed.length ? null : raw;
+  }
+
+  if (parsed && typeof parsed === "object") {
+    const type = noteType(parsed);
+    if (type && !OPERATIONS_TYPE.test(type)) return null;
   }
 
   return extractBody(parsed) ?? raw;
 }
+
