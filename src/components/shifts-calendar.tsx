@@ -485,14 +485,6 @@ export function ShiftsCalendar({
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setCursor(new Date())}
-                className="h-8 px-3 text-xs font-semibold"
-              >
-                Today
-              </Button>
-              <Button
-                variant="ghost"
                 size="icon"
                 onClick={() => navigate(1)}
                 aria-label="Next"
