@@ -60,10 +60,7 @@ function RentalStaffRatesPage() {
 
   const reload = async () => {
     const [s, r] = await Promise.all([
-      supabase
-        .from("rental_staff" as never)
-        .select("id, name, avatar, active")
-        .order("name"),
+      supabase.rpc("rental_staff_names" as never).order("name"),
       supabase
         .from("rental_staff_shift_rates" as never)
         .select("id, rental_staff_id, shift_start_time, shift_end_time, amount")

@@ -49,7 +49,7 @@ export function RentalStaffPayouts({
         _from: format(from, "yyyy-MM-dd"),
         _to: format(to, "yyyy-MM-dd"),
       } as never),
-      supabase.from("rental_staff" as never).select("id, name, avatar").order("name"),
+      supabase.rpc("rental_staff_names" as never).order("name"),
     ]);
     if (r.error) toast.error(r.error.message);
     if (s.error) toast.error(s.error.message);
