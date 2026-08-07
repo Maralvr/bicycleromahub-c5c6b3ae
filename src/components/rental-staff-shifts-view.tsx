@@ -970,9 +970,10 @@ function RentalCalendar({
           <span className="h-2.5 w-2.5 rounded-sm bg-destructive/20 border border-destructive/40" /> Rejected
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Today
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Current day
         </div>
       </div>
     </Card>
+
   );
 }
