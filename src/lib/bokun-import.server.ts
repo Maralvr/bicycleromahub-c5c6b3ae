@@ -76,7 +76,16 @@ function textValue(value: unknown) {
   // shift's notes render (see notes-format.ts for the full story).
   if (typeof value === "string") return cleanNoteText(value);
   if (Array.isArray(value)) {
-    const notes = value
+    // Bokun tags each note with its field: GENERAL ("Note for booking"),
+    // FINANCE ("Note to appear on finance reports") and OPERATIONS ("Note to
+    // appear on operations"). Guides and rental staff only need OPERATIONS.
+    const typeOf = (item: unknown) =>
+      item && typeof item === "object" && typeof (item as { type?: unknown }).type === "string"
+        ? ((item as { type: string }).type)
+        : null;
+    const typed = value.filter((item) => typeOf(item) !== null);
+    const source = typed.length ? typed.filter((item) => /^operations?$/i.test(typeOf(item) ?? "")) : value;
+    const notes = source
       .map((item) => {
         if (typeof item === "string") return item;
         if (!item || typeof item !== "object") return null;
@@ -86,6 +95,7 @@ function textValue(value: unknown) {
       .filter(Boolean);
     return notes.length ? notes.join("\n\n") : null;
   }
+
   if (!value || typeof value !== "object") return null;
   const entries = Object.entries(value).filter(([, v]) => typeof v === "string" && v);
   return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join("\n") : null;
