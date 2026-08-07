@@ -111,7 +111,7 @@ export function AvailabilityCalendar({
           <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setCursor(startOfMonth(new Date()))}>Today</Button>
+          
         </div>
 
         {!readOnly && (
