@@ -126,6 +126,7 @@ export function AllRentalPointsView() {
         startTime: string;
         pax: number;
         isTour: boolean;
+        opsNote: string | null;
         guide: { name: string; avatar: string } | null;
       }[];
 
@@ -175,6 +176,7 @@ export function AllRentalPointsView() {
         startTime: s.startTime,
         pax: (p?.adults ?? 0) + (p?.teens ?? 0) + (p?.infants ?? 0),
         isTour: !s.rentalPointId,
+        opsNote: cleanNoteText(s.operationsNotes) ?? cleanNoteText(s.notes ?? null),
         guide: s.assignedStaffId
           ? (() => {
               const g = guides.get(s.assignedStaffId);
@@ -304,8 +306,8 @@ export function AllRentalPointsView() {
                     {p.bookings.length > 0 && (
                       <div className="mt-2 border-t border-border/40 pt-2 space-y-1">
                         {p.bookings.map((b) => (
+                          <div key={b.id} className="space-y-1">
                           <div
-                            key={b.id}
                             className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
                           >
                             <span className="flex items-center gap-1 min-w-0">
@@ -339,6 +341,13 @@ export function AllRentalPointsView() {
                               )}
                               <span>{b.pax} pax</span>
                             </span>
+                          </div>
+                          {b.opsNote && (
+                            <div className="flex items-start gap-1.5 rounded-md border border-warning/30 bg-warning/5 px-2 py-1 text-[11px] text-foreground whitespace-pre-wrap">
+                              <StickyNote className="h-3 w-3 shrink-0 mt-0.5 text-warning" />
+                              <span className="min-w-0">{b.opsNote}</span>
+                            </div>
+                          )}
                           </div>
                         ))}
                       </div>
