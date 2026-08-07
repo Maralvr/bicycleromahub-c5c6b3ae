@@ -10,6 +10,8 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { onShiftChange } from "./shifts-broadcast";
+import { notifyGuideShiftChange, type ShiftEmailKind } from "./email-notify.functions";
+
 import { toast } from "sonner";
 import { guideConflictMessage } from "./guide-conflicts";
 import type { Shift } from "./mock-data";
