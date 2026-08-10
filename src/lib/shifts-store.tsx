@@ -61,8 +61,12 @@ type ShiftRow = {
 
 // Columns loaded for every shift in the visible date range. Deliberately excludes
 // the heavy detail columns below to keep egress low on the calendar/list views.
+// Columns loaded for every shift in the visible date range. Deliberately excludes
+// the heavy detail columns below to keep egress low on the calendar/list views.
+// `rate` is intentionally absent: the customer payment rate is admin-only and is
+// fetched through the `shift_rates` RPC (see ./shift-rates).
 const SHIFT_LIST_COLUMNS =
-  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, cancelled_at";
+  "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, customer_name, customer_phone, adults, teens, infants, trailers, rate_title, bokun_rate_id, bokun_product_id, seller, booking_channel, notes, assigned_staff_id, status, required_tags, rental_point_id, pending_expires_at, rejection_reason, rejected_by_staff_ids, no_show, no_show_reported_at, no_show_reported_by, cancelled_at";
 
 // Fetched lazily when a single shift is opened.
 const SHIFT_DETAIL_COLUMNS = "id, customer_email, participants, operations_notes, no_show_notes";
