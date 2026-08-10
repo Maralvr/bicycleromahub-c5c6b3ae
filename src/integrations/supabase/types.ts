@@ -207,6 +207,51 @@ export type Database = {
           },
         ]
       }
+      email_outbox: {
+        Row: {
+          attempts: number
+          category: string
+          created_at: string
+          dedupe_key: string | null
+          heading: string
+          id: string
+          last_error: string | null
+          lines: string[]
+          recipient_email: string
+          recipient_name: string | null
+          sent_at: string | null
+          subject: string
+        }
+        Insert: {
+          attempts?: number
+          category: string
+          created_at?: string
+          dedupe_key?: string | null
+          heading: string
+          id?: string
+          last_error?: string | null
+          lines?: string[]
+          recipient_email: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          subject: string
+        }
+        Update: {
+          attempts?: number
+          category?: string
+          created_at?: string
+          dedupe_key?: string | null
+          heading?: string
+          id?: string
+          last_error?: string | null
+          lines?: string[]
+          recipient_email?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          subject?: string
+        }
+        Relationships: []
+      }
       email_send_dedupe: {
         Row: {
           dedupe_key: string
@@ -1809,6 +1854,28 @@ export type Database = {
       }
       cancel_shift_request: {
         Args: { _reason?: string; _shift_id: string }
+        Returns: undefined
+      }
+      email_outbox_enqueue: {
+        Args: {
+          _category: string
+          _dedupe: string
+          _email: string
+          _heading: string
+          _lines: string[]
+          _name: string
+          _subject: string
+        }
+        Returns: undefined
+      }
+      email_outbox_enqueue_admins: {
+        Args: {
+          _category: string
+          _dedupe: string
+          _heading: string
+          _lines: string[]
+          _subject: string
+        }
         Returns: undefined
       }
       expire_rental_day_requests: { Args: never; Returns: number }

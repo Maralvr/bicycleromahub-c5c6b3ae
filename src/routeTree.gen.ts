@@ -33,6 +33,7 @@ import { Route as ApiPublicHooksSendShiftRemindersRouteImport } from './routes/a
 import { Route as ApiPublicHooksHealBokunZerosRouteImport } from './routes/api/public/hooks/heal-bokun-zeros'
 import { Route as ApiPublicHooksExpireShiftRequestsRouteImport } from './routes/api/public/hooks/expire-shift-requests'
 import { Route as ApiPublicHooksExpireRentalDayRequestsRouteImport } from './routes/api/public/hooks/expire-rental-day-requests'
+import { Route as ApiPublicHooksEmailOutboxRouteImport } from './routes/api/public/hooks/email-outbox'
 import { Route as ApiPublicHooksBackfillRateTitlesRouteImport } from './routes/api/public/hooks/backfill-rate-titles'
 import { Route as ApiPublicHooksBackfillBokunRefsRouteImport } from './routes/api/public/hooks/backfill-bokun-refs'
 
@@ -162,6 +163,12 @@ const ApiPublicHooksExpireRentalDayRequestsRoute =
     path: '/api/public/hooks/expire-rental-day-requests',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksEmailOutboxRoute =
+  ApiPublicHooksEmailOutboxRouteImport.update({
+    id: '/api/public/hooks/email-outbox',
+    path: '/api/public/hooks/email-outbox',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksBackfillRateTitlesRoute =
   ApiPublicHooksBackfillRateTitlesRouteImport.update({
     id: '/api/public/hooks/backfill-rate-titles',
@@ -196,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
   '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
+  '/api/public/hooks/email-outbox': typeof ApiPublicHooksEmailOutboxRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -224,6 +232,7 @@ export interface FileRoutesByTo {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
   '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
+  '/api/public/hooks/email-outbox': typeof ApiPublicHooksEmailOutboxRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -253,6 +262,7 @@ export interface FileRoutesById {
   '/api/public/waiver-forever-webhook': typeof ApiPublicWaiverForeverWebhookRoute
   '/api/public/hooks/backfill-bokun-refs': typeof ApiPublicHooksBackfillBokunRefsRoute
   '/api/public/hooks/backfill-rate-titles': typeof ApiPublicHooksBackfillRateTitlesRoute
+  '/api/public/hooks/email-outbox': typeof ApiPublicHooksEmailOutboxRoute
   '/api/public/hooks/expire-rental-day-requests': typeof ApiPublicHooksExpireRentalDayRequestsRoute
   '/api/public/hooks/expire-shift-requests': typeof ApiPublicHooksExpireShiftRequestsRoute
   '/api/public/hooks/heal-bokun-zeros': typeof ApiPublicHooksHealBokunZerosRoute
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
     | '/api/public/hooks/backfill-rate-titles'
+    | '/api/public/hooks/email-outbox'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
     | '/api/public/hooks/backfill-rate-titles'
+    | '/api/public/hooks/email-outbox'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/api/public/waiver-forever-webhook'
     | '/api/public/hooks/backfill-bokun-refs'
     | '/api/public/hooks/backfill-rate-titles'
+    | '/api/public/hooks/email-outbox'
     | '/api/public/hooks/expire-rental-day-requests'
     | '/api/public/hooks/expire-shift-requests'
     | '/api/public/hooks/heal-bokun-zeros'
@@ -368,6 +381,7 @@ export interface RootRouteChildren {
   ApiPublicWaiverForeverWebhookRoute: typeof ApiPublicWaiverForeverWebhookRoute
   ApiPublicHooksBackfillBokunRefsRoute: typeof ApiPublicHooksBackfillBokunRefsRoute
   ApiPublicHooksBackfillRateTitlesRoute: typeof ApiPublicHooksBackfillRateTitlesRoute
+  ApiPublicHooksEmailOutboxRoute: typeof ApiPublicHooksEmailOutboxRoute
   ApiPublicHooksExpireRentalDayRequestsRoute: typeof ApiPublicHooksExpireRentalDayRequestsRoute
   ApiPublicHooksExpireShiftRequestsRoute: typeof ApiPublicHooksExpireShiftRequestsRoute
   ApiPublicHooksHealBokunZerosRoute: typeof ApiPublicHooksHealBokunZerosRoute
@@ -546,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksExpireRentalDayRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/email-outbox': {
+      id: '/api/public/hooks/email-outbox'
+      path: '/api/public/hooks/email-outbox'
+      fullPath: '/api/public/hooks/email-outbox'
+      preLoaderRoute: typeof ApiPublicHooksEmailOutboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/backfill-rate-titles': {
       id: '/api/public/hooks/backfill-rate-titles'
       path: '/api/public/hooks/backfill-rate-titles'
@@ -584,6 +605,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWaiverForeverWebhookRoute: ApiPublicWaiverForeverWebhookRoute,
   ApiPublicHooksBackfillBokunRefsRoute: ApiPublicHooksBackfillBokunRefsRoute,
   ApiPublicHooksBackfillRateTitlesRoute: ApiPublicHooksBackfillRateTitlesRoute,
+  ApiPublicHooksEmailOutboxRoute: ApiPublicHooksEmailOutboxRoute,
   ApiPublicHooksExpireRentalDayRequestsRoute:
     ApiPublicHooksExpireRentalDayRequestsRoute,
   ApiPublicHooksExpireShiftRequestsRoute:
@@ -597,13 +619,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
