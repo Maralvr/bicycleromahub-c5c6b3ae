@@ -1993,6 +1993,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      shift_rates: {
+        Args: { _ids: string[] }
+        Returns: {
+          id: string
+          rate: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "rental_staff"
