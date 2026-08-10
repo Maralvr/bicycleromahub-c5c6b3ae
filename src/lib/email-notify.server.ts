@@ -48,27 +48,51 @@ async function isDuplicateSend(key: string, windowMinutes: number): Promise<bool
 }
 
 
+/** Brand palette mirrored from the app's design tokens (green primary). */
+const BRAND = {
+  green: "#2eb84f",
+  greenDark: "#1f8f3c",
+  ink: "#111c14",
+  body: "#334036",
+  muted: "#6b7a6f",
+  border: "#dfe8e1",
+  surface: "#ffffff",
+  tint: "#f4faf5",
+};
+
 function renderHtml(input: MailInput): string {
   const rows = input.lines
-    .map(
-      (l) =>
-        `<tr><td style="padding:4px 0;font-size:14px;color:#1f2937;">${escapeHtml(l)}</td></tr>`,
-    )
+    .map((l) => {
+      if (!l.trim()) return `<tr><td style="height:10px;line-height:10px;">&nbsp;</td></tr>`;
+      const signoff = l.trimStart().startsWith("—");
+      return `<tr><td style="padding:3px 0;font-size:15px;line-height:23px;color:${
+        signoff ? BRAND.muted : BRAND.body
+      };${signoff ? "font-style:italic;" : ""}">${escapeHtml(l)}</td></tr>`;
+    })
     .join("");
-  return `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
-    <tr><td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;border:1px solid #e5e7eb;border-radius:12px;padding:24px;">
-        <tr><td style="font-size:18px;font-weight:bold;color:#111827;padding-bottom:12px;">${escapeHtml(input.heading)}</td></tr>
-        ${rows}
-        <tr><td style="padding-top:18px;font-size:12px;color:#6b7280;">${escapeHtml(
-          input.footer ?? "Bicycle Roma Hub",
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:${BRAND.tint};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.tint};">
+    <tr><td align="center" style="padding:32px 14px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:16px;overflow:hidden;">
+        <tr><td style="background:${BRAND.green};background-image:linear-gradient(135deg,${BRAND.green},${BRAND.greenDark});padding:16px 26px;">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.4px;color:#ffffff;text-transform:uppercase;">Bicycle Roma Hub</span>
+        </td></tr>
+        <tr><td style="padding:26px 26px 8px;">
+          <div style="font-size:20px;line-height:28px;font-weight:700;color:${BRAND.ink};">${escapeHtml(input.heading)}</div>
+          <div style="height:14px;line-height:14px;">&nbsp;</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+        </td></tr>
+        <tr><td style="padding:8px 26px 0;"><div style="border-top:1px solid ${BRAND.border};height:1px;line-height:1px;">&nbsp;</div></td></tr>
+        <tr><td style="padding:14px 26px 24px;font-size:12px;line-height:18px;color:${BRAND.muted};">${escapeHtml(
+          input.footer ?? "Bicycle Roma Hub · automated notification",
         )}</td></tr>
       </table>
     </td></tr>
   </table>
 </body></html>`;
 }
+
 
 function escapeHtml(s: string): string {
   return s
