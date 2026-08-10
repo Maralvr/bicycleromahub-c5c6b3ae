@@ -83,6 +83,13 @@ export async function sendMail(input: MailInput): Promise<{ ok: boolean; error?:
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY not configured" };
   if (!input.to || !input.to.includes("@")) return { ok: false, error: "no recipient email" };
 
+  if (input.dedupeKey) {
+    const dup = await isDuplicateSend(input.dedupeKey, input.dedupeWindowMinutes ?? 60);
+    if (dup) return { ok: true };
+  }
+
+
+
   try {
     const res = await fetch(RESEND_URL, {
       method: "POST",
