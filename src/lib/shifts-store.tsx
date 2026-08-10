@@ -255,6 +255,13 @@ export function ShiftsStoreProvider({ children }: { children: ReactNode }) {
             to: range.to > loaded!.to ? range.to : loaded!.to,
           };
         }
+        // Admin-only: pull the customer payment rates separately and merge them in.
+        void fetchShiftRates(fetched.map((r) => r.id)).then((rates) => {
+          if (rates.size === 0) return;
+          setRows((prev) =>
+            prev.map((r) => (rates.has(r.id) ? { ...r, rate: rates.get(r.id) ?? null } : r)),
+          );
+        });
         setError(null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load shifts");
