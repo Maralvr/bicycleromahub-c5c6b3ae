@@ -79,7 +79,7 @@ function escapeHtml(s: string): string {
 }
 
 export async function sendMail(input: MailInput): Promise<{ ok: boolean; error?: string }> {
-  const apiKey = process.env["RESEND_API_KEY"];
+  const apiKey = process.env["RESEND_API_KEY"]?.trim();
   if (!apiKey) return { ok: false, error: "RESEND_API_KEY not configured" };
   if (!input.to || !input.to.includes("@")) return { ok: false, error: "no recipient email" };
 
