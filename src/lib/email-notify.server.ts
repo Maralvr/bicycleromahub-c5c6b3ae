@@ -61,15 +61,28 @@ const BRAND = {
 };
 
 function renderHtml(input: MailInput): string {
-  const rows = input.lines
+  // Callers may pass multi-line strings (e.g. a broadcast message body).
+  // Flatten them so every physical line becomes its own paragraph row,
+  // otherwise everything collapses into one unreadable block of text.
+  const flat = input.lines.flatMap((l) => (l ?? "").split(/\r?\n/));
+
+  const rows = flat
     .map((l) => {
-      if (!l.trim()) return `<tr><td style="height:10px;line-height:10px;">&nbsp;</td></tr>`;
+      if (!l.trim()) return `<tr><td style="height:12px;line-height:12px;">&nbsp;</td></tr>`;
       const signoff = l.trimStart().startsWith("—");
-      return `<tr><td style="padding:3px 0;font-size:15px;line-height:23px;color:${
+      const text = escapeHtml(l.trim());
+      // "Label: value" lines get a bolded label for scannability.
+      const m = /^([^:]{2,40}):\s(.+)$/.exec(l.trim());
+      const inner =
+        !signoff && m
+          ? `<strong style="color:${BRAND.ink};font-weight:600;">${escapeHtml(m[1])}:</strong> ${escapeHtml(m[2])}`
+          : text;
+      return `<tr><td style="padding:5px 0;font-size:15px;line-height:24px;color:${
         signoff ? BRAND.muted : BRAND.body
-      };${signoff ? "font-style:italic;" : ""}">${escapeHtml(l)}</td></tr>`;
+      };${signoff ? "font-style:italic;" : ""}">${inner}</td></tr>`;
     })
     .join("");
+
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:${BRAND.tint};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.tint};">
