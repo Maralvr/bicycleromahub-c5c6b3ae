@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchShiftRates } from "./shift-rates";
 
 export type Participant = { name: string; category: string };
 
@@ -92,7 +93,7 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
     // Explicit column list — skip wide/unused columns (payout_*, reminder_*,
     // rejected_by_staff_ids, etc.) to reduce payload size.
     const cols =
-      "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, rental_point_id, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate, rate_title, seller, booking_channel, bokun_created_at, ticket_sent, notes, operations_notes, required_tags, assigned_staff_id, status, created_at, updated_at, no_show, no_show_reported_at, no_show_reported_by, no_show_notes";
+      "id, source, booking_id, channel_booking_ref, external_booking_ref, tour_name, date, start_time, end_time, meeting_point, rental_point_id, customer_name, customer_phone, customer_email, adults, teens, infants, trailers, participants, rate_title, seller, booking_channel, bokun_created_at, ticket_sent, notes, operations_notes, required_tags, assigned_staff_id, status, created_at, updated_at, no_show, no_show_reported_at, no_show_reported_by, no_show_notes";
 
     let q = supabase
       .from("shifts")
@@ -115,6 +116,13 @@ export function useLiveShifts(opts?: { rentalPointId?: string | null }) {
       });
       setShifts(rows);
       setError(null);
+      // Customer payment rate is admin-only in the database; fetch it separately.
+      void fetchShiftRates(rows.map((r) => r.id)).then((rates) => {
+        if (rates.size === 0) return;
+        setShifts((prev) =>
+          prev.map((r) => (rates.has(r.id) ? { ...r, rate: rates.get(r.id) ?? null } : r)),
+        );
+      });
     }
     setLoading(false);
   }, [opts?.rentalPointId]);
