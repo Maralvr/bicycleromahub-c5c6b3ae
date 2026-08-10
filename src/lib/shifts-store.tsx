@@ -15,6 +15,7 @@ import { notifyGuideShiftChange, type ShiftEmailKind } from "./email-notify.func
 import { toast } from "sonner";
 import { guideConflictMessage } from "./guide-conflicts";
 import type { Shift } from "./mock-data";
+import { fetchShiftRates } from "./shift-rates";
 
 
 type ShiftRow = {
