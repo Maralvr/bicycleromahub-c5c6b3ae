@@ -180,6 +180,8 @@ export async function sendRentalAssignmentEmail(
           ? "Please open the app to accept or decline this day."
           : "No action is needed — your calendar has been updated.",
       ],
+      dedupeKey: `rental:${rentalStaffId}:${pointId}:${date}:${hhmm(times?.start)}-${hhmm(times?.end)}:${kind}`,
+      dedupeWindowMinutes: 24 * 60,
     });
   } catch (e) {
     console.error("[email-notify] rental assignment email failed:", e);
