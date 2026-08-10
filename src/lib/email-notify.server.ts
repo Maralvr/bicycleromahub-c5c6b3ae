@@ -6,7 +6,7 @@ const RESEND_URL = "https://api.resend.com/emails";
 function getFrom(): string {
   return (
     process.env["RESEND_FROM_EMAIL"] ||
-    "Bicycle Roma Hub <notifications@notifications.bicycleroma.com>"
+    "Bicycle Roma Hub <noreply@notifications.bicycleroma.com>"
   );
 }
 
