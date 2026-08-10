@@ -4,7 +4,10 @@
 const RESEND_URL = "https://api.resend.com/emails";
 
 function getFrom(): string {
-  return process.env["RESEND_FROM_EMAIL"] || "Bicycle Roma Hub <onboarding@resend.dev>";
+  return (
+    process.env["RESEND_FROM_EMAIL"] ||
+    "Bicycle Roma Hub <notifications@notifications.bicycleroma.com>"
+  );
 }
 
 export type MailInput = {
@@ -13,7 +16,37 @@ export type MailInput = {
   heading: string;
   lines: string[];
   footer?: string;
+  /** When set, the same key won't be emailed twice within `dedupeWindowMinutes`. */
+  dedupeKey?: string;
+  dedupeWindowMinutes?: number;
 };
+
+/**
+ * Returns true when this email is a duplicate of one already sent inside the
+ * dedupe window, so the caller should skip sending it.
+ */
+async function isDuplicateSend(key: string, windowMinutes: number): Promise<boolean> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cutoff = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+    const { data: existing } = await supabaseAdmin
+      .from("email_send_dedupe" as any)
+      .select("dedupe_key, sent_at")
+      .eq("dedupe_key", key)
+      .maybeSingle();
+    if (existing && (existing as any).sent_at > cutoff) return true;
+    await supabaseAdmin
+      .from("email_send_dedupe" as any)
+      .upsert({ dedupe_key: key, sent_at: new Date().toISOString() } as any, {
+        onConflict: "dedupe_key",
+      });
+    return false;
+  } catch (e) {
+    console.error("[email-notify] dedupe check failed:", e);
+    return false;
+  }
+}
+
 
 function renderHtml(input: MailInput): string {
   const rows = input.lines
