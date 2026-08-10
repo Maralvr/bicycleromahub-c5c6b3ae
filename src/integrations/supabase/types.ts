@@ -1939,6 +1939,10 @@ export type Database = {
         Args: { _reason?: string; _shift_id: string }
         Returns: undefined
       }
+      rental_day_email_lines: {
+        Args: { _date: string; _point_id: string }
+        Returns: string[]
+      }
       rental_staff_day_amounts: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -1993,6 +1997,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      shift_email_lines: { Args: { _shift_id: string }; Returns: string[] }
       shift_rates: {
         Args: { _ids: string[] }
         Returns: {
