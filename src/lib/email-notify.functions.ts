@@ -76,6 +76,8 @@ export const notifyGuideShiftChange = createServerFn({ method: "POST" })
       subject: subjects[data.kind],
       heading: headings[data.kind],
       lines,
+      dedupeKey: `shift:${data.shiftId}:${data.staffId}:${data.kind}`,
+      dedupeWindowMinutes: 24 * 60,
     });
     return result;
   });

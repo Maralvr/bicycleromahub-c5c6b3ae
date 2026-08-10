@@ -207,6 +207,21 @@ export type Database = {
           },
         ]
       }
+      email_send_dedupe: {
+        Row: {
+          dedupe_key: string
+          sent_at: string
+        }
+        Insert: {
+          dedupe_key: string
+          sent_at?: string
+        }
+        Update: {
+          dedupe_key?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       field_updates: {
         Row: {
           attachments: Json
